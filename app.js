@@ -1,4 +1,5 @@
 const STORAGE_KEY = "fridge-leftovers-inventory-v2";
+const SHOPPING_STORAGE_KEY = "fridge-leftovers-shopping-v1";
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
@@ -319,6 +320,7 @@ const INVENTORY_LOCATIONS = ["冷蔵", "冷凍", "常温"];
 
 const state = {
   inventory: [],
+  shopping: [],
   location: "すべて",
   servings: 1,
   priority: "no-shop",
@@ -344,6 +346,16 @@ const elements = {
   inventoryView: document.querySelector("#inventory-view"),
   managementView: document.querySelector("#management-view"),
   suggestionsView: document.querySelector("#suggestions-view"),
+  shoppingView: document.querySelector("#shopping-view"),
+  shoppingOverview: document.querySelector("#shopping-overview"),
+  shoppingForm: document.querySelector("#shopping-form"),
+  shoppingName: document.querySelector("#shopping-name"),
+  shoppingQuantity: document.querySelector("#shopping-quantity"),
+  shoppingUnit: document.querySelector("#shopping-unit"),
+  shoppingRecommendations: document.querySelector("#shopping-recommendations"),
+  shoppingList: document.querySelector("#shopping-list"),
+  shoppingNavCount: document.querySelector("#shopping-nav-count"),
+  clearBought: document.querySelector("#clear-bought"),
   dialog: document.querySelector("#ingredient-dialog"),
   form: document.querySelector("#ingredient-form"),
   dialogTitle: document.querySelector("#dialog-title"),
@@ -406,6 +418,30 @@ function persistInventory() {
   }
 }
 
+function loadShoppingList() {
+  try {
+    const saved = localStorage.getItem(SHOPPING_STORAGE_KEY);
+    if (!saved) {
+      state.shopping = [];
+      return;
+    }
+    const parsed = JSON.parse(saved);
+    state.shopping = Array.isArray(parsed) ? parsed : [];
+  } catch {
+    state.shopping = [];
+  }
+}
+
+function persistShoppingList() {
+  if (!state.storageEnabled) return;
+  try {
+    localStorage.setItem(SHOPPING_STORAGE_KEY, JSON.stringify(state.shopping));
+  } catch {
+    state.storageEnabled = false;
+    elements.saveStatus.textContent = "保存できません";
+  }
+}
+
 function escapeHtml(value) {
   return String(value)
     .replaceAll("&", "&amp;")
@@ -456,6 +492,9 @@ function formatQuantity(quantity, unit) {
   if (unit === "株" && quantity === 0.5) return "1/2株";
   if (unit === "株" && quantity === 0.75) return "3/4株";
   if (unit === "本" && quantity === 0.25) return "1/4本";
+  if (unit === "個" && quantity === 0.25) return "1/4個";
+  if (unit === "個" && quantity === 0.5) return "1/2個";
+  if (unit === "個" && quantity === 0.75) return "3/4個";
   if (unit === "小さじ" || unit === "大さじ") return `${unit}${quantity}`;
   const number = Number.isInteger(quantity) ? quantity : Number(quantity.toFixed(2));
   return `${number}${unit}`;
@@ -633,6 +672,220 @@ function optionalReady(option) {
   return Boolean(item && item.quantity >= option.quantity * state.servings);
 }
 
+function makeShoppingItemId() {
+  if (globalThis.crypto?.randomUUID) return `shopping-${crypto.randomUUID()}`;
+  return `shopping-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function shoppingIngredientId(name) {
+  const trimmed = name.trim();
+  const known = ALIASES.get(trimmed);
+  if (known) return known;
+  const existing = [...state.shopping, ...state.inventory].find((item) => item.name === trimmed);
+  return existing?.ingredientId || existing?.id || makeId(trimmed);
+}
+
+function suggestedLocation(id) {
+  return RECEIPT_RULES.find((rule) => rule.id === id)?.location || "冷蔵";
+}
+
+function addShoppingItem({
+  ingredientId,
+  name,
+  quantity,
+  unit,
+  source = "manual",
+  reason = "",
+  location
+}) {
+  const existing = state.shopping.find((item) =>
+    !item.checked
+    && item.ingredientId === ingredientId
+    && item.unit === unit
+  );
+
+  if (existing) {
+    existing.quantity = source === "recommendation"
+      ? Math.max(existing.quantity, quantity)
+      : Number((existing.quantity + quantity).toFixed(2));
+    if (reason) existing.reason = reason;
+    return "merged";
+  }
+
+  state.shopping.push({
+    id: makeShoppingItemId(),
+    ingredientId,
+    name,
+    quantity,
+    unit,
+    location: location || suggestedLocation(ingredientId),
+    source,
+    reason,
+    checked: false,
+    addedAt: todayIso()
+  });
+  return "added";
+}
+
+function shoppingRecommendations() {
+  const recommendations = new Map();
+  const inventory = inventoryMap();
+
+  const addRecommendation = (ingredient, recipe, score, reason, unlocksRecipe) => {
+    if (!INVENTORY_UNITS.includes(ingredient.unit)) return;
+    const current = inventory.get(ingredient.id);
+    const currentAmount = current?.unit === ingredient.unit ? current.quantity : 0;
+    const quantity = Number(Math.max(ingredient.quantity - currentAmount, 0).toFixed(2));
+    const key = `${ingredient.id}:${ingredient.unit}`;
+    const entry = recommendations.get(key) || {
+      ingredientId: ingredient.id,
+      name: ingredient.name,
+      quantity,
+      unit: ingredient.unit,
+      location: suggestedLocation(ingredient.id),
+      score: 0,
+      reasons: [],
+      unlocks: [],
+      bestReason: "",
+      bestReasonScore: -Infinity
+    };
+
+    entry.quantity = Math.max(entry.quantity, quantity);
+    entry.score += score;
+    if (!entry.reasons.includes(reason)) entry.reasons.push(reason);
+    if (score > entry.bestReasonScore) {
+      entry.bestReason = reason;
+      entry.bestReasonScore = score;
+    }
+    if (unlocksRecipe && !entry.unlocks.includes(recipe.name)) entry.unlocks.push(recipe.name);
+    recommendations.set(key, entry);
+  };
+
+  RECIPES.forEach((recipe) => {
+    const heldRequired = recipe.required.filter((ingredient) => {
+      const item = inventory.get(ingredient.id);
+      return Boolean(item && item.unit === ingredient.unit && item.quantity > 0);
+    });
+    const heldOptional = recipe.optional.filter((ingredient) => {
+      const item = inventory.get(ingredient.id);
+      return Boolean(item && item.unit === ingredient.unit && item.quantity > 0);
+    });
+    const connectionCount = heldRequired.length + heldOptional.length;
+    if (!connectionCount) return;
+
+    const missingRequired = recipe.required.filter((ingredient) => {
+      const item = inventory.get(ingredient.id);
+      return !item || item.unit !== ingredient.unit || item.quantity < ingredient.quantity;
+    });
+
+    if (missingRequired.length) {
+      missingRequired.forEach((ingredient) => {
+        const unlocksRecipe = missingRequired.length === 1;
+        const score = 24
+          + heldRequired.length * 9
+          + heldOptional.length * 3
+          - missingRequired.length * 7
+          + (unlocksRecipe ? 18 : 0);
+        const reason = unlocksRecipe
+          ? `これで「${recipe.name}」が作れます`
+          : `今ある食材と「${recipe.name}」につながります`;
+        addRecommendation(ingredient, recipe, score, reason, unlocksRecipe);
+      });
+      return;
+    }
+
+    recipe.optional
+      .filter((ingredient) => {
+        const item = inventory.get(ingredient.id);
+        return !item || item.unit !== ingredient.unit || item.quantity < ingredient.quantity;
+      })
+      .slice(0, 2)
+      .forEach((ingredient) => {
+        addRecommendation(
+          ingredient,
+          recipe,
+          7 + heldRequired.length * 2,
+          `「${recipe.name}」をもっとおいしく`,
+          false
+        );
+      });
+  });
+
+  return [...recommendations.values()]
+    .map((recommendation) => ({
+      ...recommendation,
+      added: state.shopping.some((item) =>
+        item.ingredientId === recommendation.ingredientId
+        && item.unit === recommendation.unit
+      ),
+      reason: recommendation.unlocks.length
+        ? `これで「${recommendation.unlocks[0]}」が作れます`
+        : recommendation.bestReason
+    }))
+    .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name, "ja"))
+    .slice(0, 6);
+}
+
+function renderShoppingRecommendation(recommendation) {
+  return `
+    <article class="shopping-recommendation${recommendation.added ? " is-added" : ""}">
+      ${renderIngredientIllustration(recommendation.ingredientId, recommendation.name, true)}
+      <div>
+        <h4>${escapeHtml(recommendation.name)} <span>${formatQuantity(recommendation.quantity, recommendation.unit)}</span></h4>
+        <p>${escapeHtml(recommendation.reason)}</p>
+      </div>
+      <button class="recommend-add-button" type="button"
+        data-recommend-id="${escapeHtml(recommendation.ingredientId)}"
+        data-recommend-unit="${escapeHtml(recommendation.unit)}"
+        ${recommendation.added ? "disabled" : ""}>
+        ${recommendation.added ? "追加済み" : "追加"}
+      </button>
+    </article>
+  `;
+}
+
+function renderShoppingItem(item) {
+  return `
+    <article class="shopping-item${item.checked ? " is-checked" : ""}">
+      <label class="shopping-check">
+        <input type="checkbox" data-shopping-check="${escapeHtml(item.id)}"${item.checked ? " checked" : ""}>
+        <span class="check-mark" aria-hidden="true"></span>
+        <span class="visually-hidden">${escapeHtml(item.name)}を購入済みにする</span>
+      </label>
+      ${renderIngredientIllustration(item.ingredientId, item.name, true)}
+      <div class="shopping-item-copy">
+        <strong>${escapeHtml(item.name)} <span>${formatQuantity(item.quantity, item.unit)}</span></strong>
+        <small>${item.reason ? escapeHtml(item.reason) : "自分で追加"}</small>
+      </div>
+      <div class="shopping-item-actions">
+        ${item.checked ? `<button type="button" data-shopping-stock="${escapeHtml(item.id)}">在庫へ</button>` : ""}
+        <button type="button" class="shopping-delete" data-shopping-delete="${escapeHtml(item.id)}" aria-label="${escapeHtml(item.name)}を買い物リストから削除">削除</button>
+      </div>
+    </article>
+  `;
+}
+
+function renderShopping() {
+  const unchecked = state.shopping.filter((item) => !item.checked).length;
+  const checked = state.shopping.length - unchecked;
+  elements.shoppingOverview.textContent = state.shopping.length
+    ? `未購入 ${unchecked}品${checked ? `・購入済み ${checked}品` : ""}`
+    : "まだ何もありません";
+
+  elements.shoppingNavCount.textContent = unchecked;
+  elements.shoppingNavCount.hidden = unchecked === 0;
+  elements.clearBought.hidden = checked === 0;
+
+  const recommendations = shoppingRecommendations();
+  elements.shoppingRecommendations.innerHTML = recommendations.length
+    ? recommendations.map(renderShoppingRecommendation).join("")
+    : '<p class="shopping-empty-recommendation">在庫を増やすと、組み合わせの候補がここに出ます。</p>';
+
+  elements.shoppingList.innerHTML = state.shopping.length
+    ? state.shopping.map(renderShoppingItem).join("")
+    : '<p class="shopping-empty-list">買うものを追加すると、ここが店内用のチェックリストになります。</p>';
+}
+
 function recipeScore(recipe) {
   const shortagePenalty = shortageFor(recipe).length * 100;
   const priorityIds = new Set(activeInventory().filter((item) => item.priority).map((item) => item.id));
@@ -717,6 +970,7 @@ function showView(viewName) {
   elements.inventoryView.hidden = viewName !== "inventory";
   elements.managementView.hidden = viewName !== "management";
   elements.suggestionsView.hidden = viewName !== "suggestions";
+  elements.shoppingView.hidden = viewName !== "shopping";
   document.querySelectorAll(".nav-button").forEach((button) => {
     const active = button.dataset.view === viewName;
     button.classList.toggle("is-active", active);
@@ -727,6 +981,7 @@ function showView(viewName) {
     }
   });
   if (viewName === "suggestions") renderRecipes();
+  if (viewName === "shopping") renderShopping();
   window.scrollTo({ top: 0, behavior: "auto" });
 }
 
@@ -1293,6 +1548,7 @@ function showToast(message, withUndo = false) {
 function renderAll() {
   renderInventory();
   renderRecipes();
+  renderShopping();
 }
 
 document.querySelector("#add-ingredient").addEventListener("click", () => openIngredientDialog());
@@ -1320,6 +1576,34 @@ document.querySelector("#select-all-receipt").addEventListener("click", () => {
   updateReceiptSelectionState();
 });
 elements.form.addEventListener("submit", saveIngredient);
+elements.shoppingName.addEventListener("input", () => {
+  const ingredientId = ALIASES.get(elements.shoppingName.value.trim());
+  const known = RECEIPT_RULES.find((rule) => rule.id === ingredientId);
+  if (known && INVENTORY_UNITS.includes(known.unit)) {
+    elements.shoppingUnit.value = known.unit;
+  }
+});
+elements.shoppingForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  const name = elements.shoppingName.value.trim();
+  const quantity = Number(elements.shoppingQuantity.value);
+  const unit = elements.shoppingUnit.value;
+  if (!name || !Number.isFinite(quantity) || quantity <= 0) return;
+
+  const result = addShoppingItem({
+    ingredientId: shoppingIngredientId(name),
+    name,
+    quantity,
+    unit
+  });
+  persistShoppingList();
+  renderShopping();
+  elements.shoppingForm.reset();
+  elements.shoppingQuantity.value = 1;
+  elements.shoppingUnit.value = "個";
+  elements.shoppingName.focus();
+  showToast(result === "merged" ? `${name}の買う量に追加しました` : `${name}を買い物リストに追加しました`);
+});
 elements.receiptForm.addEventListener("submit", saveReceiptCandidates);
 elements.receiptInput.addEventListener("change", () => {
   const [file] = elements.receiptInput.files;
@@ -1437,6 +1721,82 @@ elements.recipeList.addEventListener("click", (event) => {
   if (button) cookRecipe(button.dataset.cook);
 });
 
+elements.shoppingRecommendations.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-recommend-id]");
+  if (!button) return;
+  const recommendation = shoppingRecommendations().find((item) =>
+    item.ingredientId === button.dataset.recommendId
+    && item.unit === button.dataset.recommendUnit
+  );
+  if (!recommendation || recommendation.added) return;
+
+  addShoppingItem({
+    ingredientId: recommendation.ingredientId,
+    name: recommendation.name,
+    quantity: recommendation.quantity,
+    unit: recommendation.unit,
+    location: recommendation.location,
+    source: "recommendation",
+    reason: recommendation.reason
+  });
+  persistShoppingList();
+  renderShopping();
+  showToast(`${recommendation.name}を買い物リストに追加しました`);
+});
+
+elements.shoppingList.addEventListener("change", (event) => {
+  const checkbox = event.target.closest("[data-shopping-check]");
+  if (!checkbox) return;
+  const item = state.shopping.find((candidate) => candidate.id === checkbox.dataset.shoppingCheck);
+  if (!item) return;
+  item.checked = checkbox.checked;
+  persistShoppingList();
+  renderShopping();
+});
+
+elements.shoppingList.addEventListener("click", (event) => {
+  const deleteButton = event.target.closest("[data-shopping-delete]");
+  if (deleteButton) {
+    state.shopping = state.shopping.filter((item) => item.id !== deleteButton.dataset.shoppingDelete);
+    persistShoppingList();
+    renderShopping();
+    showToast("買い物リストから削除しました");
+    return;
+  }
+
+  const stockButton = event.target.closest("[data-shopping-stock]");
+  if (!stockButton) return;
+  const item = state.shopping.find((candidate) => candidate.id === stockButton.dataset.shoppingStock);
+  if (!item) return;
+  const existing = state.inventory.find((candidate) =>
+    candidate.active !== false
+    && (candidate.id === item.ingredientId || candidate.name === item.name)
+  );
+  if (existing && existing.unit !== item.unit) {
+    showToast(`在庫では${existing.unit}で管理中です。単位を合わせてください`);
+    return;
+  }
+
+  addOrMergeInventoryItem({
+    name: item.name,
+    quantity: item.quantity,
+    unit: item.unit,
+    location: item.location
+  });
+  state.shopping = state.shopping.filter((candidate) => candidate.id !== item.id);
+  persistInventory();
+  persistShoppingList();
+  renderAll();
+  showToast(`${item.name}を在庫へ移しました`);
+});
+
+elements.clearBought.addEventListener("click", () => {
+  state.shopping = state.shopping.filter((item) => !item.checked);
+  persistShoppingList();
+  renderShopping();
+  showToast("購入済みの項目を消しました");
+});
+
 elements.toastAction.addEventListener("click", () => {
   if (state.lastUndo) state.lastUndo();
   state.lastUndo = null;
@@ -1444,4 +1804,5 @@ elements.toastAction.addEventListener("click", () => {
 });
 
 loadInventory();
+loadShoppingList();
 renderAll();

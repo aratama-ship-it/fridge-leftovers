@@ -6,9 +6,9 @@
   <meta name="theme-color" content="#f3f0e6">
   <meta name="description" content="冷蔵庫の在庫を管理し、残っている食材から今日作れる料理を提案するスマホ向けプロトタイプ">
   <title>冷蔵庫の現在地</title>
-  <link rel="stylesheet" href="styles.css?v=7">
+  <link rel="stylesheet" href="styles.css?v=8">
   <script src="vendor/tesseract/tesseract.min.js?v=7.0.0" defer></script>
-  <script src="app.js?v=7" defer></script>
+  <script src="app.js?v=8" defer></script>
 </head>
 <body>
   <div class="app-shell">
@@ -113,6 +113,68 @@
 
         <div class="recipe-list" id="recipe-list" aria-live="polite"></div>
       </section>
+
+      <section class="view shopping-view" id="shopping-view" aria-labelledby="shopping-title" hidden>
+        <div class="shopping-heading">
+          <div>
+            <p class="eyebrow">次の買い物を軽くする</p>
+            <h2 id="shopping-title">スーパーで買うもの</h2>
+            <p class="overview-copy" id="shopping-overview" aria-live="polite"></p>
+          </div>
+          <span class="shopping-pencil" aria-hidden="true">／</span>
+        </div>
+
+        <form class="shopping-add-form" id="shopping-form">
+          <label class="shopping-name-field" for="shopping-name">
+            買うもの
+            <input id="shopping-name" name="name" type="text" autocomplete="off" required placeholder="例：牛乳">
+          </label>
+          <label for="shopping-quantity">
+            数量
+            <input id="shopping-quantity" name="quantity" type="number" inputmode="decimal" min="0.25" step="0.25" required value="1">
+          </label>
+          <label for="shopping-unit">
+            単位
+            <select id="shopping-unit" name="unit">
+              <option value="個">個</option>
+              <option value="g">g</option>
+              <option value="ml">ml</option>
+              <option value="本">本</option>
+              <option value="株">株</option>
+              <option value="袋">袋</option>
+              <option value="パック">パック</option>
+              <option value="膳">膳</option>
+              <option value="切れ">切れ</option>
+            </select>
+          </label>
+          <button class="button button-primary shopping-add-button" type="submit">リストに追加</button>
+        </form>
+
+        <section class="shopping-recommendations" aria-labelledby="shopping-recommendations-title">
+          <div class="shopping-section-heading">
+            <div>
+              <p class="eyebrow">冷蔵庫との組み合わせ</p>
+              <h3 id="shopping-recommendations-title">今あるものに合う</h3>
+            </div>
+            <span>1人分を基準</span>
+          </div>
+          <p class="shopping-intro">買い足すと、登録レシピにつながりやすい順です。</p>
+          <div class="shopping-recommendation-list" id="shopping-recommendations"></div>
+        </section>
+
+        <section class="shopping-note" aria-labelledby="shopping-list-title">
+          <div class="shopping-section-heading">
+            <div>
+              <p class="eyebrow">店内でチェック</p>
+              <h3 id="shopping-list-title">買うもの</h3>
+            </div>
+            <button class="text-button" type="button" id="clear-bought" hidden>購入済みを消す</button>
+          </div>
+          <div class="shopping-list" id="shopping-list" aria-live="polite"></div>
+        </section>
+
+        <p class="privacy-note">買い物リストも、この端末のブラウザ内だけに保存されます。</p>
+      </section>
     </main>
 
     <nav class="bottom-nav" aria-label="主な画面">
@@ -127,6 +189,10 @@
       <button type="button" class="nav-button" data-view="suggestions">
         <span aria-hidden="true">⌁</span>
         今日の三択
+      </button>
+      <button type="button" class="nav-button" data-view="shopping">
+        <span class="nav-icon-with-count" aria-hidden="true">✓<small id="shopping-nav-count" hidden></small></span>
+        買い物
       </button>
     </nav>
   </div>
