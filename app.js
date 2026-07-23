@@ -274,6 +274,7 @@ function renderInventoryRow(item) {
         <button class="row-action" type="button" data-action="confirm" data-id="${escapeHtml(item.id)}">まだある</button>
         <button class="row-action${item.priority ? " is-priority" : ""}" type="button" data-action="priority" data-id="${escapeHtml(item.id)}">${item.priority ? "優先を解除" : "先に使う"}</button>
         <button class="row-action" type="button" data-action="consume" data-id="${escapeHtml(item.id)}">使い切った</button>
+        <button class="row-action is-delete" type="button" data-action="delete" data-id="${escapeHtml(item.id)}">削除</button>
       </div>
     </article>
   `;
@@ -503,8 +504,7 @@ function consumeItem(item) {
   showToast(`${item.name}を使い切りにしました`, true);
 }
 
-function deleteCurrentIngredient() {
-  const item = state.inventory.find((candidate) => candidate.id === elements.ingredientId.value);
+function deleteItem(item) {
   if (!item) return;
   const index = state.inventory.indexOf(item);
   const snapshot = { ...item };
@@ -516,8 +516,13 @@ function deleteCurrentIngredient() {
   };
   persistInventory();
   renderAll();
-  closeIngredientDialog();
   showToast(`${item.name}を在庫から削除しました`, true);
+}
+
+function deleteCurrentIngredient() {
+  const item = state.inventory.find((candidate) => candidate.id === elements.ingredientId.value);
+  deleteItem(item);
+  closeIngredientDialog();
 }
 
 function restoreItem(id) {
@@ -562,7 +567,7 @@ function showToast(message, withUndo = false) {
   state.toastTimer = setTimeout(() => {
     elements.toast.hidden = true;
     state.lastUndo = null;
-  }, 5000);
+  }, 15000);
 }
 
 function renderAll() {
@@ -650,6 +655,7 @@ elements.inventoryList.addEventListener("click", (event) => {
     });
   }
   if (button.dataset.action === "consume") consumeItem(item);
+  if (button.dataset.action === "delete") deleteItem(item);
 });
 
 elements.finishedList.addEventListener("click", (event) => {
