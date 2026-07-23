@@ -428,22 +428,12 @@ h3 {
   letter-spacing: 0.08em;
 }
 
-.inventory-tools-heading {
+.management-heading {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  margin: 0 0 8px;
-}
-
-.inventory-tools-heading strong {
-  font-family: "Hiragino Mincho ProN", "Yu Mincho", ui-serif, serif;
-  font-size: 1rem;
-}
-
-.inventory-tools-heading span {
-  color: var(--muted);
-  font-size: 0.68rem;
+  gap: 14px;
+  margin-bottom: 18px;
 }
 
 .storage-tabs {
@@ -869,7 +859,7 @@ input[type="number"] {
   z-index: 5;
   bottom: 0;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   padding-bottom: env(safe-area-inset-bottom);
   border-top: 1px solid var(--line-strong);
   background: rgb(251 250 245 / 96%);
@@ -883,7 +873,7 @@ input[type="number"] {
   padding: 8px 6px 7px;
   background: transparent;
   color: var(--muted);
-  font-size: 0.76rem;
+  font-size: 0.7rem;
   font-weight: 800;
 }
 

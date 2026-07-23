@@ -6,8 +6,8 @@
   <meta name="theme-color" content="#f3f0e6">
   <meta name="description" content="冷蔵庫の在庫を管理し、残っている食材から今日作れる料理を提案するスマホ向けプロトタイプ">
   <title>冷蔵庫の現在地</title>
-  <link rel="stylesheet" href="styles.css?v=4">
-  <script src="app.js?v=4" defer></script>
+  <link rel="stylesheet" href="styles.css?v=5">
+  <script src="app.js?v=5" defer></script>
 </head>
 <body>
   <div class="app-shell">
@@ -26,8 +26,8 @@
             <h2 id="inventory-title">今あるもの</h2>
             <p class="overview-copy" id="inventory-overview" aria-live="polite"></p>
           </div>
-          <button class="button button-primary add-button" type="button" id="add-ingredient">
-            ＋ 食材を追加
+          <button class="button button-primary add-button" type="button" id="open-management">
+            在庫管理へ
           </button>
         </div>
 
@@ -37,14 +37,22 @@
               <p class="eyebrow">扉をひらいて確認</p>
               <h3 id="fridge-visual-title">わたしの冷蔵庫</h3>
             </div>
-            <p>食材をタップすると<br>残量を編集できます</p>
+            <p>食材をタップすると<br>在庫管理へ移動します</p>
           </div>
           <div id="fridge-scene"></div>
         </section>
+      </section>
 
-        <div class="inventory-tools-heading">
-          <strong>在庫を整える</strong>
-          <span>残量変更・使い切り・削除</span>
+      <section class="view" id="management-view" aria-labelledby="management-title" hidden>
+        <div class="management-heading">
+          <div>
+            <p class="eyebrow">残量を正しく保つ</p>
+            <h2 id="management-title">在庫管理</h2>
+            <p class="overview-copy">残量変更・使い切り・削除</p>
+          </div>
+          <button class="button button-primary add-button" type="button" id="add-ingredient">
+            ＋ 食材を追加
+          </button>
         </div>
 
         <div class="storage-tabs" role="group" aria-label="保存場所で絞り込む">
@@ -73,7 +81,7 @@
             <p class="eyebrow">冷蔵庫から選ぶ</p>
             <h2 id="suggestions-title">今日の三択</h2>
           </div>
-          <button class="button button-secondary" type="button" id="review-inventory">在庫を確認</button>
+          <button class="button button-secondary" type="button" id="review-inventory">在庫管理</button>
         </div>
 
         <div class="meal-controls" aria-label="料理の提案条件">
@@ -102,8 +110,12 @@
 
     <nav class="bottom-nav" aria-label="主な画面">
       <button type="button" class="nav-button is-active" data-view="inventory" aria-current="page">
-        <span aria-hidden="true">▤</span>
+        <span aria-hidden="true">▥</span>
         冷蔵庫
+      </button>
+      <button type="button" class="nav-button" data-view="management">
+        <span aria-hidden="true">▤</span>
+        在庫管理
       </button>
       <button type="button" class="nav-button" data-view="suggestions">
         <span aria-hidden="true">⌁</span>

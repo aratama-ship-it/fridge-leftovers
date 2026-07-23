@@ -141,6 +141,7 @@ const elements = {
   finishedList: document.querySelector("#finished-list"),
   recipeList: document.querySelector("#recipe-list"),
   inventoryView: document.querySelector("#inventory-view"),
+  managementView: document.querySelector("#management-view"),
   suggestionsView: document.querySelector("#suggestions-view"),
   dialog: document.querySelector("#ingredient-dialog"),
   form: document.querySelector("#ingredient-form"),
@@ -498,9 +499,9 @@ function renderRecipe(recipe, index) {
 }
 
 function showView(viewName) {
-  const inventoryActive = viewName === "inventory";
-  elements.inventoryView.hidden = !inventoryActive;
-  elements.suggestionsView.hidden = inventoryActive;
+  elements.inventoryView.hidden = viewName !== "inventory";
+  elements.managementView.hidden = viewName !== "management";
+  elements.suggestionsView.hidden = viewName !== "suggestions";
   document.querySelectorAll(".nav-button").forEach((button) => {
     const active = button.dataset.view === viewName;
     button.classList.toggle("is-active", active);
@@ -510,8 +511,19 @@ function showView(viewName) {
       button.removeAttribute("aria-current");
     }
   });
-  if (!inventoryActive) renderRecipes();
+  if (viewName === "suggestions") renderRecipes();
   window.scrollTo({ top: 0, behavior: "auto" });
+}
+
+function showManagementItem(id) {
+  showView("management");
+  requestAnimationFrame(() => {
+    const button = [...elements.inventoryList.querySelectorAll('[data-action="edit"]')]
+      .find((candidate) => candidate.dataset.id === id);
+    if (!button) return;
+    button.scrollIntoView({ block: "center", behavior: "smooth" });
+    button.focus({ preventScroll: true });
+  });
 }
 
 function openIngredientDialog(item = null) {
@@ -697,10 +709,11 @@ function renderAll() {
 }
 
 document.querySelector("#add-ingredient").addEventListener("click", () => openIngredientDialog());
+document.querySelector("#open-management").addEventListener("click", () => showView("management"));
 document.querySelector("#close-dialog").addEventListener("click", closeIngredientDialog);
 document.querySelector("#cancel-dialog").addEventListener("click", closeIngredientDialog);
 document.querySelector("#delete-ingredient").addEventListener("click", deleteCurrentIngredient);
-document.querySelector("#review-inventory").addEventListener("click", () => showView("inventory"));
+document.querySelector("#review-inventory").addEventListener("click", () => showView("management"));
 elements.form.addEventListener("submit", saveIngredient);
 
 elements.dialog.addEventListener("click", (event) => {
@@ -710,8 +723,7 @@ elements.dialog.addEventListener("click", (event) => {
 elements.fridgeScene.addEventListener("click", (event) => {
   const button = event.target.closest("[data-fridge-edit]");
   if (!button) return;
-  const item = state.inventory.find((candidate) => candidate.id === button.dataset.fridgeEdit);
-  if (item) openIngredientDialog(item);
+  showManagementItem(button.dataset.fridgeEdit);
 });
 
 document.querySelectorAll(".storage-tab").forEach((button) => {
