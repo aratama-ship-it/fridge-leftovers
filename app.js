@@ -134,6 +134,7 @@ const state = {
 const elements = {
   saveStatus: document.querySelector("#save-status"),
   inventoryOverview: document.querySelector("#inventory-overview"),
+  fridgeScene: document.querySelector("#fridge-scene"),
   inventoryList: document.querySelector("#inventory-list"),
   finishedSection: document.querySelector("#finished-section"),
   finishedCount: document.querySelector("#finished-count"),
@@ -281,6 +282,7 @@ function renderInventory() {
   if (priorityCount) notes.push(`使い切り優先 ${priorityCount}品`);
   if (staleCount) notes.push(`要確認 ${staleCount}品`);
   elements.inventoryOverview.textContent = notes.join("・");
+  renderFridgeScene(active);
 
   if (!filtered.length) {
     elements.inventoryList.innerHTML = `
@@ -302,6 +304,64 @@ function renderInventory() {
       <button class="restore-button" type="button" data-action="restore" data-id="${escapeHtml(item.id)}">戻す</button>
     </div>
   `).join("");
+}
+
+function renderFridgeFood(item) {
+  return `
+    <button class="fridge-food${item.priority ? " is-priority" : ""}" type="button" data-fridge-edit="${escapeHtml(item.id)}" aria-label="${escapeHtml(item.name)} ${formatQuantity(item.quantity, item.unit)}を編集">
+      ${renderIngredientIllustration(item.id, item.name)}
+      <span class="fridge-food-name">${escapeHtml(item.name)}</span>
+      <span class="fridge-food-quantity">${formatQuantity(item.quantity, item.unit)}</span>
+    </button>
+  `;
+}
+
+function renderFridgeShelf(items, emptyText) {
+  if (!items.length) return `<p class="fridge-empty">${escapeHtml(emptyText)}</p>`;
+  return `<div class="fridge-foods">${items.map(renderFridgeFood).join("")}</div>`;
+}
+
+function renderFridgeScene(active) {
+  const frozen = active.filter((item) => item.location === "冷凍");
+  const chilled = active.filter((item) => item.location === "冷蔵");
+  const pantry = active.filter((item) => item.location === "常温");
+  const visibleFrozen = frozen.slice(0, 4);
+  const visibleChilled = chilled.slice(0, 8);
+  const visiblePantry = pantry.slice(0, 4);
+  const firstShelfEnd = Math.ceil(visibleChilled.length / 2);
+  const hiddenCount = Math.max(0, frozen.length - visibleFrozen.length)
+    + Math.max(0, chilled.length - visibleChilled.length)
+    + Math.max(0, pantry.length - visiblePantry.length);
+
+  elements.fridgeScene.innerHTML = `
+    <div class="fridge-appliance">
+      <div class="fridge-freezer">
+        <span class="fridge-compartment-label">冷凍室</span>
+        ${renderFridgeShelf(visibleFrozen, "冷凍食材はまだありません")}
+      </div>
+      <div class="fridge-chamber">
+        <span class="fridge-light" aria-hidden="true"></span>
+        <span class="fridge-compartment-label">冷蔵室</span>
+        <div class="fridge-shelf">
+          ${renderFridgeShelf(visibleChilled.slice(0, firstShelfEnd), "冷蔵食材を入れてみましょう")}
+        </div>
+        <div class="fridge-shelf">
+          ${renderFridgeShelf(visibleChilled.slice(firstShelfEnd), "この棚は空いています")}
+        </div>
+      </div>
+      <div class="fridge-crisper">
+        <span>野菜室</span>
+        <span>${chilled.length ? `${chilled.length}品を冷蔵中` : "空いています"}</span>
+      </div>
+      ${hiddenCount ? `<span class="fridge-overflow">ほか ${hiddenCount}品</span>` : ""}
+    </div>
+    ${pantry.length ? `
+      <div class="pantry-shelf">
+        <span class="pantry-label">常温ストック</span>
+        ${renderFridgeShelf(visiblePantry, "")}
+      </div>
+    ` : ""}
+  `;
 }
 
 function renderInventoryRow(item) {
@@ -645,6 +705,13 @@ elements.form.addEventListener("submit", saveIngredient);
 
 elements.dialog.addEventListener("click", (event) => {
   if (event.target === elements.dialog) closeIngredientDialog();
+});
+
+elements.fridgeScene.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-fridge-edit]");
+  if (!button) return;
+  const item = state.inventory.find((candidate) => candidate.id === button.dataset.fridgeEdit);
+  if (item) openIngredientDialog(item);
 });
 
 document.querySelectorAll(".storage-tab").forEach((button) => {
