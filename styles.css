@@ -232,6 +232,47 @@ h3 {
   gap: 12px;
 }
 
+.item-identity {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+}
+
+.ingredient-illustration,
+.ingredient-initial {
+  display: inline-block;
+  width: 56px;
+  height: 56px;
+  flex: none;
+}
+
+.ingredient-illustration {
+  background-image: url("assets/ingredient-atlas.png");
+  background-repeat: no-repeat;
+  background-position: var(--atlas-x) var(--atlas-y);
+  background-size: 440% 330%;
+}
+
+.ingredient-initial {
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line-strong);
+  border-radius: 50%;
+  background: var(--paper-raised);
+  color: var(--leaf);
+  font-family: serif;
+  font-size: 1.18rem;
+  font-weight: 800;
+}
+
+.ingredient-illustration-small,
+.ingredient-initial.ingredient-illustration-small {
+  width: 30px;
+  height: 30px;
+}
+
 .item-name-button {
   min-height: 0;
   padding: 0;
@@ -483,9 +524,18 @@ input[type="number"] {
 
 .ingredient-line {
   display: flex;
+  align-items: center;
   justify-content: space-between;
   gap: 10px;
   font-size: 0.86rem;
+}
+
+.ingredient-with-icon {
+  display: inline-grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
 }
 
 .ingredient-state {
@@ -502,13 +552,13 @@ input[type="number"] {
 .optional-choice {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
-  align-items: start;
+  align-items: center;
   gap: 8px;
 }
 
 .optional-choice input {
   min-height: 0;
-  margin-top: 3px;
+  margin: 0;
 }
 
 .optional-choice small {

@@ -81,6 +81,21 @@ const ALIASES = new Map([
   ["豚こま切れ", "pork"],
   ["ごはん", "rice"],
   ["ご飯", "rice"],
+  ["豆腐", "tofu"],
+  ["木綿豆腐", "tofu"],
+  ["絹ごし豆腐", "tofu"],
+  ["玉ねぎ", "onion"],
+  ["たまねぎ", "onion"],
+  ["タマネギ", "onion"],
+  ["にんじん", "carrot"],
+  ["人参", "carrot"],
+  ["ニンジン", "carrot"],
+  ["トマト", "tomato"],
+  ["鶏むね肉", "chicken"],
+  ["鶏胸肉", "chicken"],
+  ["とりむね肉", "chicken"],
+  ["じゃがいも", "potato"],
+  ["ジャガイモ", "potato"],
   ["しょうが", "ginger"],
   ["生姜", "ginger"],
   ["ごま油", "sesame-oil"],
@@ -89,6 +104,21 @@ const ALIASES = new Map([
   ["チーズ", "cheese"],
   ["かつお節", "bonito"]
 ]);
+
+const INGREDIENT_ILLUSTRATIONS = {
+  cabbage: [0, 0],
+  eggs: [1, 0],
+  mushroom: [2, 0],
+  pork: [3, 0],
+  rice: [0, 1],
+  tofu: [1, 1],
+  onion: [2, 1],
+  carrot: [3, 1],
+  tomato: [0, 2],
+  chicken: [1, 2],
+  potato: [2, 2],
+  "green-onion": [3, 2]
+};
 
 const state = {
   inventory: [],
@@ -175,6 +205,28 @@ function makeId(name) {
   return `custom-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
+function canonicalIngredientId(id, name) {
+  if (INGREDIENT_ILLUSTRATIONS[id]) return id;
+  return ALIASES.get(String(name).trim()) || id;
+}
+
+function renderIngredientIllustration(id, name, small = false) {
+  const illustration = INGREDIENT_ILLUSTRATIONS[canonicalIngredientId(id, name)];
+  const sizeClass = small ? " ingredient-illustration-small" : "";
+
+  if (!illustration) {
+    const initial = String(name).trim().slice(0, 1) || "食";
+    return `<span class="ingredient-initial${sizeClass}" aria-hidden="true">${escapeHtml(initial)}</span>`;
+  }
+
+  const [column, row] = illustration;
+  // Slightly crop inside each atlas cell so a wide illustration never leaks
+  // into its neighbour at small display sizes.
+  const x = ((4.4 * ((column + 0.5) / 4) - 0.5) / 3.4) * 100;
+  const y = ((3.3 * ((row + 0.5) / 3) - 0.5) / 2.3) * 100;
+  return `<span class="ingredient-illustration${sizeClass}" style="--atlas-x:${x}%;--atlas-y:${y}%;" aria-hidden="true"></span>`;
+}
+
 function stepForUnit(unit) {
   if (unit === "g" || unit === "ml") return 50;
   if (unit === "株") return 0.25;
@@ -257,10 +309,13 @@ function renderInventoryRow(item) {
   return `
     <article class="inventory-row${item.priority ? " is-priority" : ""}">
       <div class="item-heading">
-        <button class="item-name-button" type="button" data-action="edit" data-id="${escapeHtml(item.id)}">
-          <span class="item-name">${escapeHtml(item.name)}</span>
-          <span class="item-meta${confirmation.stale ? " is-stale" : ""}">${escapeHtml(item.location)}・${confirmation.text}</span>
-        </button>
+        <div class="item-identity">
+          ${renderIngredientIllustration(item.id, item.name)}
+          <button class="item-name-button" type="button" data-action="edit" data-id="${escapeHtml(item.id)}">
+            <span class="item-name">${escapeHtml(item.name)}</span>
+            <span class="item-meta${confirmation.stale ? " is-stale" : ""}">${escapeHtml(item.location)}・${confirmation.text}</span>
+          </button>
+        </div>
         ${item.priority ? '<span class="priority-label">先に使う</span>' : ""}
       </div>
 
@@ -327,7 +382,10 @@ function renderRecipe(recipe, index) {
     const enough = Boolean(item && item.quantity >= requiredAmount(requirement));
     return `
       <li class="ingredient-line">
-        <span>${escapeHtml(requirement.name)} ${formatQuantity(requiredAmount(requirement), requirement.unit)}</span>
+        <span class="ingredient-with-icon">
+          ${renderIngredientIllustration(requirement.id, requirement.name, true)}
+          <span>${escapeHtml(requirement.name)} ${formatQuantity(requiredAmount(requirement), requirement.unit)}</span>
+        </span>
         <span class="ingredient-state${enough ? " is-ready" : ""}">${enough ? "あります" : "足りません"}</span>
       </li>
     `;
@@ -341,9 +399,12 @@ function renderRecipe(recipe, index) {
       <li>
         <label class="optional-choice">
           <input type="checkbox" data-optional="${escapeHtml(key)}"${checked ? " checked" : ""}${ready ? "" : " disabled"}>
-          <span>
-            ${escapeHtml(option.name)} ${formatQuantity(option.quantity * state.servings, option.unit)}
-            <small>${escapeHtml(option.benefit)}・${ready ? "冷蔵庫にあります" : "なくても作れます"}</small>
+          <span class="ingredient-with-icon">
+            ${renderIngredientIllustration(option.id, option.name, true)}
+            <span>
+              ${escapeHtml(option.name)} ${formatQuantity(option.quantity * state.servings, option.unit)}
+              <small>${escapeHtml(option.benefit)}・${ready ? "冷蔵庫にあります" : "なくても作れます"}</small>
+            </span>
           </span>
         </label>
       </li>
