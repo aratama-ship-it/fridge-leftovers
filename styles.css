@@ -313,7 +313,7 @@ h3 {
   justify-items: center;
   align-content: end;
   min-width: 0;
-  min-height: 72px;
+  min-height: 68px;
   padding: 1px 0 0;
   border: 0;
   background: transparent;
@@ -353,27 +353,19 @@ h3 {
   height: 52px;
 }
 
-.fridge-food-name,
 .fridge-food-quantity {
   position: relative;
   z-index: 1;
   overflow: hidden;
   width: 100%;
+  margin-top: -3px;
   padding-inline: 2px;
+  color: var(--ink-soft);
+  font-size: 0.62rem;
+  font-weight: 800;
   text-align: center;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.fridge-food-name {
-  margin-top: -2px;
-  font-size: 0.67rem;
-  font-weight: 800;
-}
-
-.fridge-food-quantity {
-  color: var(--muted);
-  font-size: 0.58rem;
 }
 
 .fridge-empty {
@@ -542,10 +534,6 @@ h3 {
     width: 45px;
     height: 45px;
   }
-
-  .fridge-food-name {
-    font-size: 0.61rem;
-  }
 }
 
 .ingredient-illustration {
@@ -553,6 +541,14 @@ h3 {
   background-repeat: no-repeat;
   background-position: var(--atlas-x) var(--atlas-y);
   background-size: 440% 330%;
+}
+
+.ingredient-illustration-everyday {
+  background-image: url("assets/ingredient-atlas-everyday.png");
+}
+
+.ingredient-illustration-recipe {
+  background-image: url("assets/ingredient-atlas-recipe.png");
 }
 
 .ingredient-initial {

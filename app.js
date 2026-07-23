@@ -69,6 +69,97 @@ const RECIPES = [
       { id: "cabbage", name: "キャベツ", quantity: 50, unit: "g", benefit: "野菜の量が増す" },
       { id: "green-onion", name: "ねぎ", quantity: 0.25, unit: "本", benefit: "仕上げの香りが出る" }
     ]
+  },
+  {
+    id: "home-curry",
+    name: "基本のカレーライス",
+    minutes: 30,
+    required: [
+      { id: "rice", name: "ごはん", quantity: 1, unit: "膳" },
+      { id: "beef", name: "牛肉", quantity: 100, unit: "g" }
+    ],
+    pantry: "カレールウ・水・油",
+    optional: [
+      { id: "potato", name: "じゃがいも", quantity: 1, unit: "個", benefit: "定番の食べ応えが出る" },
+      { id: "onion", name: "玉ねぎ", quantity: 0.5, unit: "個", benefit: "甘みととろみが増す" },
+      { id: "carrot", name: "にんじん", quantity: 0.5, unit: "本", benefit: "彩りと甘みを足せる" }
+    ]
+  },
+  {
+    id: "nikujaga",
+    name: "基本の肉じゃが",
+    minutes: 25,
+    required: [
+      { id: "beef", name: "牛肉", quantity: 100, unit: "g" },
+      { id: "potato", name: "じゃがいも", quantity: 2, unit: "個" },
+      { id: "onion", name: "玉ねぎ", quantity: 0.5, unit: "個" }
+    ],
+    pantry: "醤油・砂糖・みりん・水・油",
+    optional: [
+      { id: "carrot", name: "にんじん", quantity: 0.5, unit: "本", benefit: "彩りと野菜量が増す" },
+      { id: "mushroom", name: "しめじ", quantity: 0.25, unit: "株", benefit: "うま味を足せる" }
+    ]
+  },
+  {
+    id: "hamburger-steak",
+    name: "定番ハンバーグ",
+    minutes: 30,
+    required: [
+      { id: "ground-meat", name: "合いびき肉", quantity: 150, unit: "g" },
+      { id: "onion", name: "玉ねぎ", quantity: 0.25, unit: "個" },
+      { id: "eggs", name: "卵", quantity: 1, unit: "個" }
+    ],
+    pantry: "塩・こしょう・油",
+    optional: [
+      { id: "breadcrumbs", name: "パン粉", quantity: 20, unit: "g", benefit: "肉汁を抱えてふっくらする" },
+      { id: "radish", name: "大根", quantity: 100, unit: "g", benefit: "和風おろしでさっぱりする" },
+      { id: "cheese", name: "チーズ", quantity: 20, unit: "g", benefit: "コクのある仕上がりになる" }
+    ]
+  },
+  {
+    id: "salmon-meuniere",
+    name: "鮭のムニエル",
+    minutes: 20,
+    required: [
+      { id: "salmon", name: "生鮭", quantity: 1, unit: "切れ" },
+      { id: "butter", name: "バター", quantity: 10, unit: "g" }
+    ],
+    pantry: "小麦粉・塩・こしょう・油",
+    optional: [
+      { id: "spinach", name: "ほうれん草", quantity: 100, unit: "g", benefit: "定番の付け合わせになる" },
+      { id: "potato", name: "じゃがいも", quantity: 1, unit: "個", benefit: "一皿の満足感が増す" },
+      { id: "garlic", name: "にんにく", quantity: 5, unit: "g", benefit: "ソースの香りが立つ" }
+    ]
+  },
+  {
+    id: "napolitan",
+    name: "定番ナポリタン",
+    minutes: 15,
+    required: [
+      { id: "pasta", name: "スパゲッティ", quantity: 100, unit: "g" },
+      { id: "onion", name: "玉ねぎ", quantity: 0.25, unit: "個" }
+    ],
+    pantry: "ケチャップ・塩・こしょう・油",
+    optional: [
+      { id: "bell-pepper", name: "ピーマン", quantity: 1, unit: "個", benefit: "定番の香りと彩りが出る" },
+      { id: "mushroom", name: "しめじ", quantity: 0.25, unit: "株", benefit: "うま味と食感を足せる" },
+      { id: "cheese", name: "チーズ", quantity: 10, unit: "g", benefit: "仕上げのコクが増す" }
+    ]
+  },
+  {
+    id: "tofu-miso-soup",
+    name: "豆腐とわかめの味噌汁",
+    minutes: 10,
+    required: [
+      { id: "tofu", name: "豆腐", quantity: 150, unit: "g" },
+      { id: "miso", name: "味噌", quantity: 20, unit: "g" }
+    ],
+    pantry: "水・だし",
+    optional: [
+      { id: "wakame", name: "わかめ", quantity: 3, unit: "g", benefit: "定番の磯の風味が加わる" },
+      { id: "green-onion", name: "ねぎ", quantity: 0.25, unit: "本", benefit: "仕上げの香りが出る" },
+      { id: "radish", name: "大根", quantity: 50, unit: "g", benefit: "野菜の食べ応えを足せる" }
+    ]
   }
 ];
 
@@ -117,7 +208,32 @@ const ALIASES = new Map([
   ["きゅうり", "cucumber"],
   ["キュウリ", "cucumber"],
   ["牛肉", "beef"],
-  ["鮭", "salmon"]
+  ["鮭", "salmon"],
+  ["生鮭", "salmon"],
+  ["サーモン", "salmon"],
+  ["合いびき肉", "ground-meat"],
+  ["合挽き肉", "ground-meat"],
+  ["ひき肉", "ground-meat"],
+  ["挽き肉", "ground-meat"],
+  ["ほうれん草", "spinach"],
+  ["ホウレンソウ", "spinach"],
+  ["なす", "eggplant"],
+  ["ナス", "eggplant"],
+  ["茄子", "eggplant"],
+  ["ピーマン", "bell-pepper"],
+  ["ブロッコリー", "broccoli"],
+  ["にんにく", "garlic"],
+  ["ニンニク", "garlic"],
+  ["大蒜", "garlic"],
+  ["スパゲッティ", "pasta"],
+  ["スパゲティ", "pasta"],
+  ["パスタ", "pasta"],
+  ["バター", "butter"],
+  ["パン粉", "breadcrumbs"],
+  ["味噌", "miso"],
+  ["みそ", "miso"],
+  ["わかめ", "wakame"],
+  ["ワカメ", "wakame"]
 ]);
 
 const INGREDIENT_ILLUSTRATIONS = {
@@ -132,7 +248,31 @@ const INGREDIENT_ILLUSTRATIONS = {
   tomato: [0, 2],
   chicken: [1, 2],
   potato: [2, 2],
-  "green-onion": [3, 2]
+  "green-onion": [3, 2],
+  milk: [0, 0, "everyday"],
+  yogurt: [1, 0, "everyday"],
+  natto: [2, 0, "everyday"],
+  bread: [3, 0, "everyday"],
+  banana: [0, 1, "everyday"],
+  apple: [1, 1, "everyday"],
+  radish: [2, 1, "everyday"],
+  lettuce: [3, 1, "everyday"],
+  cucumber: [0, 2, "everyday"],
+  beef: [1, 2, "everyday"],
+  salmon: [2, 2, "everyday"],
+  cheese: [3, 2, "everyday"],
+  "ground-meat": [0, 0, "recipe"],
+  spinach: [1, 0, "recipe"],
+  eggplant: [2, 0, "recipe"],
+  "bell-pepper": [3, 0, "recipe"],
+  broccoli: [0, 1, "recipe"],
+  garlic: [1, 1, "recipe"],
+  ginger: [2, 1, "recipe"],
+  pasta: [3, 1, "recipe"],
+  butter: [0, 2, "recipe"],
+  breadcrumbs: [1, 2, "recipe"],
+  miso: [2, 2, "recipe"],
+  wakame: [3, 2, "recipe"]
 };
 
 const RECEIPT_RULES = [
@@ -157,12 +297,24 @@ const RECEIPT_RULES = [
   { id: "lettuce", name: "レタス", pattern: /(?:レタス|れたす)/, quantity: 1, unit: "個", location: "冷蔵" },
   { id: "cucumber", name: "きゅうり", pattern: /(?:きゅうり|キュウリ|胡瓜)/, quantity: 1, unit: "本", location: "冷蔵" },
   { id: "beef", name: "牛肉", pattern: /(?:牛肉|国産牛|和牛)/, quantity: 100, unit: "g", location: "冷蔵" },
-  { id: "salmon", name: "鮭", pattern: /(?:鮭|サーモン)/, quantity: 1, unit: "パック", location: "冷蔵" },
+  { id: "salmon", name: "鮭", pattern: /(?:鮭|サーモン)/, quantity: 1, unit: "切れ", location: "冷蔵" },
   { id: "cheese", name: "チーズ", pattern: /(?:チーズ|ちーず)/, quantity: 100, unit: "g", location: "冷蔵" },
-  { id: "bonito", name: "かつお節", pattern: /(?:かつお節|カツオ節|鰹節)/, quantity: 1, unit: "袋", location: "常温" }
+  { id: "bonito", name: "かつお節", pattern: /(?:かつお節|カツオ節|鰹節)/, quantity: 1, unit: "袋", location: "常温" },
+  { id: "ground-meat", name: "ひき肉", pattern: /(?:ひき肉|挽き肉|挽肉|ミンチ)/, quantity: 100, unit: "g", location: "冷蔵" },
+  { id: "spinach", name: "ほうれん草", pattern: /(?:ほうれん草|ホウレン草|菠菜)/, quantity: 1, unit: "袋", location: "冷蔵" },
+  { id: "eggplant", name: "なす", pattern: /(?:なす|ナス|茄子)/, quantity: 1, unit: "袋", location: "冷蔵" },
+  { id: "bell-pepper", name: "ピーマン", pattern: /(?:ピーマン|ぴーまん)/, quantity: 1, unit: "袋", location: "冷蔵" },
+  { id: "broccoli", name: "ブロッコリー", pattern: /(?:ブロッコリー|ぶろっこりー)/, quantity: 1, unit: "個", location: "冷蔵" },
+  { id: "garlic", name: "にんにく", pattern: /(?:にんにく|ニンニク|大蒜)/, quantity: 1, unit: "個", location: "冷蔵" },
+  { id: "ginger", name: "しょうが", pattern: /(?:しょうが|ショウガ|生姜)/, quantity: 1, unit: "個", location: "冷蔵" },
+  { id: "pasta", name: "スパゲッティ", pattern: /(?:スパゲッティ|スパゲティ|パスタ)/, quantity: 100, unit: "g", location: "常温" },
+  { id: "butter", name: "バター", pattern: /(?:バター|ばたー)/, quantity: 100, unit: "g", location: "冷蔵" },
+  { id: "breadcrumbs", name: "パン粉", pattern: /(?:パン粉|ぱん粉)/, quantity: 100, unit: "g", location: "常温" },
+  { id: "miso", name: "味噌", pattern: /(?:味噌|みそ|ミソ)/, quantity: 300, unit: "g", location: "冷蔵" },
+  { id: "wakame", name: "わかめ", pattern: /(?:わかめ|ワカメ|若布)/, quantity: 1, unit: "袋", location: "常温" }
 ];
 
-const INVENTORY_UNITS = ["個", "g", "ml", "本", "株", "袋", "パック", "膳"];
+const INVENTORY_UNITS = ["個", "g", "ml", "本", "株", "袋", "パック", "膳", "切れ"];
 const INVENTORY_LOCATIONS = ["冷蔵", "冷凍", "常温"];
 
 const state = {
@@ -284,12 +436,13 @@ function renderIngredientIllustration(id, name, small = false) {
     return `<span class="ingredient-initial${sizeClass}" aria-hidden="true">${escapeHtml(initial)}</span>`;
   }
 
-  const [column, row] = illustration;
+  const [column, row, atlas = "base"] = illustration;
   // Slightly crop inside each atlas cell so a wide illustration never leaks
   // into its neighbour at small display sizes.
   const x = ((4.4 * ((column + 0.5) / 4) - 0.5) / 3.4) * 100;
   const y = ((3.3 * ((row + 0.5) / 3) - 0.5) / 2.3) * 100;
-  return `<span class="ingredient-illustration${sizeClass}" style="--atlas-x:${x}%;--atlas-y:${y}%;" aria-hidden="true"></span>`;
+  const atlasClass = atlas === "base" ? "" : ` ingredient-illustration-${atlas}`;
+  return `<span class="ingredient-illustration${atlasClass}${sizeClass}" style="--atlas-x:${x}%;--atlas-y:${y}%;" aria-hidden="true"></span>`;
 }
 
 function stepForUnit(unit) {
@@ -374,7 +527,6 @@ function renderFridgeFood(item) {
   return `
     <button class="fridge-food${item.priority ? " is-priority" : ""}" type="button" data-fridge-edit="${escapeHtml(item.id)}" aria-label="${escapeHtml(item.name)} ${formatQuantity(item.quantity, item.unit)}を編集">
       ${renderIngredientIllustration(item.id, item.name)}
-      <span class="fridge-food-name">${escapeHtml(item.name)}</span>
       <span class="fridge-food-quantity">${formatQuantity(item.quantity, item.unit)}</span>
     </button>
   `;
@@ -624,7 +776,7 @@ function receiptQuantity(line, rule) {
     if (match) return { quantity: Number(match[1]), unit: "個", needsReview: false };
   }
 
-  match = line.match(/(\d+(?:\.\d+)?)\s*(個|本|袋|パック|株)/);
+  match = line.match(/(\d+(?:\.\d+)?)\s*(個|本|袋|パック|株|切れ)/);
   if (match) return { quantity: Number(match[1]), unit: match[2], needsReview: false };
 
   match = line.match(/(?:×|x|X)\s*(\d+)/);
