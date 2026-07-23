@@ -146,6 +146,7 @@ h3 {
 .quantity-button,
 .row-action,
 .restore-button,
+.text-button,
 .toast button {
   border: 0;
   cursor: pointer;
@@ -430,10 +431,34 @@ h3 {
 
 .management-heading {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 14px;
   margin-bottom: 18px;
+}
+
+.management-actions {
+  display: grid;
+  flex: none;
+  gap: 7px;
+}
+
+.management-actions .button {
+  min-width: 132px;
+  padding-inline: 10px;
+}
+
+.receipt-scan-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-color: var(--leaf);
+  color: var(--leaf-dark);
+}
+
+.receipt-scan-button span {
+  font-size: 1.05rem;
 }
 
 .storage-tabs {
@@ -975,6 +1000,216 @@ input[type="number"] {
   grid-column: 1 / -1;
 }
 
+.receipt-dialog {
+  max-height: 96dvh;
+}
+
+.receipt-privacy {
+  margin: 0;
+  padding: 10px 11px;
+  border-left: 4px solid var(--leaf);
+  background: var(--leaf-soft);
+  color: var(--leaf-dark);
+  font-size: 0.75rem;
+  line-height: 1.55;
+}
+
+.receipt-processing {
+  display: grid;
+  gap: 12px;
+}
+
+.receipt-preview {
+  width: 100%;
+  height: 150px;
+  object-fit: contain;
+  border: 1px solid var(--line);
+  background:
+    linear-gradient(90deg, rgb(201 206 193 / 32%) 1px, transparent 1px),
+    linear-gradient(rgb(201 206 193 / 32%) 1px, transparent 1px),
+    #fff;
+  background-size: 12px 12px;
+}
+
+.receipt-status {
+  margin: 0 0 8px;
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.receipt-processing progress {
+  width: 100%;
+  height: 10px;
+  accent-color: var(--leaf);
+}
+
+.receipt-model-note {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 0.68rem;
+  line-height: 1.45;
+}
+
+.receipt-results {
+  display: grid;
+  gap: 10px;
+}
+
+.receipt-results[hidden],
+.receipt-error[hidden] {
+  display: none;
+}
+
+.receipt-results-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.receipt-results-heading h3,
+.receipt-results-heading p,
+.receipt-error h3,
+.receipt-error p {
+  margin-bottom: 0;
+}
+
+.receipt-results-heading p {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.text-button {
+  min-height: 32px;
+  padding: 0;
+  background: transparent;
+  color: var(--leaf);
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-decoration: underline;
+}
+
+.receipt-review-note {
+  margin: 0;
+  color: var(--warm);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.receipt-candidates {
+  border-bottom: 1px solid var(--line-strong);
+}
+
+.receipt-candidate {
+  display: grid;
+  grid-template-columns: auto 38px minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+  padding: 12px 0;
+  border-top: 1px solid var(--line-strong);
+}
+
+.receipt-candidate.is-unselected {
+  opacity: 0.52;
+}
+
+.receipt-candidate > input {
+  min-height: 0;
+  margin: 13px 0 0;
+}
+
+.receipt-candidate .ingredient-illustration,
+.receipt-candidate .ingredient-initial {
+  width: 38px;
+  height: 38px;
+  margin-top: 4px;
+}
+
+.receipt-candidate-fields {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.receipt-candidate-fields label {
+  gap: 4px;
+  font-size: 0.67rem;
+}
+
+.receipt-candidate-fields input,
+.receipt-candidate-fields select {
+  min-height: 40px;
+  padding: 7px 8px;
+  font-size: 16px;
+}
+
+.receipt-candidate-meta {
+  display: grid;
+  grid-template-columns: minmax(74px, 0.7fr) minmax(90px, 0.9fr) minmax(90px, 1fr);
+  gap: 6px;
+}
+
+.receipt-source-line {
+  display: block;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.67rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.receipt-needs-review {
+  color: var(--warm);
+  font-weight: 800;
+}
+
+.receipt-raw {
+  border-block: 1px solid var(--line);
+}
+
+.receipt-raw summary {
+  padding: 10px 0;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.receipt-raw pre {
+  max-height: 160px;
+  margin: 0 0 10px;
+  overflow: auto;
+  color: var(--muted);
+  font-size: 0.68rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+.receipt-error {
+  padding: 14px;
+  border: 1px solid var(--warm);
+  background: var(--warm-soft);
+}
+
+.receipt-error p {
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.55;
+}
+
+.receipt-error .button {
+  width: 100%;
+  margin-top: 12px;
+}
+
+.receipt-dialog-actions {
+  padding-top: 10px;
+  border-top: 1px solid var(--line-strong);
+  background: var(--paper-raised);
+}
+
 .toast {
   position: fixed;
   z-index: 20;
@@ -1019,6 +1254,26 @@ input[type="number"] {
 
   .ingredient-groups {
     grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 359px) {
+  .management-heading {
+    gap: 9px;
+  }
+
+  .management-actions .button {
+    min-width: 122px;
+    padding-inline: 7px;
+    font-size: 0.82rem;
+  }
+
+  .receipt-candidate-meta {
+    grid-template-columns: 0.72fr 0.9fr;
+  }
+
+  .receipt-candidate-meta label:last-child {
+    grid-column: 1 / -1;
   }
 }
 

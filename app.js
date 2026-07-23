@@ -75,8 +75,10 @@ const RECIPES = [
 const ALIASES = new Map([
   ["たまご", "eggs"],
   ["卵", "eggs"],
+  ["玉子", "eggs"],
   ["キャベツ", "cabbage"],
   ["しめじ", "mushroom"],
+  ["シメジ", "mushroom"],
   ["豚こま", "pork"],
   ["豚こま切れ", "pork"],
   ["ごはん", "rice"],
@@ -102,7 +104,20 @@ const ALIASES = new Map([
   ["ねぎ", "green-onion"],
   ["ネギ", "green-onion"],
   ["チーズ", "cheese"],
-  ["かつお節", "bonito"]
+  ["かつお節", "bonito"],
+  ["牛乳", "milk"],
+  ["ヨーグルト", "yogurt"],
+  ["納豆", "natto"],
+  ["食パン", "bread"],
+  ["バナナ", "banana"],
+  ["りんご", "apple"],
+  ["リンゴ", "apple"],
+  ["大根", "radish"],
+  ["レタス", "lettuce"],
+  ["きゅうり", "cucumber"],
+  ["キュウリ", "cucumber"],
+  ["牛肉", "beef"],
+  ["鮭", "salmon"]
 ]);
 
 const INGREDIENT_ILLUSTRATIONS = {
@@ -120,6 +135,36 @@ const INGREDIENT_ILLUSTRATIONS = {
   "green-onion": [3, 2]
 };
 
+const RECEIPT_RULES = [
+  { id: "eggs", name: "卵", pattern: /(?:卵|玉子|たまご)/, quantity: 1, unit: "個", location: "冷蔵" },
+  { id: "cabbage", name: "キャベツ", pattern: /(?:キャベツ|きゃべつ)/, quantity: 100, unit: "g", fractionUnit: "個", location: "冷蔵" },
+  { id: "mushroom", name: "しめじ", pattern: /(?:しめじ|シメジ)/, quantity: 1, unit: "株", location: "冷蔵" },
+  { id: "pork", name: "豚こま", pattern: /(?:豚.*(?:こま|コマ|小間|切落|切り落)|(?:こま|コマ|小間).*豚)/, quantity: 100, unit: "g", location: "冷蔵" },
+  { id: "tofu", name: "豆腐", pattern: /(?:豆腐|とうふ|トウフ)/, quantity: 1, unit: "個", location: "冷蔵" },
+  { id: "onion", name: "玉ねぎ", pattern: /(?:玉ねぎ|たまねぎ|タマネギ|玉葱)/, quantity: 1, unit: "個", location: "冷蔵" },
+  { id: "carrot", name: "にんじん", pattern: /(?:にんじん|ニンジン|人参)/, quantity: 1, unit: "本", location: "冷蔵" },
+  { id: "tomato", name: "トマト", pattern: /(?:トマト|とまと)/, quantity: 1, unit: "個", location: "冷蔵" },
+  { id: "chicken", name: "鶏むね肉", pattern: /(?:鶏|若鶏).*(?:むね|ムネ|胸)/, quantity: 100, unit: "g", location: "冷蔵" },
+  { id: "potato", name: "じゃがいも", pattern: /(?:じゃがいも|ジャガイモ|馬鈴薯)/, quantity: 1, unit: "個", location: "冷蔵" },
+  { id: "green-onion", name: "ねぎ", pattern: /(?:長ねぎ|長ネギ|青ねぎ|青ネギ|ねぎ|ネギ|葱)/, quantity: 1, unit: "本", location: "冷蔵" },
+  { id: "milk", name: "牛乳", pattern: /(?:牛乳|ミルク)/, quantity: 1, unit: "本", location: "冷蔵" },
+  { id: "yogurt", name: "ヨーグルト", pattern: /(?:ヨーグルト|ヨ-グルト)/, quantity: 1, unit: "個", location: "冷蔵" },
+  { id: "natto", name: "納豆", pattern: /(?:納豆|なっとう)/, quantity: 1, unit: "パック", location: "冷蔵" },
+  { id: "bread", name: "食パン", pattern: /(?:食パン|しょくぱん)/, quantity: 1, unit: "袋", location: "常温" },
+  { id: "banana", name: "バナナ", pattern: /(?:バナナ|ばなな)/, quantity: 1, unit: "袋", location: "常温" },
+  { id: "apple", name: "りんご", pattern: /(?:りんご|リンゴ|林檎)/, quantity: 1, unit: "個", location: "常温" },
+  { id: "radish", name: "大根", pattern: /(?:大根|だいこん|ダイコン)/, quantity: 1, unit: "本", location: "冷蔵" },
+  { id: "lettuce", name: "レタス", pattern: /(?:レタス|れたす)/, quantity: 1, unit: "個", location: "冷蔵" },
+  { id: "cucumber", name: "きゅうり", pattern: /(?:きゅうり|キュウリ|胡瓜)/, quantity: 1, unit: "本", location: "冷蔵" },
+  { id: "beef", name: "牛肉", pattern: /(?:牛肉|国産牛|和牛)/, quantity: 100, unit: "g", location: "冷蔵" },
+  { id: "salmon", name: "鮭", pattern: /(?:鮭|サーモン)/, quantity: 1, unit: "パック", location: "冷蔵" },
+  { id: "cheese", name: "チーズ", pattern: /(?:チーズ|ちーず)/, quantity: 100, unit: "g", location: "冷蔵" },
+  { id: "bonito", name: "かつお節", pattern: /(?:かつお節|カツオ節|鰹節)/, quantity: 1, unit: "袋", location: "常温" }
+];
+
+const INVENTORY_UNITS = ["個", "g", "ml", "本", "株", "袋", "パック", "膳"];
+const INVENTORY_LOCATIONS = ["冷蔵", "冷凍", "常温"];
+
 const state = {
   inventory: [],
   location: "すべて",
@@ -128,7 +173,11 @@ const state = {
   selectedOptionals: {},
   storageEnabled: true,
   lastUndo: null,
-  toastTimer: null
+  toastTimer: null,
+  receiptCandidates: [],
+  receiptWorker: null,
+  receiptRunId: 0,
+  receiptObjectUrl: null
 };
 
 const elements = {
@@ -153,6 +202,20 @@ const elements = {
   ingredientLocation: document.querySelector("#ingredient-location"),
   ingredientPriority: document.querySelector("#ingredient-priority"),
   deleteIngredient: document.querySelector("#delete-ingredient"),
+  receiptInput: document.querySelector("#receipt-input"),
+  receiptDialog: document.querySelector("#receipt-dialog"),
+  receiptForm: document.querySelector("#receipt-form"),
+  receiptPreview: document.querySelector("#receipt-preview"),
+  receiptProcessing: document.querySelector("#receipt-processing"),
+  receiptStatus: document.querySelector("#receipt-status"),
+  receiptProgress: document.querySelector("#receipt-progress"),
+  receiptResults: document.querySelector("#receipt-results"),
+  receiptSummary: document.querySelector("#receipt-summary"),
+  receiptCandidates: document.querySelector("#receipt-candidates"),
+  receiptRawText: document.querySelector("#receipt-raw-text"),
+  receiptError: document.querySelector("#receipt-error"),
+  receiptErrorMessage: document.querySelector("#receipt-error-message"),
+  addReceiptCandidates: document.querySelector("#add-receipt-candidates"),
   toast: document.querySelector("#toast"),
   toastMessage: document.querySelector("#toast-message"),
   toastAction: document.querySelector("#toast-action"),
@@ -526,6 +589,400 @@ function showManagementItem(id) {
   });
 }
 
+function normalizedReceiptLine(value) {
+  return String(value)
+    .normalize("NFKC")
+    .replace(/[|｜]/g, " ")
+    .replace(/[●■◆◇※*＊]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function receiptQuantity(line, rule) {
+  let match = line.match(/(\d+(?:\.\d+)?)\s*(?:kg|KG|キロ)/);
+  if (match) return { quantity: Number(match[1]) * 1000, unit: "g", needsReview: false };
+
+  match = line.match(/(\d+(?:\.\d+)?)\s*(?:g|G|グラム)/);
+  if (match) return { quantity: Number(match[1]), unit: "g", needsReview: false };
+
+  match = line.match(/(\d+(?:\.\d+)?)\s*(?:ml|ML|ミリリットル)/);
+  if (match) return { quantity: Number(match[1]), unit: "ml", needsReview: false };
+
+  match = line.match(/(\d+(?:\.\d+)?)\s*(?:L|リットル)(?:\s|$)/);
+  if (match) return { quantity: Number(match[1]) * 1000, unit: "ml", needsReview: false };
+
+  if (/(?:1\s*\/\s*2|半玉|半分)/.test(line)) {
+    return {
+      quantity: 0.5,
+      unit: rule.fractionUnit || rule.unit,
+      needsReview: false
+    };
+  }
+
+  if (rule.id === "eggs") {
+    match = line.match(/(\d{1,2})\s*(?:個|コ|ヶ|ケ|入)/);
+    if (match) return { quantity: Number(match[1]), unit: "個", needsReview: false };
+  }
+
+  match = line.match(/(\d+(?:\.\d+)?)\s*(個|本|袋|パック|株)/);
+  if (match) return { quantity: Number(match[1]), unit: match[2], needsReview: false };
+
+  match = line.match(/(?:×|x|X)\s*(\d+)/);
+  if (match) return { quantity: Number(match[1]), unit: rule.unit, needsReview: false };
+
+  match = line.match(/(\d+)\s*点/);
+  if (match) return { quantity: Number(match[1]), unit: rule.unit, needsReview: false };
+
+  return { quantity: rule.quantity, unit: rule.unit, needsReview: true };
+}
+
+function parseReceiptText(rawText) {
+  const ignoredLine = /(?:合計|小計|消費税|外税|内税|お預|お釣|釣銭|クレジット|カード|現金|ポイント|領収|レシート|電話|TEL|日時|担当|登録番号|買上点数|お買上)/i;
+  const candidates = [];
+
+  String(rawText).split(/\r?\n/).forEach((rawLine) => {
+    const line = normalizedReceiptLine(rawLine);
+    const compactLine = line.replace(/\s+/g, "");
+    if (compactLine.length < 2 || ignoredLine.test(compactLine)) return;
+
+    const rule = RECEIPT_RULES.find((candidate) => candidate.pattern.test(compactLine));
+    if (!rule) return;
+
+    const amount = receiptQuantity(compactLine, rule);
+    const existing = candidates.find((candidate) =>
+      candidate.id === rule.id && candidate.unit === amount.unit
+    );
+
+    if (existing) {
+      existing.quantity = Number((existing.quantity + amount.quantity).toFixed(2));
+      existing.needsReview = existing.needsReview || amount.needsReview;
+      existing.rawLine = `${existing.rawLine} / ${line}`;
+      return;
+    }
+
+    candidates.push({
+      id: rule.id,
+      name: rule.name,
+      quantity: amount.quantity,
+      unit: amount.unit,
+      location: rule.location,
+      needsReview: amount.needsReview,
+      rawLine: line
+    });
+  });
+
+  return candidates;
+}
+
+function receiptProgressUpdate(message) {
+  const statusMap = {
+    "loading tesseract core": ["文字認識エンジンを準備しています…", 12],
+    "initializing tesseract": ["文字認識エンジンを起動しています…", 24],
+    "loading language traineddata": ["日本語データを読み込んでいます…", 36],
+    "initializing api": ["日本語の読み取りを準備しています…", 48],
+    "recognizing text": ["レシートの文字を読み取っています…", 55]
+  };
+  const [label, base] = statusMap[message.status] || ["レシートを解析しています…", 8];
+  const progress = message.status === "recognizing text"
+    ? base + Math.round((message.progress || 0) * 44)
+    : base + Math.round((message.progress || 0) * 8);
+  elements.receiptStatus.textContent = label;
+  elements.receiptProgress.value = Math.min(99, progress);
+}
+
+async function loadReceiptImage(file) {
+  if (globalThis.createImageBitmap) {
+    try {
+      return await createImageBitmap(file, { imageOrientation: "from-image" });
+    } catch {
+      // Fall through to the image element path for older browsers.
+    }
+  }
+
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    const url = URL.createObjectURL(file);
+    image.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(image);
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("画像を開けませんでした"));
+    };
+    image.src = url;
+  });
+}
+
+async function prepareReceiptCanvas(file) {
+  const image = await loadReceiptImage(file);
+  const sourceWidth = image.width || image.naturalWidth;
+  const sourceHeight = image.height || image.naturalHeight;
+  const scale = Math.min(1, 1800 / sourceWidth, 2800 / sourceHeight);
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(sourceWidth * scale));
+  canvas.height = Math.max(1, Math.round(sourceHeight * scale));
+  const context = canvas.getContext("2d", { willReadFrequently: true });
+  context.fillStyle = "#fff";
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.filter = "grayscale(1) contrast(1.35) brightness(1.08)";
+  context.drawImage(image, 0, 0, canvas.width, canvas.height);
+  if (typeof image.close === "function") image.close();
+  return canvas;
+}
+
+function showReceiptError(message) {
+  elements.receiptProcessing.hidden = true;
+  elements.receiptResults.hidden = true;
+  elements.receiptError.hidden = false;
+  elements.receiptErrorMessage.textContent = message;
+  elements.addReceiptCandidates.disabled = true;
+}
+
+function selectOptions(values, selected) {
+  return values.map((value) =>
+    `<option value="${escapeHtml(value)}"${value === selected ? " selected" : ""}>${escapeHtml(value)}</option>`
+  ).join("");
+}
+
+function renderReceiptCandidate(candidate, index) {
+  const reviewMessage = candidate.existingUnit
+    ? `現在は${escapeHtml(candidate.existingUnit)}で管理中。単位と数量を合わせてください`
+    : "数量は仮入力・要確認";
+
+  return `
+    <article class="receipt-candidate" data-receipt-candidate="${index}">
+      <input type="checkbox" data-receipt-select aria-label="${escapeHtml(candidate.name)}を追加候補に含める" checked>
+      ${renderIngredientIllustration(candidate.id, candidate.name, true)}
+      <div class="receipt-candidate-fields">
+        <label>
+          食材名
+          <input type="text" data-receipt-name value="${escapeHtml(candidate.name)}" required>
+        </label>
+        <div class="receipt-candidate-meta">
+          <label>
+            数量
+            <input type="number" data-receipt-quantity inputmode="decimal" min="0.25" step="0.25" value="${candidate.quantity}" required>
+          </label>
+          <label>
+            単位
+            <select data-receipt-unit>${selectOptions(INVENTORY_UNITS, candidate.unit)}</select>
+          </label>
+          <label>
+            保存場所
+            <select data-receipt-location>${selectOptions(INVENTORY_LOCATIONS, candidate.location)}</select>
+          </label>
+        </div>
+        <small class="receipt-source-line">
+          ${candidate.needsReview ? `<span class="receipt-needs-review">${reviewMessage}</span>・` : ""}
+          読取：${escapeHtml(candidate.rawLine)}
+        </small>
+      </div>
+    </article>
+  `;
+}
+
+function updateReceiptSelectionState() {
+  const checkboxes = [...elements.receiptCandidates.querySelectorAll("[data-receipt-select]")];
+  const selected = checkboxes.filter((checkbox) => checkbox.checked);
+  checkboxes.forEach((checkbox) => {
+    checkbox.closest(".receipt-candidate").classList.toggle("is-unselected", !checkbox.checked);
+  });
+  elements.addReceiptCandidates.disabled = selected.length === 0;
+  elements.addReceiptCandidates.textContent = selected.length
+    ? `${selected.length}品を在庫に追加`
+    : "追加する食材を選択";
+}
+
+function renderReceiptResults(rawText, candidates) {
+  state.receiptCandidates = candidates.map((candidate) => {
+    const existing = activeInventory().find((item) =>
+      item.id === candidate.id || item.name === candidate.name
+    );
+    if (!existing || existing.unit === candidate.unit) return candidate;
+    return {
+      ...candidate,
+      existingUnit: existing.unit,
+      needsReview: true
+    };
+  });
+  elements.receiptProcessing.hidden = true;
+  elements.receiptError.hidden = true;
+  elements.receiptRawText.textContent = rawText.trim() || "文字を読み取れませんでした。";
+
+  if (!state.receiptCandidates.length) {
+    showReceiptError("文字は読み取れましたが、登録できる一般的な食材を見つけられませんでした。写真を撮り直すか、通常の食材追加をお試しください。");
+    return;
+  }
+
+  elements.receiptResults.hidden = false;
+  elements.receiptSummary.textContent = `${state.receiptCandidates.length}品を見つけました`;
+  elements.receiptCandidates.innerHTML = state.receiptCandidates.map(renderReceiptCandidate).join("");
+  updateReceiptSelectionState();
+}
+
+async function analyzeReceiptFile(file) {
+  const runId = ++state.receiptRunId;
+  let worker = null;
+
+  try {
+    if (!globalThis.Tesseract?.createWorker) {
+      throw new Error("端末内OCRを読み込めませんでした");
+    }
+
+    elements.receiptStatus.textContent = "写真を読みやすく整えています…";
+    elements.receiptProgress.value = 5;
+    const canvas = await prepareReceiptCanvas(file);
+    if (runId !== state.receiptRunId) return;
+
+    const tesseractBase = new URL("./vendor/tesseract/", document.baseURI);
+    worker = await Tesseract.createWorker("jpn", Tesseract.OEM?.LSTM_ONLY ?? 1, {
+      workerPath: new URL("worker.min.js", tesseractBase).href,
+      corePath: new URL("core", tesseractBase).href,
+      langPath: new URL("lang", tesseractBase).href,
+      cacheMethod: "write",
+      logger: (message) => {
+        if (runId === state.receiptRunId) receiptProgressUpdate(message);
+      }
+    });
+
+    if (runId !== state.receiptRunId) return;
+    state.receiptWorker = worker;
+    const result = await worker.recognize(canvas);
+    if (runId !== state.receiptRunId) return;
+
+    elements.receiptProgress.value = 100;
+    elements.receiptStatus.textContent = "読み取りが終わりました";
+    const rawText = result.data?.text || "";
+    renderReceiptResults(rawText, parseReceiptText(rawText));
+  } catch (error) {
+    if (runId === state.receiptRunId) {
+      showReceiptError(error?.message || "レシートの解析中に問題が起きました。");
+    }
+  } finally {
+    if (worker) {
+      try {
+        await worker.terminate();
+      } catch {
+        // The worker may already be terminated when the user cancels.
+      }
+    }
+    if (state.receiptWorker === worker) state.receiptWorker = null;
+  }
+}
+
+function openReceiptDialog(file) {
+  state.receiptCandidates = [];
+  elements.receiptProcessing.hidden = false;
+  elements.receiptResults.hidden = true;
+  elements.receiptError.hidden = true;
+  elements.receiptCandidates.innerHTML = "";
+  elements.receiptRawText.textContent = "";
+  elements.receiptStatus.textContent = "写真を準備しています…";
+  elements.receiptProgress.value = 0;
+  elements.addReceiptCandidates.disabled = true;
+  elements.addReceiptCandidates.textContent = "選択した食材を追加";
+
+  if (state.receiptObjectUrl) URL.revokeObjectURL(state.receiptObjectUrl);
+  state.receiptObjectUrl = URL.createObjectURL(file);
+  elements.receiptPreview.src = state.receiptObjectUrl;
+  elements.receiptDialog.showModal();
+  analyzeReceiptFile(file);
+}
+
+function closeReceiptDialog() {
+  state.receiptRunId += 1;
+  if (state.receiptWorker) {
+    state.receiptWorker.terminate().catch(() => {});
+    state.receiptWorker = null;
+  }
+  if (state.receiptObjectUrl) {
+    URL.revokeObjectURL(state.receiptObjectUrl);
+    state.receiptObjectUrl = null;
+  }
+  elements.receiptPreview.removeAttribute("src");
+  elements.receiptInput.value = "";
+  if (elements.receiptDialog.open) elements.receiptDialog.close();
+}
+
+function addOrMergeInventoryItem({ name, quantity, unit, location, priority = false }) {
+  const canonicalId = ALIASES.get(name) || makeId(name);
+  const existing = state.inventory.find((item) =>
+    item.id === canonicalId || item.name === name
+  );
+
+  if (existing) {
+    existing.quantity = existing.active !== false && existing.unit === unit
+      ? Number((existing.quantity + quantity).toFixed(2))
+      : quantity;
+    existing.unit = unit;
+    existing.location = location;
+    existing.priority = existing.priority || priority;
+    existing.active = true;
+    existing.confirmedAt = todayIso();
+    existing.step = stepForUnit(unit);
+    delete existing.consumedAt;
+    return "merged";
+  }
+
+  state.inventory.push({
+    id: canonicalId,
+    name,
+    quantity,
+    unit,
+    location,
+    priority,
+    active: true,
+    confirmedAt: todayIso(),
+    step: stepForUnit(unit)
+  });
+  return "added";
+}
+
+function saveReceiptCandidates(event) {
+  event.preventDefault();
+  const rows = [...elements.receiptCandidates.querySelectorAll(".receipt-candidate")]
+    .filter((row) => row.querySelector("[data-receipt-select]").checked);
+  if (!rows.length) return;
+
+  const entries = [];
+  for (const row of rows) {
+    const candidate = state.receiptCandidates[Number(row.dataset.receiptCandidate)];
+    const nameInput = row.querySelector("[data-receipt-name]");
+    const quantityInput = row.querySelector("[data-receipt-quantity]");
+    const unitInput = row.querySelector("[data-receipt-unit]");
+    const name = nameInput.value.trim();
+    const quantity = Number(quantityInput.value);
+    if (!name) {
+      nameInput.reportValidity();
+      return;
+    }
+    if (!Number.isFinite(quantity) || quantity <= 0) {
+      quantityInput.reportValidity();
+      return;
+    }
+    unitInput.setCustomValidity("");
+    if (candidate?.existingUnit && unitInput.value !== candidate.existingUnit) {
+      unitInput.setCustomValidity(`現在の在庫は${candidate.existingUnit}単位です。単位と数量を合わせるか、この候補を外してください。`);
+      unitInput.reportValidity();
+      return;
+    }
+    entries.push({
+      name,
+      quantity,
+      unit: unitInput.value,
+      location: row.querySelector("[data-receipt-location]").value
+    });
+  }
+
+  entries.forEach(addOrMergeInventoryItem);
+  persistInventory();
+  renderAll();
+  closeReceiptDialog();
+  showView("management");
+  showToast(`レシートから${entries.length}品を在庫に追加しました`);
+}
+
 function openIngredientDialog(item = null) {
   elements.form.reset();
   if (item) {
@@ -578,36 +1035,14 @@ function saveIngredient(event) {
       showToast(`${name}を更新しました`);
     }
   } else {
-    const canonicalId = ALIASES.get(name) || makeId(name);
-    const existing = state.inventory.find((item) =>
-      item.id === canonicalId || item.name === name
-    );
-    if (existing) {
-      existing.quantity = existing.active !== false && existing.unit === unit
-        ? existing.quantity + quantity
-        : quantity;
-      existing.unit = unit;
-      existing.location = location;
-      existing.priority = existing.priority || elements.ingredientPriority.checked;
-      existing.active = true;
-      existing.confirmedAt = todayIso();
-      existing.step = stepForUnit(unit);
-      delete existing.consumedAt;
-      showToast(`${name}の残量に追加しました`);
-    } else {
-      state.inventory.push({
-        id: canonicalId,
-        name,
-        quantity,
-        unit,
-        location,
-        priority: elements.ingredientPriority.checked,
-        active: true,
-        confirmedAt: todayIso(),
-        step: stepForUnit(unit)
-      });
-      showToast(`${name}を追加しました`);
-    }
+    const result = addOrMergeInventoryItem({
+      name,
+      quantity,
+      unit,
+      location,
+      priority: elements.ingredientPriority.checked
+    });
+    showToast(result === "merged" ? `${name}の残量に追加しました` : `${name}を追加しました`);
   }
 
   persistInventory();
@@ -710,14 +1145,50 @@ function renderAll() {
 
 document.querySelector("#add-ingredient").addEventListener("click", () => openIngredientDialog());
 document.querySelector("#open-management").addEventListener("click", () => showView("management"));
+document.querySelector("#scan-receipt").addEventListener("click", () => {
+  elements.receiptInput.value = "";
+  elements.receiptInput.click();
+});
 document.querySelector("#close-dialog").addEventListener("click", closeIngredientDialog);
 document.querySelector("#cancel-dialog").addEventListener("click", closeIngredientDialog);
 document.querySelector("#delete-ingredient").addEventListener("click", deleteCurrentIngredient);
 document.querySelector("#review-inventory").addEventListener("click", () => showView("management"));
+document.querySelector("#close-receipt-dialog").addEventListener("click", closeReceiptDialog);
+document.querySelector("#cancel-receipt-dialog").addEventListener("click", closeReceiptDialog);
+document.querySelector("#receipt-manual-add").addEventListener("click", () => {
+  closeReceiptDialog();
+  openIngredientDialog();
+});
+document.querySelector("#select-all-receipt").addEventListener("click", () => {
+  const checkboxes = [...elements.receiptCandidates.querySelectorAll("[data-receipt-select]")];
+  const selectAll = checkboxes.some((checkbox) => !checkbox.checked);
+  checkboxes.forEach((checkbox) => {
+    checkbox.checked = selectAll;
+  });
+  updateReceiptSelectionState();
+});
 elements.form.addEventListener("submit", saveIngredient);
+elements.receiptForm.addEventListener("submit", saveReceiptCandidates);
+elements.receiptInput.addEventListener("change", () => {
+  const [file] = elements.receiptInput.files;
+  if (!file) return;
+  if (!file.type.startsWith("image/")) {
+    showToast("画像ファイルを選んでください");
+    return;
+  }
+  openReceiptDialog(file);
+});
+elements.receiptCandidates.addEventListener("change", (event) => {
+  if (event.target.matches("[data-receipt-select]")) updateReceiptSelectionState();
+  if (event.target.matches("[data-receipt-unit]")) event.target.setCustomValidity("");
+});
 
 elements.dialog.addEventListener("click", (event) => {
   if (event.target === elements.dialog) closeIngredientDialog();
+});
+
+elements.receiptDialog.addEventListener("click", (event) => {
+  if (event.target === elements.receiptDialog) closeReceiptDialog();
 });
 
 elements.fridgeScene.addEventListener("click", (event) => {
