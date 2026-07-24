@@ -161,8 +161,1097 @@ const RECIPES = [
       { id: "green-onion", name: "ねぎ", quantity: 0.25, unit: "本", benefit: "仕上げの香りが出る" },
       { id: "radish", name: "大根", quantity: 50, unit: "g", benefit: "野菜の食べ応えを足せる" }
     ]
+  },
+  {
+    id: "chicken-cabbage-steam",
+    name: "鶏むねとキャベツのフライパン蒸し",
+    minutes: 15,
+    required: [
+      { id: "chicken", name: "鶏むね肉", quantity: 120, unit: "g" },
+      { id: "cabbage", name: "キャベツ", quantity: 150, unit: "g" }
+    ],
+    pantry: "塩・こしょう・酒・油",
+    optional: [
+      { id: "mushroom", name: "しめじ", quantity: 0.25, unit: "株", benefit: "うま味と食べ応えが増す" },
+      { id: "garlic", name: "にんにく", quantity: 0.25, unit: "個", benefit: "香りが立つ" },
+      { id: "green-onion", name: "ねぎ", quantity: 0.25, unit: "本", benefit: "仕上げがさっぱりする" }
+    ]
+  },
+  {
+    id: "tomato-egg-stir-fry",
+    name: "トマトと卵のふんわり炒め",
+    minutes: 8,
+    required: [
+      { id: "tomato", name: "トマト", quantity: 1, unit: "個" },
+      { id: "eggs", name: "卵", quantity: 2, unit: "個" }
+    ],
+    pantry: "塩・こしょう・油",
+    optional: [
+      { id: "cheese", name: "チーズ", quantity: 20, unit: "g", benefit: "コクと満足感が増す" },
+      { id: "green-onion", name: "ねぎ", quantity: 0.25, unit: "本", benefit: "香りと彩りが出る" },
+      { id: "mushroom", name: "しめじ", quantity: 0.25, unit: "株", benefit: "うま味と食感を足せる" }
+    ]
+  },
+  {
+    id: "mapo-tofu-style",
+    name: "ひき肉と豆腐の麻婆豆腐風",
+    minutes: 15,
+    required: [
+      { id: "ground-meat", name: "ひき肉", quantity: 100, unit: "g" },
+      { id: "tofu", name: "豆腐", quantity: 1, unit: "個" }
+    ],
+    pantry: "味噌・醤油・砂糖・水・片栗粉・油",
+    optional: [
+      { id: "green-onion", name: "ねぎ", quantity: 0.25, unit: "本", benefit: "定番の香りが加わる" },
+      { id: "ginger", name: "しょうが", quantity: 0.25, unit: "個", benefit: "味が締まる" },
+      { id: "garlic", name: "にんにく", quantity: 0.25, unit: "個", benefit: "食欲を誘う香りが出る" }
+    ]
+  },
+  {
+    id: "natto-rice",
+    name: "納豆ごはん",
+    minutes: 5,
+    required: [
+      { id: "rice", name: "ごはん", quantity: 1, unit: "膳" },
+      { id: "natto", name: "納豆", quantity: 1, unit: "パック" }
+    ],
+    pantry: "醤油",
+    optional: [
+      { id: "eggs", name: "卵", quantity: 1, unit: "個", benefit: "まろやかさと満足感が増す" },
+      { id: "green-onion", name: "ねぎ", quantity: 0.25, unit: "本", benefit: "後味がさっぱりする" },
+      { id: "bonito", name: "かつお節", quantity: 1, unit: "袋", benefit: "香りとうま味を足せる" }
+    ]
+  },
+  {
+    id: "eggplant-mince-stir-fry",
+    name: "なすとひき肉の甘辛炒め",
+    minutes: 15,
+    required: [
+      { id: "eggplant", name: "なす", quantity: 1, unit: "袋" },
+      { id: "ground-meat", name: "ひき肉", quantity: 100, unit: "g" }
+    ],
+    pantry: "醤油・砂糖・みりん・油",
+    optional: [
+      { id: "bell-pepper", name: "ピーマン", quantity: 0.5, unit: "袋", benefit: "彩りと歯ごたえが加わる" },
+      { id: "ginger", name: "しょうが", quantity: 0.25, unit: "個", benefit: "甘辛味が締まる" },
+      { id: "green-onion", name: "ねぎ", quantity: 0.25, unit: "本", benefit: "仕上げの香りが出る" }
+    ]
+  },
+  {
+    id: "chicken-broccoli-pan",
+    name: "鶏むねとブロッコリーの塩炒め",
+    minutes: 15,
+    required: [
+      { id: "chicken", name: "鶏むね肉", quantity: 120, unit: "g" },
+      { id: "broccoli", name: "ブロッコリー", quantity: 0.5, unit: "個" }
+    ],
+    pantry: "塩・こしょう・酒・油",
+    optional: [
+      { id: "garlic", name: "にんにく", quantity: 0.25, unit: "個", benefit: "香りが立つ" },
+      { id: "butter", name: "バター", quantity: 10, unit: "g", benefit: "まろやかなコクが出る" },
+      { id: "mushroom", name: "しめじ", quantity: 0.25, unit: "株", benefit: "うま味と量を足せる" }
+    ]
+  },
+  {
+    id: "oyakodon",
+    name: "親子丼",
+    minutes: 15,
+    required: [
+      { id: "chicken", name: "鶏むね肉", quantity: 100, unit: "g" },
+      { id: "eggs", name: "卵", quantity: 2, unit: "個" },
+      { id: "rice", name: "ごはん", quantity: 1, unit: "膳" }
+    ],
+    pantry: "醤油・砂糖・みりん・水",
+    optional: [
+      { id: "onion", name: "玉ねぎ", quantity: 0.5, unit: "個", benefit: "定番の甘みが加わる" },
+      { id: "mushroom", name: "しめじ", quantity: 0.25, unit: "株", benefit: "うま味と食感が増す" },
+      { id: "green-onion", name: "ねぎ", quantity: 0.25, unit: "本", benefit: "仕上げの香りが出る" }
+    ]
+  },
+  {
+    id: "gyudon",
+    name: "牛丼",
+    minutes: 15,
+    required: [
+      { id: "beef", name: "牛肉", quantity: 100, unit: "g" },
+      { id: "rice", name: "ごはん", quantity: 1, unit: "膳" }
+    ],
+    pantry: "醤油・砂糖・みりん・水",
+    optional: [
+      { id: "onion", name: "玉ねぎ", quantity: 0.5, unit: "個", benefit: "甘みと食べ応えが増す" },
+      { id: "eggs", name: "卵", quantity: 1, unit: "個", benefit: "まろやかな仕上がりになる" },
+      { id: "ginger", name: "しょうが", quantity: 0.25, unit: "個", benefit: "甘辛味が締まる" }
+    ]
+  },
+  {
+    id: "fried-rice",
+    name: "卵チャーハン",
+    minutes: 10,
+    required: [
+      { id: "rice", name: "ごはん", quantity: 1, unit: "膳" },
+      { id: "eggs", name: "卵", quantity: 1, unit: "個" }
+    ],
+    pantry: "醤油・塩・こしょう・油",
+    optional: [
+      { id: "green-onion", name: "ねぎ", quantity: 0.25, unit: "本", benefit: "香りと彩りが出る" },
+      { id: "pork", name: "豚こま", quantity: 50, unit: "g", benefit: "主食としての満足感が増す" },
+      { id: "mushroom", name: "しめじ", quantity: 0.25, unit: "株", benefit: "うま味を足せる" }
+    ]
+  },
+  {
+    id: "omurice",
+    name: "オムライス",
+    minutes: 20,
+    required: [
+      { id: "rice", name: "ごはん", quantity: 1, unit: "膳" },
+      { id: "eggs", name: "卵", quantity: 2, unit: "個" }
+    ],
+    pantry: "ケチャップ・塩・こしょう・油",
+    optional: [
+      { id: "chicken", name: "鶏むね肉", quantity: 60, unit: "g", benefit: "チキンライスらしい食べ応えが出る" },
+      { id: "onion", name: "玉ねぎ", quantity: 0.25, unit: "個", benefit: "甘みと食感が加わる" },
+      { id: "cheese", name: "チーズ", quantity: 20, unit: "g", benefit: "卵にコクが出る" }
+    ]
+  },
+  {
+    id: "soboro-bowl",
+    name: "そぼろ丼",
+    minutes: 12,
+    required: [
+      { id: "ground-meat", name: "ひき肉", quantity: 100, unit: "g" },
+      { id: "rice", name: "ごはん", quantity: 1, unit: "膳" }
+    ],
+    pantry: "醤油・砂糖・みりん・油",
+    optional: [
+      { id: "eggs", name: "卵", quantity: 1, unit: "個", benefit: "二色そぼろにできる" },
+      { id: "ginger", name: "しょうが", quantity: 0.25, unit: "個", benefit: "肉の甘辛味が締まる" },
+      { id: "green-onion", name: "ねぎ", quantity: 0.25, unit: "本", benefit: "香りと彩りが出る" }
+    ]
+  },
+  {
+    id: "ginger-pork",
+    name: "豚のしょうが焼き",
+    minutes: 15,
+    required: [
+      { id: "pork", name: "豚こま", quantity: 120, unit: "g" },
+      { id: "ginger", name: "しょうが", quantity: 0.25, unit: "個" }
+    ],
+    pantry: "醤油・みりん・砂糖・油",
+    optional: [
+      { id: "onion", name: "玉ねぎ", quantity: 0.5, unit: "個", benefit: "甘みとボリュームが増す" },
+      { id: "cabbage", name: "キャベツ", quantity: 100, unit: "g", benefit: "定番の付け合わせになる" },
+      { id: "garlic", name: "にんにく", quantity: 0.25, unit: "個", benefit: "食欲を誘う香りが出る" }
+    ]
+  },
+  {
+    id: "chicken-teriyaki",
+    name: "鶏の照り焼き",
+    minutes: 18,
+    required: [
+      { id: "chicken", name: "鶏むね肉", quantity: 150, unit: "g" }
+    ],
+    pantry: "醤油・みりん・砂糖・油",
+    optional: [
+      { id: "cabbage", name: "キャベツ", quantity: 100, unit: "g", benefit: "たれを受ける付け合わせになる" },
+      { id: "green-onion", name: "ねぎ", quantity: 0.5, unit: "本", benefit: "焼きねぎの甘みを足せる" },
+      { id: "ginger", name: "しょうが", quantity: 0.25, unit: "個", benefit: "後味が締まる" }
+    ]
+  },
+  {
+    id: "chicken-karaage",
+    name: "鶏のから揚げ",
+    minutes: 25,
+    required: [
+      { id: "chicken", name: "鶏むね肉", quantity: 150, unit: "g" }
+    ],
+    pantry: "醤油・酒・小麦粉または片栗粉・油",
+    optional: [
+      { id: "garlic", name: "にんにく", quantity: 0.25, unit: "個", benefit: "下味の香りが強くなる" },
+      { id: "ginger", name: "しょうが", quantity: 0.25, unit: "個", benefit: "肉の味が締まる" },
+      { id: "lettuce", name: "レタス", quantity: 0.25, unit: "個", benefit: "さっぱりした付け合わせになる" }
+    ]
+  },
+  {
+    id: "beef-pepper-stir-fry",
+    name: "牛肉とピーマンの炒め物",
+    minutes: 15,
+    required: [
+      { id: "beef", name: "牛肉", quantity: 100, unit: "g" },
+      { id: "bell-pepper", name: "ピーマン", quantity: 0.5, unit: "袋" }
+    ],
+    pantry: "醤油・砂糖・酒・油",
+    optional: [
+      { id: "onion", name: "玉ねぎ", quantity: 0.5, unit: "個", benefit: "甘みと量が増す" },
+      { id: "mushroom", name: "しめじ", quantity: 0.25, unit: "株", benefit: "うま味と食感を足せる" },
+      { id: "garlic", name: "にんにく", quantity: 0.25, unit: "個", benefit: "香りが立つ" }
+    ]
+  },
+  {
+    id: "meat-tofu",
+    name: "肉豆腐",
+    minutes: 20,
+    required: [
+      { id: "beef", name: "牛肉", quantity: 100, unit: "g" },
+      { id: "tofu", name: "豆腐", quantity: 1, unit: "個" }
+    ],
+    pantry: "醤油・砂糖・みりん・水",
+    optional: [
+      { id: "onion", name: "玉ねぎ", quantity: 0.5, unit: "個", benefit: "煮汁に甘みが出る" },
+      { id: "green-onion", name: "ねぎ", quantity: 0.5, unit: "本", benefit: "定番の香りと甘みが加わる" },
+      { id: "mushroom", name: "しめじ", quantity: 0.25, unit: "株", benefit: "煮汁のうま味が増す" }
+    ]
+  },
+  {
+    id: "pork-cabbage-millefeuille",
+    name: "豚とキャベツの重ね蒸し",
+    minutes: 18,
+    required: [
+      { id: "pork", name: "豚こま", quantity: 120, unit: "g" },
+      { id: "cabbage", name: "キャベツ", quantity: 180, unit: "g" }
+    ],
+    pantry: "酒・塩・水",
+    optional: [
+      { id: "mushroom", name: "しめじ", quantity: 0.25, unit: "株", benefit: "蒸し汁のうま味が増す" },
+      { id: "green-onion", name: "ねぎ", quantity: 0.25, unit: "本", benefit: "仕上げの香りが出る" },
+      { id: "ginger", name: "しょうが", quantity: 0.25, unit: "個", benefit: "さっぱりした後味になる" }
+    ]
+  },
+  {
+    id: "salmon-foil-yaki",
+    name: "鮭ときのこのホイル焼き",
+    minutes: 20,
+    required: [
+      { id: "salmon", name: "鮭", quantity: 1, unit: "切れ" },
+      { id: "mushroom", name: "しめじ", quantity: 0.25, unit: "株" }
+    ],
+    pantry: "塩・こしょう・油",
+    optional: [
+      { id: "butter", name: "バター", quantity: 10, unit: "g", benefit: "定番のコクが出る" },
+      { id: "onion", name: "玉ねぎ", quantity: 0.25, unit: "個", benefit: "甘みと食べ応えが増す" },
+      { id: "broccoli", name: "ブロッコリー", quantity: 0.25, unit: "個", benefit: "一皿の野菜量が増す" }
+    ]
+  },
+  {
+    id: "salmon-teriyaki",
+    name: "鮭の照り焼き",
+    minutes: 15,
+    required: [
+      { id: "salmon", name: "鮭", quantity: 1, unit: "切れ" }
+    ],
+    pantry: "醤油・みりん・砂糖・油",
+    optional: [
+      { id: "ginger", name: "しょうが", quantity: 0.25, unit: "個", benefit: "甘辛味が締まる" },
+      { id: "green-onion", name: "ねぎ", quantity: 0.25, unit: "本", benefit: "香りのある付け合わせになる" },
+      { id: "spinach", name: "ほうれん草", quantity: 0.5, unit: "袋", benefit: "青菜の副菜を一緒に作れる" }
+    ]
+  },
+  {
+    id: "dashimaki-egg",
+    name: "だし巻き卵",
+    minutes: 10,
+    required: [
+      { id: "eggs", name: "卵", quantity: 2, unit: "個" }
+    ],
+    pantry: "だし・醤油・砂糖・油",
+    optional: [
+      { id: "green-onion", name: "ねぎ", quantity: 0.25, unit: "本", benefit: "香りと彩りが出る" },
+      { id: "cheese", name: "チーズ", quantity: 20, unit: "g", benefit: "コクのあるアレンジになる" },
+      { id: "spinach", name: "ほうれん草", quantity: 0.25, unit: "袋", benefit: "野菜と彩りを足せる" }
+    ]
+  },
+  {
+    id: "agedashi-tofu",
+    name: "揚げ出し豆腐",
+    minutes: 18,
+    required: [
+      { id: "tofu", name: "豆腐", quantity: 1, unit: "個" }
+    ],
+    pantry: "片栗粉・だし・醤油・みりん・油",
+    optional: [
+      { id: "radish", name: "大根", quantity: 50, unit: "g", benefit: "大根おろしでさっぱりする" },
+      { id: "green-onion", name: "ねぎ", quantity: 0.25, unit: "本", benefit: "仕上げの香りが出る" },
+      { id: "ginger", name: "しょうが", quantity: 0.25, unit: "個", benefit: "つゆの味が締まる" }
+    ]
+  },
+  {
+    id: "tofu-steak",
+    name: "豆腐ステーキ",
+    minutes: 15,
+    required: [
+      { id: "tofu", name: "豆腐", quantity: 1, unit: "個" }
+    ],
+    pantry: "小麦粉・醤油・油",
+    optional: [
+      { id: "mushroom", name: "しめじ", quantity: 0.25, unit: "株", benefit: "きのこソースにできる" },
+      { id: "green-onion", name: "ねぎ", quantity: 0.25, unit: "本", benefit: "香りが加わる" },
+      { id: "garlic", name: "にんにく", quantity: 0.25, unit: "個", benefit: "香ばしさが増す" }
+    ]
+  },
+  {
+    id: "cheese-omelet",
+    name: "チーズオムレツ",
+    minutes: 10,
+    required: [
+      { id: "eggs", name: "卵", quantity: 2, unit: "個" },
+      { id: "cheese", name: "チーズ", quantity: 30, unit: "g" }
+    ],
+    pantry: "塩・こしょう・油",
+    optional: [
+      { id: "tomato", name: "トマト", quantity: 0.5, unit: "個", benefit: "酸味と彩りが加わる" },
+      { id: "spinach", name: "ほうれん草", quantity: 0.25, unit: "袋", benefit: "野菜を一緒に取れる" },
+      { id: "mushroom", name: "しめじ", quantity: 0.25, unit: "株", benefit: "うま味と食感を足せる" }
+    ]
+  },
+  {
+    id: "potato-salad",
+    name: "ポテトサラダ",
+    minutes: 20,
+    required: [
+      { id: "potato", name: "じゃがいも", quantity: 2, unit: "個" },
+      { id: "eggs", name: "卵", quantity: 1, unit: "個" }
+    ],
+    pantry: "マヨネーズ・塩・こしょう",
+    optional: [
+      { id: "cucumber", name: "きゅうり", quantity: 0.5, unit: "本", benefit: "定番の歯ごたえが加わる" },
+      { id: "carrot", name: "にんじん", quantity: 0.25, unit: "本", benefit: "甘みと彩りが出る" },
+      { id: "onion", name: "玉ねぎ", quantity: 0.25, unit: "個", benefit: "味が引き締まる" }
+    ]
+  },
+  {
+    id: "spinach-sesame",
+    name: "ほうれん草のごま和え",
+    minutes: 8,
+    required: [
+      { id: "spinach", name: "ほうれん草", quantity: 1, unit: "袋" }
+    ],
+    pantry: "すりごま・醤油・砂糖",
+    optional: [
+      { id: "carrot", name: "にんじん", quantity: 0.25, unit: "本", benefit: "彩りと甘みが増す" },
+      { id: "mushroom", name: "しめじ", quantity: 0.25, unit: "株", benefit: "うま味と量を足せる" },
+      { id: "bonito", name: "かつお節", quantity: 1, unit: "袋", benefit: "香りとうま味が増す" }
+    ]
+  },
+  {
+    id: "eggplant-miso",
+    name: "なすの味噌炒め",
+    minutes: 12,
+    required: [
+      { id: "eggplant", name: "なす", quantity: 1, unit: "袋" },
+      { id: "miso", name: "味噌", quantity: 20, unit: "g" }
+    ],
+    pantry: "砂糖・醤油・油",
+    optional: [
+      { id: "pork", name: "豚こま", quantity: 80, unit: "g", benefit: "主菜としての満足感が増す" },
+      { id: "bell-pepper", name: "ピーマン", quantity: 0.5, unit: "袋", benefit: "彩りと歯ごたえが加わる" },
+      { id: "ginger", name: "しょうが", quantity: 0.25, unit: "個", benefit: "味噌味が締まる" }
+    ]
+  },
+  {
+    id: "cucumber-wakame-vinegar",
+    name: "きゅうりとわかめの酢の物",
+    minutes: 10,
+    required: [
+      { id: "cucumber", name: "きゅうり", quantity: 1, unit: "本" },
+      { id: "wakame", name: "わかめ", quantity: 0.1, unit: "袋" }
+    ],
+    pantry: "酢・砂糖・醤油・塩",
+    optional: [
+      { id: "ginger", name: "しょうが", quantity: 0.25, unit: "個", benefit: "さわやかな香りが加わる" },
+      { id: "bonito", name: "かつお節", quantity: 1, unit: "袋", benefit: "うま味を足せる" },
+      { id: "radish", name: "大根", quantity: 50, unit: "g", benefit: "食感と野菜量が増す" }
+    ]
+  },
+  {
+    id: "coleslaw",
+    name: "コールスロー",
+    minutes: 10,
+    required: [
+      { id: "cabbage", name: "キャベツ", quantity: 150, unit: "g" }
+    ],
+    pantry: "マヨネーズ・酢・砂糖・塩",
+    optional: [
+      { id: "carrot", name: "にんじん", quantity: 0.25, unit: "本", benefit: "彩りと甘みが出る" },
+      { id: "cucumber", name: "きゅうり", quantity: 0.5, unit: "本", benefit: "みずみずしい食感が加わる" },
+      { id: "eggs", name: "卵", quantity: 1, unit: "個", benefit: "食べ応えが増す" }
+    ]
+  },
+  {
+    id: "carbonara-style",
+    name: "卵とチーズのカルボナーラ風",
+    minutes: 15,
+    required: [
+      { id: "pasta", name: "スパゲッティ", quantity: 100, unit: "g" },
+      { id: "eggs", name: "卵", quantity: 1, unit: "個" },
+      { id: "cheese", name: "チーズ", quantity: 30, unit: "g" }
+    ],
+    pantry: "塩・黒こしょう・油",
+    optional: [
+      { id: "milk", name: "牛乳", quantity: 0.25, unit: "本", benefit: "ソースがのばしやすくなる" },
+      { id: "butter", name: "バター", quantity: 10, unit: "g", benefit: "コクが増す" },
+      { id: "mushroom", name: "しめじ", quantity: 0.25, unit: "株", benefit: "うま味と食感を足せる" }
+    ]
+  },
+  {
+    id: "mushroom-butter-pasta",
+    name: "しめじのバター醤油パスタ",
+    minutes: 15,
+    required: [
+      { id: "pasta", name: "スパゲッティ", quantity: 100, unit: "g" },
+      { id: "mushroom", name: "しめじ", quantity: 0.5, unit: "株" },
+      { id: "butter", name: "バター", quantity: 10, unit: "g" }
+    ],
+    pantry: "醤油・塩",
+    optional: [
+      { id: "spinach", name: "ほうれん草", quantity: 0.25, unit: "袋", benefit: "野菜と彩りが加わる" },
+      { id: "garlic", name: "にんにく", quantity: 0.25, unit: "個", benefit: "香りが立つ" },
+      { id: "green-onion", name: "ねぎ", quantity: 0.25, unit: "本", benefit: "和風の香りが増す" }
+    ]
+  },
+  {
+    id: "pork-miso-soup",
+    name: "豚汁",
+    minutes: 25,
+    required: [
+      { id: "pork", name: "豚こま", quantity: 80, unit: "g" },
+      { id: "radish", name: "大根", quantity: 100, unit: "g" },
+      { id: "carrot", name: "にんじん", quantity: 0.5, unit: "本" },
+      { id: "miso", name: "味噌", quantity: 20, unit: "g" }
+    ],
+    pantry: "水・だし・油",
+    optional: [
+      { id: "potato", name: "じゃがいも", quantity: 1, unit: "個", benefit: "汁物の食べ応えが増す" },
+      { id: "onion", name: "玉ねぎ", quantity: 0.5, unit: "個", benefit: "甘みが増す" },
+      { id: "green-onion", name: "ねぎ", quantity: 0.25, unit: "本", benefit: "仕上げの香りが出る" }
+    ]
+  },
+  {
+    id: "vegetable-consomme",
+    name: "野菜のコンソメスープ",
+    minutes: 20,
+    required: [
+      { id: "cabbage", name: "キャベツ", quantity: 100, unit: "g" },
+      { id: "carrot", name: "にんじん", quantity: 0.5, unit: "本" },
+      { id: "onion", name: "玉ねぎ", quantity: 0.5, unit: "個" }
+    ],
+    pantry: "水・コンソメ・塩・こしょう",
+    optional: [
+      { id: "potato", name: "じゃがいも", quantity: 1, unit: "個", benefit: "食べ応えが増す" },
+      { id: "mushroom", name: "しめじ", quantity: 0.25, unit: "株", benefit: "うま味を足せる" },
+      { id: "chicken", name: "鶏むね肉", quantity: 60, unit: "g", benefit: "主菜に近い満足感が出る" }
+    ]
+  },
+  {
+    id: "kake-udon",
+    name: "かけうどん",
+    minutes: 10,
+    required: [
+      { id: "udon", name: "うどん", quantity: 1, unit: "袋" }
+    ],
+    pantry: "だし・醤油・みりん・水",
+    optional: [
+      { id: "green-onion", name: "ねぎ", quantity: 0.25, unit: "本", benefit: "定番の香りが加わる" },
+      { id: "eggs", name: "卵", quantity: 1, unit: "個", benefit: "月見うどんにできる" },
+      { id: "wakame", name: "わかめ", quantity: 0.1, unit: "袋", benefit: "磯の香りと食べ応えが増す" }
+    ]
+  },
+  {
+    id: "curry-udon",
+    name: "カレーうどん",
+    minutes: 15,
+    required: [
+      { id: "udon", name: "うどん", quantity: 1, unit: "袋" }
+    ],
+    pantry: "カレールウ・だし・醤油・水",
+    optional: [
+      { id: "pork", name: "豚こま", quantity: 80, unit: "g", benefit: "主食としての満足感が増す" },
+      { id: "onion", name: "玉ねぎ", quantity: 0.5, unit: "個", benefit: "甘みととろみが増す" },
+      { id: "carrot", name: "にんじん", quantity: 0.25, unit: "本", benefit: "彩りと野菜量を足せる" }
+    ]
+  },
+  {
+    id: "kake-soba",
+    name: "かけそば",
+    minutes: 12,
+    required: [
+      { id: "soba", name: "そば", quantity: 100, unit: "g" }
+    ],
+    pantry: "だし・醤油・みりん・水",
+    optional: [
+      { id: "green-onion", name: "ねぎ", quantity: 0.25, unit: "本", benefit: "定番の香りが加わる" },
+      { id: "eggs", name: "卵", quantity: 1, unit: "個", benefit: "月見そばにできる" },
+      { id: "wakame", name: "わかめ", quantity: 0.1, unit: "袋", benefit: "磯の風味を足せる" }
+    ]
+  },
+  {
+    id: "sauce-yakisoba",
+    name: "ソース焼きそば",
+    minutes: 15,
+    required: [
+      { id: "yakisoba-noodles", name: "焼きそば麺", quantity: 1, unit: "袋" },
+      { id: "pork", name: "豚こま", quantity: 80, unit: "g" },
+      { id: "cabbage", name: "キャベツ", quantity: 100, unit: "g" }
+    ],
+    pantry: "中濃ソースまたは焼きそばソース・油",
+    optional: [
+      { id: "bean-sprouts", name: "もやし", quantity: 0.5, unit: "袋", benefit: "食感とボリュームが増す" },
+      { id: "carrot", name: "にんじん", quantity: 0.25, unit: "本", benefit: "彩りと甘みが出る" },
+      { id: "bell-pepper", name: "ピーマン", quantity: 0.5, unit: "袋", benefit: "香りと彩りを足せる" }
+    ]
+  },
+  {
+    id: "macaroni-gratin",
+    name: "マカロニグラタン",
+    minutes: 30,
+    required: [
+      { id: "macaroni", name: "マカロニ", quantity: 80, unit: "g" },
+      { id: "milk", name: "牛乳", quantity: 0.5, unit: "本" },
+      { id: "cheese", name: "チーズ", quantity: 30, unit: "g" }
+    ],
+    pantry: "小麦粉・バター・コンソメ・塩・こしょう",
+    optional: [
+      { id: "chicken", name: "鶏むね肉", quantity: 80, unit: "g", benefit: "主菜としての満足感が増す" },
+      { id: "onion", name: "玉ねぎ", quantity: 0.25, unit: "個", benefit: "甘みと食感が加わる" },
+      { id: "mushroom", name: "しめじ", quantity: 0.25, unit: "株", benefit: "うま味を足せる" }
+    ]
+  },
+  {
+    id: "mackerel-miso",
+    name: "さばの味噌煮",
+    minutes: 25,
+    required: [
+      { id: "mackerel", name: "さば", quantity: 1, unit: "切れ" },
+      { id: "miso", name: "味噌", quantity: 20, unit: "g" }
+    ],
+    pantry: "砂糖・みりん・酒・水",
+    optional: [
+      { id: "ginger", name: "しょうが", quantity: 0.25, unit: "個", benefit: "魚の風味をさっぱり整える" },
+      { id: "green-onion", name: "ねぎ", quantity: 0.5, unit: "本", benefit: "煮汁に甘みと香りが出る" },
+      { id: "radish", name: "大根", quantity: 50, unit: "g", benefit: "煮汁を含む付け合わせになる" }
+    ]
+  },
+  {
+    id: "mackerel-salt-grill",
+    name: "さばの塩焼き",
+    minutes: 15,
+    required: [
+      { id: "mackerel", name: "さば", quantity: 1, unit: "切れ" }
+    ],
+    pantry: "塩・油",
+    optional: [
+      { id: "radish", name: "大根", quantity: 100, unit: "g", benefit: "大根おろしでさっぱり食べられる" },
+      { id: "spinach", name: "ほうれん草", quantity: 0.25, unit: "袋", benefit: "青菜の副菜を添えられる" },
+      { id: "ginger", name: "しょうが", quantity: 0.25, unit: "個", benefit: "魚の風味を整える" }
+    ]
+  },
+  {
+    id: "yellowtail-teriyaki",
+    name: "ぶりの照り焼き",
+    minutes: 18,
+    required: [
+      { id: "yellowtail", name: "ぶり", quantity: 1, unit: "切れ" }
+    ],
+    pantry: "醤油・みりん・砂糖・油",
+    optional: [
+      { id: "radish", name: "大根", quantity: 100, unit: "g", benefit: "大根おろしで後味が軽くなる" },
+      { id: "ginger", name: "しょうが", quantity: 0.25, unit: "個", benefit: "甘辛味が締まる" },
+      { id: "green-onion", name: "ねぎ", quantity: 0.5, unit: "本", benefit: "焼きねぎを添えられる" }
+    ]
+  },
+  {
+    id: "yellowtail-daikon",
+    name: "ぶり大根",
+    minutes: 35,
+    required: [
+      { id: "yellowtail", name: "ぶり", quantity: 1, unit: "切れ" },
+      { id: "radish", name: "大根", quantity: 150, unit: "g" }
+    ],
+    pantry: "醤油・砂糖・みりん・酒・水",
+    optional: [
+      { id: "ginger", name: "しょうが", quantity: 0.25, unit: "個", benefit: "魚の風味を整える" },
+      { id: "konnyaku", name: "こんにゃく", quantity: 0.5, unit: "枚", benefit: "煮物の食べ応えが増す" },
+      { id: "green-onion", name: "ねぎ", quantity: 0.25, unit: "本", benefit: "仕上げの香りが出る" }
+    ]
+  },
+  {
+    id: "shrimp-chili",
+    name: "えびチリ",
+    minutes: 18,
+    required: [
+      { id: "shrimp", name: "えび", quantity: 120, unit: "g" }
+    ],
+    pantry: "ケチャップ・砂糖・酢・醤油・片栗粉・油",
+    optional: [
+      { id: "green-onion", name: "ねぎ", quantity: 0.25, unit: "本", benefit: "中華らしい香りが加わる" },
+      { id: "garlic", name: "にんにく", quantity: 0.25, unit: "個", benefit: "ソースの香りが立つ" },
+      { id: "ginger", name: "しょうが", quantity: 0.25, unit: "個", benefit: "味が締まる" }
+    ]
+  },
+  {
+    id: "shrimp-fried-rice",
+    name: "えびチャーハン",
+    minutes: 12,
+    required: [
+      { id: "shrimp", name: "えび", quantity: 80, unit: "g" },
+      { id: "rice", name: "ごはん", quantity: 1, unit: "膳" },
+      { id: "eggs", name: "卵", quantity: 1, unit: "個" }
+    ],
+    pantry: "醤油・塩・こしょう・油",
+    optional: [
+      { id: "green-onion", name: "ねぎ", quantity: 0.25, unit: "本", benefit: "香りと彩りが出る" },
+      { id: "carrot", name: "にんじん", quantity: 0.25, unit: "本", benefit: "甘みと彩りを足せる" },
+      { id: "bean-sprouts", name: "もやし", quantity: 0.25, unit: "袋", benefit: "食感と量が増す" }
+    ]
+  },
+  {
+    id: "tuna-mayo-rice",
+    name: "ツナマヨごはん",
+    minutes: 5,
+    required: [
+      { id: "tuna", name: "ツナ", quantity: 1, unit: "缶" },
+      { id: "rice", name: "ごはん", quantity: 1, unit: "膳" }
+    ],
+    pantry: "マヨネーズ・醤油",
+    optional: [
+      { id: "cucumber", name: "きゅうり", quantity: 0.5, unit: "本", benefit: "みずみずしい食感が加わる" },
+      { id: "green-onion", name: "ねぎ", quantity: 0.25, unit: "本", benefit: "後味がさっぱりする" },
+      { id: "eggs", name: "卵", quantity: 1, unit: "個", benefit: "まろやかさと満足感が増す" }
+    ]
+  },
+  {
+    id: "bean-sprout-namul",
+    name: "もやしのナムル",
+    minutes: 7,
+    required: [
+      { id: "bean-sprouts", name: "もやし", quantity: 1, unit: "袋" }
+    ],
+    pantry: "ごま油・醤油・塩・ごま",
+    optional: [
+      { id: "garlic-chives", name: "にら", quantity: 0.5, unit: "袋", benefit: "香りと彩りが増す" },
+      { id: "carrot", name: "にんじん", quantity: 0.25, unit: "本", benefit: "甘みと彩りを足せる" },
+      { id: "garlic", name: "にんにく", quantity: 0.25, unit: "個", benefit: "味にパンチが出る" }
+    ]
+  },
+  {
+    id: "nira-tama",
+    name: "にら玉",
+    minutes: 8,
+    required: [
+      { id: "garlic-chives", name: "にら", quantity: 1, unit: "袋" },
+      { id: "eggs", name: "卵", quantity: 2, unit: "個" }
+    ],
+    pantry: "醤油・塩・こしょう・油",
+    optional: [
+      { id: "bean-sprouts", name: "もやし", quantity: 0.5, unit: "袋", benefit: "食感とボリュームが増す" },
+      { id: "pork", name: "豚こま", quantity: 80, unit: "g", benefit: "主菜としての満足感が増す" },
+      { id: "mushroom", name: "しめじ", quantity: 0.25, unit: "株", benefit: "うま味を足せる" }
+    ]
+  },
+  {
+    id: "pumpkin-simmer",
+    name: "かぼちゃの煮物",
+    minutes: 20,
+    required: [
+      { id: "pumpkin", name: "かぼちゃ", quantity: 200, unit: "g" }
+    ],
+    pantry: "醤油・砂糖・みりん・水",
+    optional: [
+      { id: "butter", name: "バター", quantity: 10, unit: "g", benefit: "洋風のコクを足せる" },
+      { id: "bonito", name: "かつお節", quantity: 1, unit: "袋", benefit: "だしのうま味が増す" },
+      { id: "ginger", name: "しょうが", quantity: 0.25, unit: "個", benefit: "甘い煮汁が締まる" }
+    ]
+  },
+  {
+    id: "pumpkin-salad",
+    name: "かぼちゃサラダ",
+    minutes: 15,
+    required: [
+      { id: "pumpkin", name: "かぼちゃ", quantity: 200, unit: "g" }
+    ],
+    pantry: "マヨネーズ・塩・こしょう",
+    optional: [
+      { id: "yogurt", name: "ヨーグルト", quantity: 0.5, unit: "個", benefit: "軽い酸味でなめらかになる" },
+      { id: "cheese", name: "チーズ", quantity: 20, unit: "g", benefit: "塩気とコクが増す" },
+      { id: "eggs", name: "卵", quantity: 1, unit: "個", benefit: "食べ応えが増す" }
+    ]
+  },
+  {
+    id: "konnyaku-piquant",
+    name: "こんにゃくの甘辛炒め",
+    minutes: 12,
+    required: [
+      { id: "konnyaku", name: "こんにゃく", quantity: 1, unit: "枚" }
+    ],
+    pantry: "醤油・みりん・砂糖・ごま油",
+    optional: [
+      { id: "carrot", name: "にんじん", quantity: 0.25, unit: "本", benefit: "彩りと甘みが増す" },
+      { id: "mushroom", name: "しめじ", quantity: 0.25, unit: "株", benefit: "うま味と食感を足せる" },
+      { id: "bonito", name: "かつお節", quantity: 1, unit: "袋", benefit: "仕上げのうま味が増す" }
+    ]
+  },
+  {
+    id: "cream-stew",
+    name: "クリームシチュー",
+    minutes: 35,
+    required: [
+      { id: "chicken", name: "鶏むね肉", quantity: 100, unit: "g" },
+      { id: "potato", name: "じゃがいも", quantity: 1, unit: "個" },
+      { id: "onion", name: "玉ねぎ", quantity: 0.5, unit: "個" },
+      { id: "carrot", name: "にんじん", quantity: 0.5, unit: "本" },
+      { id: "milk", name: "牛乳", quantity: 0.5, unit: "本" }
+    ],
+    pantry: "小麦粉・バター・コンソメ・水・塩・こしょう",
+    optional: [
+      { id: "broccoli", name: "ブロッコリー", quantity: 0.25, unit: "個", benefit: "彩りと野菜量が増す" },
+      { id: "mushroom", name: "しめじ", quantity: 0.25, unit: "株", benefit: "うま味を足せる" },
+      { id: "cheese", name: "チーズ", quantity: 20, unit: "g", benefit: "濃厚なコクが出る" }
+    ]
+  },
+  {
+    id: "gyoza",
+    name: "焼き餃子",
+    minutes: 30,
+    required: [
+      { id: "ground-meat", name: "ひき肉", quantity: 120, unit: "g" },
+      { id: "cabbage", name: "キャベツ", quantity: 100, unit: "g" },
+      { id: "garlic-chives", name: "にら", quantity: 0.5, unit: "袋" }
+    ],
+    pantry: "餃子の皮・醤油・ごま油・塩・水・油",
+    optional: [
+      { id: "garlic", name: "にんにく", quantity: 0.25, unit: "個", benefit: "餡の香りが強くなる" },
+      { id: "ginger", name: "しょうが", quantity: 0.25, unit: "個", benefit: "肉の味が締まる" },
+      { id: "green-onion", name: "ねぎ", quantity: 0.25, unit: "本", benefit: "餡の香りと甘みが増す" }
+    ]
+  },
+  {
+    id: "croquette",
+    name: "ポテトコロッケ",
+    minutes: 35,
+    required: [
+      { id: "potato", name: "じゃがいも", quantity: 2, unit: "個" },
+      { id: "ground-meat", name: "ひき肉", quantity: 80, unit: "g" },
+      { id: "breadcrumbs", name: "パン粉", quantity: 30, unit: "g" }
+    ],
+    pantry: "小麦粉・塩・こしょう・油",
+    optional: [
+      { id: "onion", name: "玉ねぎ", quantity: 0.25, unit: "個", benefit: "甘みと食感が加わる" },
+      { id: "eggs", name: "卵", quantity: 1, unit: "個", benefit: "衣が均一につきやすくなる" },
+      { id: "cheese", name: "チーズ", quantity: 20, unit: "g", benefit: "中にコクを足せる" }
+    ]
   }
 ];
+
+const RECIPE_STEPS = {
+  "miso-stir-fry": [
+    "キャベツを食べやすく切り、豚こまと一緒に油で炒める。",
+    "肉の色が変わったら、味噌・醤油・砂糖を加える。",
+    "全体を混ぜながら水分を飛ばし、肉に十分火が通ったら完成。"
+  ],
+  "egg-bowl": [
+    "フライパンに少量の水と醤油・砂糖を入れ、使う野菜をさっと煮る。",
+    "溶いた卵を回し入れ、好みの固さになるまでふたをする。",
+    "温かいごはんにのせて完成。"
+  ],
+  "cabbage-pancake": [
+    "刻んだキャベツ、卵、小麦粉、少量の水を混ぜる。",
+    "油をひいたフライパンへ広げ、両面をじっくり焼く。",
+    "中まで火が通ったら、醤油など好みの味を添える。"
+  ],
+  "mushroom-soup": [
+    "鍋に水としめじを入れて火にかけ、醤油と塩で味を整える。",
+    "水溶き片栗粉を加え、軽くとろみをつける。",
+    "溶いた卵を細く流し、卵に火が通ったら完成。"
+  ],
+  "home-curry": [
+    "肉と使う野菜を食べやすく切り、鍋で炒める。",
+    "水を加え、具材がやわらかくなるまで煮る。",
+    "火を止めてカレールウを溶かし、再び少し煮てごはんにかける。"
+  ],
+  nikujaga: [
+    "肉とじゃがいも、玉ねぎを食べやすく切って炒める。",
+    "水・醤油・砂糖・みりんを加え、落としぶたをして煮る。",
+    "じゃがいもがやわらかくなり、煮汁が少なくなったら完成。"
+  ],
+  "hamburger-steak": [
+    "ひき肉、みじん切りの玉ねぎ、卵、塩・こしょうを混ぜて形を作る。",
+    "フライパンで両面に焼き色をつけ、ふたをして中まで火を通す。",
+    "中央まで火が通ったことを確認し、好みのソースを添える。"
+  ],
+  "salmon-meuniere": [
+    "鮭の水分を拭き、塩・こしょうと薄力粉を薄くまぶす。",
+    "油をひいたフライパンで両面を焼き、中まで火を通す。",
+    "最後にバターを加え、鮭へからめて完成。"
+  ],
+  napolitan: [
+    "スパゲッティを表示時間どおりにゆでる。",
+    "フライパンで玉ねぎなどの具材を炒め、ケチャップを加える。",
+    "ゆでた麺を加えて全体を混ぜ、塩・こしょうで整える。"
+  ],
+  "tofu-miso-soup": [
+    "鍋に水とだしを入れ、豆腐と使う具材を温める。",
+    "沸騰させすぎないよう火を弱め、味噌を溶き入れる。",
+    "ひと煮立ちする前に火を止め、ねぎなどを添える。"
+  ],
+  "chicken-cabbage-steam": [
+    "鶏むね肉を薄めのひと口大に切り、塩・こしょうをふる。",
+    "フライパンにキャベツと鶏肉を重ね、酒を加えてふたをする。",
+    "弱めの中火で蒸し、鶏肉の中心まで十分に火が通ったら完成。"
+  ],
+  "tomato-egg-stir-fry": [
+    "トマトを大きめに切り、卵を溶いて塩を少し混ぜる。",
+    "油を熱したフライパンで卵を半熟に炒め、いったん取り出す。",
+    "トマトをさっと炒めて卵を戻し、こしょうで整える。"
+  ],
+  "mapo-tofu-style": [
+    "フライパンでひき肉を炒め、味噌・醤油・砂糖を加える。",
+    "食べやすく切った豆腐と水を加え、崩しすぎないよう温める。",
+    "水溶き片栗粉でとろみをつけ、ひき肉に十分火が通ったら完成。"
+  ],
+  "natto-rice": [
+    "納豆に付属のたれ、または少量の醤油を混ぜる。",
+    "温かいごはんに納豆をのせる。",
+    "使う場合は卵やねぎ、かつお節を添えて完成。"
+  ],
+  "eggplant-mince-stir-fry": [
+    "なすを食べやすく切り、油をひいたフライパンで炒める。",
+    "ひき肉を加え、色が変わるまでほぐしながら炒める。",
+    "醤油・砂糖・みりんをからめ、ひき肉に十分火が通ったら完成。"
+  ],
+  "chicken-broccoli-pan": [
+    "鶏むね肉をひと口大に切り、塩・こしょうをふる。",
+    "鶏肉を焼き、色が変わったら小さく分けたブロッコリーと酒を加える。",
+    "ふたをして蒸し焼きにし、鶏肉の中心まで十分に火を通す。"
+  ],
+  oyakodon: [
+    "鶏肉を小さめに切り、醤油・砂糖・みりん・水で煮る。",
+    "鶏肉の中心まで火が通ったら、溶いた卵を回し入れてふたをする。",
+    "卵が好みの固さになったら、温かいごはんにのせる。"
+  ],
+  gyudon: [
+    "鍋に醤油・砂糖・みりん・水を入れ、使う場合は玉ねぎを煮る。",
+    "牛肉を広げて加え、色が変わるまで煮てアクを取る。",
+    "牛肉に十分火が通ったら、煮汁ごと温かいごはんにのせる。"
+  ],
+  "fried-rice": [
+    "卵を溶き、温かいごはんと使う具材を用意する。",
+    "油を熱したフライパンで卵、ごはん、具材の順に手早く炒める。",
+    "塩・こしょうと鍋肌からの醤油で味を整える。"
+  ],
+  omurice: [
+    "ごはんと使う具材を炒め、ケチャップ・塩・こしょうで味をつける。",
+    "別のフライパンで溶き卵を広げ、半熟になるまで焼く。",
+    "ケチャップごはんを包むか、上から卵をのせて完成。"
+  ],
+  "soboro-bowl": [
+    "フライパンにひき肉、醤油・砂糖・みりんを入れてほぐす。",
+    "混ぜながら火にかけ、汁気が少なくなるまで炒り煮にする。",
+    "ひき肉に十分火が通ったら、温かいごはんにのせる。"
+  ],
+  "ginger-pork": [
+    "しょうがをすりおろし、醤油・みりん・砂糖と混ぜる。",
+    "油を熱したフライパンで豚肉を広げて炒める。",
+    "豚肉に十分火が通ったら合わせ調味料を加え、照りが出るまでからめる。"
+  ],
+  "chicken-teriyaki": [
+    "鶏肉を食べやすく切り、油をひいたフライパンで両面を焼く。",
+    "ふたをして蒸し焼きにし、鶏肉の中心まで十分に火を通す。",
+    "醤油・みりん・砂糖を加え、照りが出るまでからめる。"
+  ],
+  "chicken-karaage": [
+    "鶏肉をひと口大に切り、醤油と酒で下味をつける。",
+    "小麦粉または片栗粉をまぶし、熱した油で揚げる。",
+    "中心まで十分に火が通り、表面が香ばしくなったら油を切る。"
+  ],
+  "beef-pepper-stir-fry": [
+    "牛肉とピーマンを食べやすく切る。",
+    "油を熱したフライパンで牛肉を炒め、色が変わったらピーマンを加える。",
+    "牛肉に十分火が通ったら醤油・砂糖・酒を加え、手早くからめる。"
+  ],
+  "meat-tofu": [
+    "豆腐を大きめに切り、鍋に醤油・砂糖・みりん・水を入れる。",
+    "牛肉と使う野菜を煮て、色が変わったら豆腐を加える。",
+    "牛肉に十分火が通り、豆腐が温まるまで煮る。"
+  ],
+  "pork-cabbage-millefeuille": [
+    "キャベツと豚肉を交互に重ね、食べやすい大きさに切る。",
+    "フライパンや鍋に詰め、酒・塩・少量の水を加えてふたをする。",
+    "弱めの中火で蒸し、豚肉に十分火が通ったら完成。"
+  ],
+  "salmon-foil-yaki": [
+    "アルミホイルに鮭としめじをのせ、塩・こしょうをふる。",
+    "ホイルを閉じ、フライパンに少量の水を入れてふたをする。",
+    "蒸し焼きにして鮭の中心まで十分に火を通す。"
+  ],
+  "salmon-teriyaki": [
+    "鮭の水分を拭き、油をひいたフライパンで両面を焼く。",
+    "ふたをして鮭の中心まで十分に火を通す。",
+    "醤油・みりん・砂糖を加え、煮詰めながら鮭へからめる。"
+  ],
+  "dashimaki-egg": [
+    "卵を溶き、だし・醤油・砂糖を混ぜる。",
+    "油を薄くひいたフライパンへ卵液を数回に分けて流す。",
+    "半熟のうちに巻く作業を繰り返し、形を整える。"
+  ],
+  "agedashi-tofu": [
+    "豆腐の水分を拭き、食べやすく切って片栗粉をまぶす。",
+    "多めの油で全面を焼き、表面を香ばしくする。",
+    "温めただし・醤油・みりんのつゆをかける。"
+  ],
+  "tofu-steak": [
+    "豆腐の水分を切り、食べやすく切って小麦粉を薄くまぶす。",
+    "油を熱したフライパンで両面を香ばしく焼く。",
+    "醤油を回しかけ、使う薬味やきのこを添える。"
+  ],
+  "cheese-omelet": [
+    "卵を溶き、塩・こしょうとチーズを混ぜる。",
+    "油を熱したフライパンへ流し、外側から大きく混ぜる。",
+    "半熟になったら形を整え、好みの固さまで火を通す。"
+  ],
+  "potato-salad": [
+    "じゃがいもと卵をそれぞれ加熱し、じゃがいもを粗くつぶす。",
+    "卵と使う野菜を加え、マヨネーズ・塩・こしょうで和える。",
+    "味を整え、粗熱を取って完成。"
+  ],
+  "spinach-sesame": [
+    "ほうれん草をゆでて冷水に取り、水気をしっかり絞る。",
+    "食べやすく切り、すりごま・醤油・砂糖を混ぜる。",
+    "ほうれん草と合わせ調味料を和える。"
+  ],
+  "eggplant-miso": [
+    "なすを食べやすく切り、油をひいたフライパンで炒める。",
+    "なすがやわらかくなったら、味噌・砂糖・醤油を加える。",
+    "水分を飛ばしながら全体へ味をからめる。"
+  ],
+  "cucumber-wakame-vinegar": [
+    "きゅうりを薄く切って塩をふり、水気を絞る。",
+    "わかめを水で戻し、食べやすく切る。",
+    "酢・砂糖・醤油を混ぜ、きゅうりとわかめを和える。"
+  ],
+  coleslaw: [
+    "キャベツと使う野菜を細く切り、塩をふる。",
+    "しんなりしたら水気をしっかり絞る。",
+    "マヨネーズ・酢・砂糖で和え、味を整える。"
+  ],
+  "carbonara-style": [
+    "スパゲッティをゆで、卵・チーズ・黒こしょうを混ぜておく。",
+    "湯を切った熱い麺をボウルへ入れ、卵液と手早く混ぜる。",
+    "固い場合はゆで汁を少量加え、塩と黒こしょうで整える。"
+  ],
+  "mushroom-butter-pasta": [
+    "スパゲッティをゆで、その間にしめじをバターで炒める。",
+    "ゆでた麺と少量のゆで汁をフライパンへ加える。",
+    "醤油を回しかけ、全体を混ぜて塩で整える。"
+  ],
+  "pork-miso-soup": [
+    "豚肉と大根、にんじんを食べやすく切り、鍋で軽く炒める。",
+    "水とだしを加え、野菜がやわらかくなるまで煮る。",
+    "豚肉に十分火が通ったら火を弱め、味噌を溶き入れる。"
+  ],
+  "vegetable-consomme": [
+    "キャベツ、にんじん、玉ねぎを食べやすく切る。",
+    "鍋に水・コンソメと野菜を入れ、やわらかくなるまで煮る。",
+    "塩・こしょうで味を整える。"
+  ],
+  "kake-udon": [
+    "鍋にだし・醤油・みりん・水を入れて温める。",
+    "うどんを加え、袋の表示に合わせてゆでる。",
+    "器に盛り、使う場合はねぎや卵、わかめを添える。"
+  ],
+  "curry-udon": [
+    "鍋で使う肉や野菜を炒め、だしと水を加えて煮る。",
+    "具材に火が通ったらカレールウと醤油を溶かし、うどんを加える。",
+    "うどんが温まり、つゆがなじんだら完成。"
+  ],
+  "kake-soba": [
+    "そばを袋の表示に合わせてゆで、湯を切る。",
+    "別の鍋でだし・醤油・みりん・水を温める。",
+    "そばを器に入れてつゆを注ぎ、好みの具を添える。"
+  ],
+  "sauce-yakisoba": [
+    "豚肉とキャベツ、使う野菜を食べやすく切って炒める。",
+    "豚肉に十分火が通ったら焼きそば麺と少量の水を加えてほぐす。",
+    "ソースを加え、水分を飛ばしながら全体を炒め合わせる。"
+  ],
+  "macaroni-gratin": [
+    "マカロニをゆで、使う具材をフライパンで炒める。",
+    "小麦粉、バター、牛乳を加えて混ぜ、とろみが出るまで温める。",
+    "耐熱皿へ移してチーズをのせ、表面に焼き色がつくまで焼く。"
+  ],
+  "mackerel-miso": [
+    "さばの水分を拭き、皮に浅く切り目を入れる。",
+    "鍋に味噌以外の調味料と水を煮立て、さばを入れて落としぶたをする。",
+    "さばの中心まで火が通ったら味噌を溶き、煮汁をからめる。"
+  ],
+  "mackerel-salt-grill": [
+    "さばの水分を拭き、両面に塩をふる。",
+    "グリルまたは油を薄くひいたフライパンで皮側から焼く。",
+    "裏返して中心まで十分に火を通す。"
+  ],
+  "yellowtail-teriyaki": [
+    "ぶりの水分を拭き、油をひいたフライパンで両面を焼く。",
+    "ふたをして、ぶりの中心まで十分に火を通す。",
+    "醤油・みりん・砂糖を加え、照りが出るまでからめる。"
+  ],
+  "yellowtail-daikon": [
+    "大根を厚めに切り、やわらかくなるまで下ゆでする。",
+    "鍋に調味料と水を煮立て、ぶりと大根を加えて落としぶたをする。",
+    "ぶりの中心まで火を通し、煮汁が少なくなるまで煮る。"
+  ],
+  "shrimp-chili": [
+    "えびの水分を拭き、片栗粉を薄くまぶして油で炒める。",
+    "えびの色が変わったら、ケチャップ・砂糖・酢・醤油を加える。",
+    "えびの中心まで火を通し、ソースにとろみが出るまでからめる。"
+  ],
+  "shrimp-fried-rice": [
+    "えびの水分を拭き、卵を溶いて温かいごはんを用意する。",
+    "油を熱したフライパンでえび、卵、ごはんの順に炒める。",
+    "えびに十分火を通し、塩・こしょうと醤油で味を整える。"
+  ],
+  "tuna-mayo-rice": [
+    "ツナの油または水気を軽く切る。",
+    "ツナとマヨネーズ、少量の醤油を混ぜる。",
+    "温かいごはんにのせ、使う場合はきゅうりやねぎを添える。"
+  ],
+  "bean-sprout-namul": [
+    "もやしをゆでるか電子レンジで加熱し、水気を切る。",
+    "ごま油・醤油・塩・ごまを混ぜる。",
+    "温かいうちにもやしを和え、味をなじませる。"
+  ],
+  "nira-tama": [
+    "にらを食べやすく切り、卵を溶いて塩を少し混ぜる。",
+    "油を熱したフライパンで卵を半熟に炒め、いったん取り出す。",
+    "にらを炒めて卵を戻し、醤油・こしょうで整える。"
+  ],
+  "pumpkin-simmer": [
+    "かぼちゃを食べやすく切り、皮を下にして鍋へ並べる。",
+    "醤油・砂糖・みりん・水を加え、落としぶたをして煮る。",
+    "竹串が通るまでやわらかくなったら火を止める。"
+  ],
+  "pumpkin-salad": [
+    "かぼちゃをやわらかくなるまで加熱し、粗くつぶす。",
+    "粗熱が取れたらマヨネーズ・塩・こしょうを混ぜる。",
+    "使う場合はヨーグルトやチーズ、卵を加えて整える。"
+  ],
+  "konnyaku-piquant": [
+    "こんにゃくを食べやすくちぎり、さっと下ゆでする。",
+    "水気を切ってフライパンで乾煎りし、ごま油を加える。",
+    "醤油・みりん・砂糖を加え、水分がなくなるまで炒める。"
+  ],
+  "cream-stew": [
+    "鶏肉と野菜を食べやすく切り、鍋で炒める。",
+    "水とコンソメを加え、鶏肉の中心と野菜に火が通るまで煮る。",
+    "小麦粉・バター・牛乳を加えて混ぜ、とろみが出るまで温める。"
+  ],
+  gyoza: [
+    "ひき肉、刻んだキャベツとにら、調味料を粘りが出るまで混ぜる。",
+    "餃子の皮で餡を包み、油をひいたフライパンへ並べる。",
+    "焼き色がついたら水を加えて蒸し焼きにし、餡の中心まで火を通す。"
+  ],
+  croquette: [
+    "じゃがいもをやわらかくしてつぶし、炒めたひき肉と混ぜて形を作る。",
+    "小麦粉、卵、パン粉の順に衣をつける。",
+    "熱した油で表面がきつね色になるまで揚げる。"
+  ]
+};
 
 const ALIASES = new Map([
   ["たまご", "eggs"],
@@ -234,7 +1323,37 @@ const ALIASES = new Map([
   ["味噌", "miso"],
   ["みそ", "miso"],
   ["わかめ", "wakame"],
-  ["ワカメ", "wakame"]
+  ["ワカメ", "wakame"],
+  ["うどん", "udon"],
+  ["饂飩", "udon"],
+  ["そば", "soba"],
+  ["蕎麦", "soba"],
+  ["焼きそば麺", "yakisoba-noodles"],
+  ["焼そば麺", "yakisoba-noodles"],
+  ["中華麺", "yakisoba-noodles"],
+  ["マカロニ", "macaroni"],
+  ["さば", "mackerel"],
+  ["サバ", "mackerel"],
+  ["鯖", "mackerel"],
+  ["ぶり", "yellowtail"],
+  ["ブリ", "yellowtail"],
+  ["鰤", "yellowtail"],
+  ["えび", "shrimp"],
+  ["エビ", "shrimp"],
+  ["海老", "shrimp"],
+  ["ツナ", "tuna"],
+  ["シーチキン", "tuna"],
+  ["もやし", "bean-sprouts"],
+  ["モヤシ", "bean-sprouts"],
+  ["にら", "garlic-chives"],
+  ["ニラ", "garlic-chives"],
+  ["韮", "garlic-chives"],
+  ["かぼちゃ", "pumpkin"],
+  ["カボチャ", "pumpkin"],
+  ["南瓜", "pumpkin"],
+  ["こんにゃく", "konnyaku"],
+  ["コンニャク", "konnyaku"],
+  ["蒟蒻", "konnyaku"]
 ]);
 
 const INGREDIENT_ILLUSTRATIONS = {
@@ -273,7 +1392,19 @@ const INGREDIENT_ILLUSTRATIONS = {
   butter: [0, 2, "recipe"],
   breadcrumbs: [1, 2, "recipe"],
   miso: [2, 2, "recipe"],
-  wakame: [3, 2, "recipe"]
+  wakame: [3, 2, "recipe"],
+  udon: [0, 0, "expanded"],
+  soba: [1, 0, "expanded"],
+  "yakisoba-noodles": [2, 0, "expanded"],
+  macaroni: [3, 0, "expanded"],
+  mackerel: [0, 1, "expanded"],
+  yellowtail: [1, 1, "expanded"],
+  shrimp: [2, 1, "expanded"],
+  tuna: [3, 1, "expanded"],
+  "bean-sprouts": [0, 2, "expanded"],
+  "garlic-chives": [1, 2, "expanded"],
+  pumpkin: [2, 2, "expanded"],
+  konnyaku: [3, 2, "expanded"]
 };
 
 const RECEIPT_RULES = [
@@ -312,10 +1443,22 @@ const RECEIPT_RULES = [
   { id: "butter", name: "バター", pattern: /(?:バター|ばたー)/, quantity: 100, unit: "g", location: "冷蔵" },
   { id: "breadcrumbs", name: "パン粉", pattern: /(?:パン粉|ぱん粉)/, quantity: 100, unit: "g", location: "常温" },
   { id: "miso", name: "味噌", pattern: /(?:味噌|みそ|ミソ)/, quantity: 300, unit: "g", location: "冷蔵" },
-  { id: "wakame", name: "わかめ", pattern: /(?:わかめ|ワカメ|若布)/, quantity: 1, unit: "袋", location: "常温" }
+  { id: "wakame", name: "わかめ", pattern: /(?:わかめ|ワカメ|若布)/, quantity: 1, unit: "袋", location: "常温" },
+  { id: "udon", name: "うどん", pattern: /(?:うどん|ウドン|饂飩)/, quantity: 1, unit: "袋", location: "冷蔵" },
+  { id: "yakisoba-noodles", name: "焼きそば麺", pattern: /(?:焼き?そば(?:.*麺)?|中華麺|蒸し麺)/, quantity: 1, unit: "袋", location: "冷蔵" },
+  { id: "soba", name: "そば", pattern: /(?:そば|ソバ|蕎麦)/, quantity: 100, unit: "g", location: "常温" },
+  { id: "macaroni", name: "マカロニ", pattern: /(?:マカロニ|まかろに)/, quantity: 100, unit: "g", location: "常温" },
+  { id: "mackerel", name: "さば", pattern: /(?:さば|サバ|鯖)/, quantity: 1, unit: "切れ", location: "冷蔵" },
+  { id: "yellowtail", name: "ぶり", pattern: /(?:ぶり|ブリ|鰤)/, quantity: 1, unit: "切れ", location: "冷蔵" },
+  { id: "shrimp", name: "えび", pattern: /(?:えび|エビ|海老)/, quantity: 100, unit: "g", location: "冷蔵" },
+  { id: "tuna", name: "ツナ", pattern: /(?:ツナ|シーチキン|まぐろ油漬)/, quantity: 1, unit: "缶", location: "常温" },
+  { id: "bean-sprouts", name: "もやし", pattern: /(?:もやし|モヤシ|萌やし)/, quantity: 1, unit: "袋", location: "冷蔵" },
+  { id: "garlic-chives", name: "にら", pattern: /(?:にら|ニラ|韮)/, quantity: 1, unit: "袋", location: "冷蔵" },
+  { id: "pumpkin", name: "かぼちゃ", pattern: /(?:かぼちゃ|カボチャ|南瓜)/, quantity: 400, unit: "g", location: "冷蔵" },
+  { id: "konnyaku", name: "こんにゃく", pattern: /(?:こんにゃく|コンニャク|蒟蒻)/, quantity: 1, unit: "枚", location: "冷蔵" }
 ];
 
-const INVENTORY_UNITS = ["個", "g", "ml", "本", "株", "袋", "パック", "膳", "切れ"];
+const INVENTORY_UNITS = ["個", "g", "ml", "本", "株", "袋", "パック", "膳", "切れ", "缶", "枚"];
 const INVENTORY_LOCATIONS = ["冷蔵", "冷凍", "常温"];
 
 const state = {
@@ -562,11 +1705,16 @@ function renderInventory() {
   `).join("");
 }
 
+function isLowInventoryItem(item) {
+  return item.quantity <= item.step * 1.5;
+}
+
 function renderFridgeFood(item) {
+  const low = isLowInventoryItem(item);
   return `
-    <button class="fridge-food${item.priority ? " is-priority" : ""}" type="button" data-fridge-edit="${escapeHtml(item.id)}" aria-label="${escapeHtml(item.name)} ${formatQuantity(item.quantity, item.unit)}を編集">
+    <button class="fridge-food${item.priority ? " is-priority" : ""}${low ? " is-low" : ""}" type="button" data-fridge-edit="${escapeHtml(item.id)}" aria-label="${escapeHtml(item.name)} ${low ? "少なめ" : "あります"}。在庫を編集">
       ${renderIngredientIllustration(item.id, item.name)}
-      <span class="fridge-food-quantity">${formatQuantity(item.quantity, item.unit)}</span>
+      ${low ? '<span class="fridge-food-state">少なめ</span>' : ""}
     </button>
   `;
 }
@@ -576,17 +1724,23 @@ function renderFridgeShelf(items, emptyText) {
   return `<div class="fridge-foods">${items.map(renderFridgeFood).join("")}</div>`;
 }
 
+function renderPantryShelf(items, emptyText) {
+  if (!items.length) return `<p class="pantry-empty">${escapeHtml(emptyText)}</p>`;
+  return `<div class="pantry-foods">${items.map(renderFridgeFood).join("")}</div>`;
+}
+
 function renderFridgeScene(active) {
   const frozen = active.filter((item) => item.location === "冷凍");
   const chilled = active.filter((item) => item.location === "冷蔵");
   const pantry = active.filter((item) => item.location === "常温");
   const visibleFrozen = frozen.slice(0, 4);
   const visibleChilled = chilled.slice(0, 8);
-  const visiblePantry = pantry.slice(0, 4);
+  const visiblePantry = pantry.slice(0, 8);
   const firstShelfEnd = Math.ceil(visibleChilled.length / 2);
-  const hiddenCount = Math.max(0, frozen.length - visibleFrozen.length)
-    + Math.max(0, chilled.length - visibleChilled.length)
-    + Math.max(0, pantry.length - visiblePantry.length);
+  const pantryShelfEnd = Math.ceil(visiblePantry.length / 2);
+  const hiddenFridgeCount = Math.max(0, frozen.length - visibleFrozen.length)
+    + Math.max(0, chilled.length - visibleChilled.length);
+  const hiddenPantryCount = Math.max(0, pantry.length - visiblePantry.length);
 
   elements.fridgeScene.innerHTML = `
     <div class="fridge-appliance">
@@ -608,14 +1762,32 @@ function renderFridgeScene(active) {
         <span>野菜室</span>
         <span>${chilled.length ? `${chilled.length}品を冷蔵中` : "空いています"}</span>
       </div>
-      ${hiddenCount ? `<span class="fridge-overflow">ほか ${hiddenCount}品</span>` : ""}
+      ${hiddenFridgeCount ? `<span class="fridge-overflow">ほか ${hiddenFridgeCount}品</span>` : ""}
     </div>
-    ${pantry.length ? `
-      <div class="pantry-shelf">
-        <span class="pantry-label">常温ストック</span>
-        ${renderFridgeShelf(visiblePantry, "")}
+
+    <section class="pantry-visual" aria-labelledby="pantry-title">
+      <div class="pantry-heading">
+        <div>
+          <p class="eyebrow">常温でしまうもの</p>
+          <h3 id="pantry-title">わたしのパントリー</h3>
+        </div>
+        <span>${pantry.length ? `${pantry.length}品` : "空いています"}</span>
       </div>
-    ` : ""}
+      <div class="pantry-cabinet">
+        <div class="pantry-top" aria-hidden="true"></div>
+        <div class="pantry-compartment">
+          ${renderPantryShelf(visiblePantry.slice(0, pantryShelfEnd), "乾物や缶詰の棚")}
+        </div>
+        <div class="pantry-compartment">
+          ${renderPantryShelf(visiblePantry.slice(pantryShelfEnd), "調味料や主食の棚")}
+        </div>
+        <div class="pantry-base">
+          <span>常温ストック</span>
+          ${hiddenPantryCount ? `<span>ほか ${hiddenPantryCount}品</span>` : '<span aria-hidden="true">●</span>'}
+        </div>
+      </div>
+      <button class="pantry-add-button" type="button" data-pantry-add>＋ 常温品を追加</button>
+    </section>
   `;
 }
 
@@ -902,9 +2074,17 @@ function renderRecipes() {
 
 function renderRecipe(recipe, index) {
   const shortages = shortageFor(recipe);
+  const featured = index === 0;
   const status = shortages.length
     ? `不足：${shortages.map((item) => `${item.name} ${formatQuantity(requiredAmount(item), item.unit)}`).join("、")}`
     : "最低限必要なものが揃っています";
+  const ingredientSummary = recipe.required.map((requirement) => `
+    <span class="${shortages.some((item) => item.id === requirement.id) ? "is-missing" : ""}">
+      ${renderIngredientIllustration(requirement.id, requirement.name, true)}
+      ${escapeHtml(requirement.name)}
+    </span>
+  `).join("");
+  const quickSteps = (RECIPE_STEPS[recipe.id] || []).map((step) => `<li>${escapeHtml(step)}</li>`).join("");
 
   const requiredLines = recipe.required.map((requirement) => {
     const item = itemForRequirement(requirement);
@@ -941,23 +2121,31 @@ function renderRecipe(recipe, index) {
   }).join("");
 
   return `
-    <article class="recipe">
-      <p class="recipe-rank">${index + 1}つ目の候補</p>
+    <article class="recipe${featured ? " is-featured" : " is-alternative"}">
+      <p class="recipe-rank">${featured ? "今日のおすすめ" : "ほかの候補"}</p>
       <h3>${escapeHtml(recipe.name)}</h3>
       <p class="recipe-meta">調理時間の目安 約${recipe.minutes}分・${state.servings}人分</p>
+      <div class="recipe-ingredient-summary" aria-label="主に使う食材">${ingredientSummary}</div>
       <p class="recipe-status${shortages.length ? " is-missing" : ""}">${status}</p>
 
-      <div class="ingredient-groups">
-        <section class="ingredient-group">
-          <h4>最低限必要</h4>
-          <ul>${requiredLines}</ul>
-          <p class="recipe-meta">基本調味料：${escapeHtml(recipe.pantry)}</p>
-        </section>
-        <section class="ingredient-group">
-          <h4>あるとより良い</h4>
-          <ul>${optionalLines}</ul>
-        </section>
-      </div>
+      <details class="quick-recipe">
+        <summary>
+          <span>簡単な作り方</span>
+          <small>3手順を見る</small>
+        </summary>
+        <ol>${quickSteps}</ol>
+        <div class="ingredient-groups">
+          <section class="ingredient-group">
+            <h4>最低限必要</h4>
+            <ul>${requiredLines}</ul>
+            <p class="recipe-meta">基本調味料：${escapeHtml(recipe.pantry)}</p>
+          </section>
+          <section class="ingredient-group">
+            <h4>あるとより良い</h4>
+            <ul>${optionalLines}</ul>
+          </section>
+        </div>
+      </details>
 
       <button class="button button-primary cook-button" type="button" data-cook="${escapeHtml(recipe.id)}"${shortages.length ? " disabled" : ""}>
         ${shortages.length ? "材料が足りません" : "これを作る"}
@@ -1390,7 +2578,7 @@ function saveReceiptCandidates(event) {
   showToast(`レシートから${entries.length}品を在庫に追加しました`);
 }
 
-function openIngredientDialog(item = null) {
+function openIngredientDialog(item = null, preferredLocation = null) {
   elements.form.reset();
   if (item) {
     elements.dialogTitle.textContent = "食材を編集";
@@ -1406,7 +2594,7 @@ function openIngredientDialog(item = null) {
     elements.ingredientId.value = "";
     elements.ingredientQuantity.value = 1;
     elements.ingredientUnit.value = "個";
-    elements.ingredientLocation.value = state.location === "すべて" ? "冷蔵" : state.location;
+    elements.ingredientLocation.value = preferredLocation || (state.location === "すべて" ? "冷蔵" : state.location);
     elements.deleteIngredient.hidden = true;
   }
   elements.dialog.showModal();
@@ -1552,7 +2740,9 @@ function renderAll() {
 }
 
 document.querySelector("#add-ingredient").addEventListener("click", () => openIngredientDialog());
-document.querySelector("#open-management").addEventListener("click", () => showView("management"));
+document.querySelector("#home-shopping").addEventListener("click", () => showView("shopping"));
+document.querySelector("#home-suggestions").addEventListener("click", () => showView("suggestions"));
+document.querySelector("#home-add").addEventListener("click", () => openIngredientDialog());
 document.querySelector("#scan-receipt").addEventListener("click", () => {
   elements.receiptInput.value = "";
   elements.receiptInput.click();
@@ -1628,6 +2818,11 @@ elements.receiptDialog.addEventListener("click", (event) => {
 });
 
 elements.fridgeScene.addEventListener("click", (event) => {
+  const pantryAdd = event.target.closest("[data-pantry-add]");
+  if (pantryAdd) {
+    openIngredientDialog(null, "常温");
+    return;
+  }
   const button = event.target.closest("[data-fridge-edit]");
   if (!button) return;
   showManagementItem(button.dataset.fridgeEdit);
