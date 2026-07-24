@@ -208,6 +208,12 @@ h3 {
   color: var(--warm);
 }
 
+.button-consume {
+  border-color: var(--leaf);
+  background: var(--leaf-soft);
+  color: var(--leaf-dark);
+}
+
 .add-button {
   flex: none;
 }
@@ -2046,6 +2052,7 @@ input[type="number"] {
   gap: 8px;
 }
 
+.dialog-actions .button-consume:not([hidden]),
 .dialog-actions .button-danger:not([hidden]) {
   grid-column: 1 / -1;
 }

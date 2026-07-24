@@ -2,7 +2,7 @@ const STORAGE_KEY = "fridge-leftovers-inventory-v2";
 const SHOPPING_STORAGE_KEY = "fridge-leftovers-shopping-v1";
 const COOKING_HISTORY_STORAGE_KEY = "fridge-leftovers-cooking-history-v1";
 const SHELF_COUNTS_STORAGE_KEY = "fridge-leftovers-shelf-counts-v1";
-const APP_VERSION = "0.4.0";
+const APP_VERSION = "0.4.1";
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
@@ -1532,6 +1532,7 @@ const elements = {
   ingredientUnit: document.querySelector("#ingredient-unit"),
   ingredientLocation: document.querySelector("#ingredient-location"),
   ingredientPriority: document.querySelector("#ingredient-priority"),
+  consumeIngredient: document.querySelector("#consume-ingredient"),
   deleteIngredient: document.querySelector("#delete-ingredient"),
   receiptInput: document.querySelector("#receipt-input"),
   receiptDialog: document.querySelector("#receipt-dialog"),
@@ -2917,6 +2918,7 @@ function openIngredientDialog(item = null, preferredLocation = null, preferredSh
     elements.ingredientUnit.value = item.unit;
     elements.ingredientLocation.value = item.location;
     elements.ingredientPriority.checked = item.priority;
+    elements.consumeIngredient.hidden = false;
     elements.deleteIngredient.hidden = false;
   } else {
     const hasShelfTarget = (
@@ -2943,6 +2945,7 @@ function openIngredientDialog(item = null, preferredLocation = null, preferredSh
     elements.ingredientQuantity.value = 1;
     elements.ingredientUnit.value = "個";
     elements.ingredientLocation.value = preferredLocation || (state.location === "すべて" ? "冷蔵" : state.location);
+    elements.consumeIngredient.hidden = true;
     elements.deleteIngredient.hidden = true;
   }
   elements.dialog.showModal();
@@ -3029,6 +3032,9 @@ function consumeItem(item) {
   item.active = false;
   item.consumedAt = todayIso();
   state.lastUndo = () => {
+    Object.keys(item).forEach((key) => {
+      if (!(key in snapshot)) delete item[key];
+    });
     Object.assign(item, snapshot);
     persistInventory();
     renderAll();
@@ -3057,6 +3063,13 @@ function deleteCurrentIngredient() {
   const item = state.inventory.find((candidate) => candidate.id === elements.ingredientId.value);
   deleteItem(item);
   closeIngredientDialog();
+}
+
+function consumeCurrentIngredient() {
+  const item = state.inventory.find((candidate) => candidate.id === elements.ingredientId.value);
+  if (!item) return;
+  closeIngredientDialog();
+  consumeItem(item);
 }
 
 function restoreItem(id) {
@@ -3578,6 +3591,7 @@ document.querySelector("#scan-receipt").addEventListener("click", () => {
 });
 document.querySelector("#close-dialog").addEventListener("click", closeIngredientDialog);
 document.querySelector("#cancel-dialog").addEventListener("click", closeIngredientDialog);
+document.querySelector("#consume-ingredient").addEventListener("click", consumeCurrentIngredient);
 document.querySelector("#delete-ingredient").addEventListener("click", deleteCurrentIngredient);
 document.querySelector("#review-inventory").addEventListener("click", () => showView("management"));
 document.querySelector("#close-receipt-dialog").addEventListener("click", closeReceiptDialog);

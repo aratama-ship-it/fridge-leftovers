@@ -6,9 +6,9 @@
   <meta name="theme-color" content="#f3f0e6">
   <meta name="description" content="冷蔵庫の在庫を管理し、残っている食材から今日作れる料理を提案するスマホ向けプロトタイプ">
   <title>冷蔵庫の現在地</title>
-  <link rel="stylesheet" href="styles.css?v=33">
+  <link rel="stylesheet" href="styles.css?v=34">
   <script src="vendor/tesseract/tesseract.min.js?v=7.0.0" defer></script>
-  <script src="app.js?v=36" defer></script>
+  <script src="app.js?v=37" defer></script>
 </head>
 <body>
   <div class="app-shell">
@@ -274,6 +274,7 @@
       </label>
 
       <div class="dialog-actions">
+        <button class="button button-consume" type="button" id="consume-ingredient" hidden>この食材を使い切った</button>
         <button class="button button-danger" type="button" id="delete-ingredient" hidden>在庫から削除</button>
         <button class="button button-secondary" type="button" id="cancel-dialog">キャンセル</button>
         <button class="button button-primary" type="submit">保存</button>
