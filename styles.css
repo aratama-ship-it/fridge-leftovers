@@ -481,6 +481,16 @@ h3 {
   pointer-events: none;
 }
 
+.fridge-foods.is-reordering .fridge-food:not(.is-dragging),
+.pantry-foods.is-reordering .fridge-food:not(.is-dragging) {
+  transition: transform 170ms cubic-bezier(0.2, 0.75, 0.25, 1);
+  will-change: transform;
+}
+
+.fridge-food.is-reorder-shifting {
+  transform: translate3d(var(--reorder-shift), 0, 0) scale(0.96);
+}
+
 .fridge-drag-ghost {
   position: fixed;
   z-index: 100;

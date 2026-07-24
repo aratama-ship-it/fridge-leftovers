@@ -2,7 +2,7 @@ const STORAGE_KEY = "fridge-leftovers-inventory-v2";
 const SHOPPING_STORAGE_KEY = "fridge-leftovers-shopping-v1";
 const COOKING_HISTORY_STORAGE_KEY = "fridge-leftovers-cooking-history-v1";
 const SHELF_COUNTS_STORAGE_KEY = "fridge-leftovers-shelf-counts-v1";
-const APP_VERSION = "0.3.0";
+const APP_VERSION = "0.3.1";
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
@@ -3213,9 +3213,109 @@ function moveInventoryItem(itemId, targetLocation, targetShelf, targetId = null,
 }
 
 function clearFridgeDropTarget(drag) {
+  clearFridgeReorderPreview(drag);
   drag.dropTarget?.classList.remove("is-drop-target");
   drag.dropTarget = null;
   drag.targetId = null;
+}
+
+function shelfFoodElements(dropTarget) {
+  const row = dropTarget?.querySelector(".fridge-foods, .pantry-foods");
+  if (!row) return { row: null, foods: [] };
+  return {
+    row,
+    foods: [...row.children].filter((element) => element.matches("[data-drag-item]"))
+  };
+}
+
+function dropPlacementForPointer(dropTarget, source, pointerX, foodCenters = null) {
+  const { row, foods } = shelfFoodElements(dropTarget);
+  const candidates = foods
+    .filter((food) => food !== source)
+    .map((food) => {
+      const rect = food.getBoundingClientRect();
+      return {
+        id: food.dataset.dragItem,
+        center: foodCenters?.get(food.dataset.dragItem) ?? rect.left + rect.width / 2
+      };
+    });
+  const insertionIndex = candidates.findIndex((candidate) => pointerX < candidate.center);
+  const resolvedIndex = insertionIndex < 0 ? candidates.length : insertionIndex;
+
+  if (!candidates.length) {
+    return { row, foods, insertionIndex: 0, targetId: null, placeAfter: false };
+  }
+  if (resolvedIndex < candidates.length) {
+    return {
+      row,
+      foods,
+      insertionIndex: resolvedIndex,
+      targetId: candidates[resolvedIndex].id,
+      placeAfter: false
+    };
+  }
+  return {
+    row,
+    foods,
+    insertionIndex: resolvedIndex,
+    targetId: candidates[candidates.length - 1].id,
+    placeAfter: true
+  };
+}
+
+function clearFridgeReorderPreview(drag) {
+  drag.previewRow?.classList.remove("is-reordering");
+  drag.previewItems?.forEach((food) => {
+    food.classList.remove("is-reorder-shifting");
+    food.style.removeProperty("--reorder-shift");
+  });
+  drag.previewRow = null;
+  drag.previewItems = [];
+  drag.previewTarget = null;
+  drag.previewIndex = null;
+}
+
+function updateFridgeReorderPreview(drag, dropTarget, placement) {
+  if (
+    drag.previewTarget === dropTarget
+    && drag.previewIndex === placement.insertionIndex
+  ) return;
+
+  clearFridgeReorderPreview(drag);
+  if (!placement.row) return;
+
+  const sourceRow = drag.source.closest(".fridge-foods, .pantry-foods");
+  const sourceIndex = placement.foods.indexOf(drag.source);
+  const sampleRect = drag.source.getBoundingClientRect();
+  const columnGap = Number.parseFloat(getComputedStyle(placement.row).columnGap) || 1;
+  const step = sampleRect.width + columnGap;
+  const shifted = [];
+
+  placement.foods.forEach((food, index) => {
+    if (food === drag.source) return;
+    let direction = 0;
+
+    if (placement.row === sourceRow) {
+      if (placement.insertionIndex < sourceIndex && index >= placement.insertionIndex && index < sourceIndex) {
+        direction = 1;
+      } else if (placement.insertionIndex > sourceIndex && index > sourceIndex && index <= placement.insertionIndex) {
+        direction = -1;
+      }
+    } else if (index >= placement.insertionIndex) {
+      direction = 1;
+    }
+
+    if (!direction) return;
+    food.style.setProperty("--reorder-shift", `${direction * step}px`);
+    food.classList.add("is-reorder-shifting");
+    shifted.push(food);
+  });
+
+  placement.row.classList.add("is-reordering");
+  drag.previewRow = placement.row;
+  drag.previewItems = shifted;
+  drag.previewTarget = dropTarget;
+  drag.previewIndex = placement.insertionIndex;
 }
 
 function cleanupFridgeDrag({ suppressClick = false } = {}) {
@@ -3256,11 +3356,13 @@ function beginFridgeDrag() {
   drag.source.classList.add("is-dragging");
   drag.source.setAttribute("aria-grabbed", "true");
   document.body.classList.add("is-fridge-dragging");
+  drag.foodCenters = new Map(
+    [...elements.fridgeScene.querySelectorAll("[data-drag-item]")].map((food) => {
+      const foodRect = food.getBoundingClientRect();
+      return [food.dataset.dragItem, foodRect.left + foodRect.width / 2];
+    })
+  );
   navigator.vibrate?.(18);
-}
-
-function shouldPlaceAfterTarget(pointerX, targetRect) {
-  return pointerX >= targetRect.left + targetRect.width / 2;
 }
 
 function updateFridgeDrag(event) {
@@ -3288,16 +3390,16 @@ function updateFridgeDrag(event) {
     drag.dropTarget?.classList.add("is-drop-target");
   }
 
-  const targetFood = hovered?.closest("[data-drag-item]");
-  drag.targetId = targetFood?.dataset.dragItem === drag.itemId
-    ? null
-    : targetFood?.dataset.dragItem || null;
-  if (targetFood && drag.targetId) {
-    const rect = targetFood.getBoundingClientRect();
-    drag.placeAfter = shouldPlaceAfterTarget(event.clientX, rect);
-  } else {
-    drag.placeAfter = false;
-  }
+  if (!dropTarget) return;
+  const placement = dropPlacementForPointer(
+    dropTarget,
+    drag.source,
+    event.clientX,
+    drag.foodCenters
+  );
+  drag.targetId = placement.targetId;
+  drag.placeAfter = placement.placeAfter;
+  updateFridgeReorderPreview(drag, dropTarget, placement);
 }
 
 function finishFridgeDrag(event) {
@@ -3438,6 +3540,11 @@ elements.fridgeScene.addEventListener("pointerdown", (event) => {
     dropTarget: null,
     targetId: null,
     placeAfter: false,
+    previewRow: null,
+    previewItems: [],
+    previewTarget: null,
+    previewIndex: null,
+    foodCenters: null,
     timer: setTimeout(beginFridgeDrag, 280)
   };
   source.setPointerCapture?.(event.pointerId);
