@@ -1461,6 +1461,8 @@ const RECEIPT_RULES = [
 
 const INVENTORY_UNITS = ["個", "g", "ml", "本", "株", "袋", "パック", "膳", "切れ", "缶", "枚"];
 const INVENTORY_LOCATIONS = ["冷蔵", "冷凍", "常温"];
+const STORAGE_SHELF_COUNTS = { 冷蔵: 3, 冷凍: 1, 常温: 2 };
+const STORAGE_SHELF_CAPACITIES = { 冷蔵: 5, 冷凍: 5, 常温: 4 };
 
 const state = {
   inventory: [],
@@ -1702,7 +1704,44 @@ function inventoryMap() {
   return map;
 }
 
+function ensureInventoryShelves() {
+  let changed = false;
+
+  for (const location of INVENTORY_LOCATIONS) {
+    const shelfCount = STORAGE_SHELF_COUNTS[location];
+    const items = state.inventory.filter((item) =>
+      item.location === location && item.active !== false && item.quantity > 0
+    );
+    const assigned = items.filter((item) =>
+      Number.isInteger(item.shelf) && item.shelf >= 0 && item.shelf < shelfCount
+    );
+    const missing = items.filter((item) => !assigned.includes(item));
+    if (!missing.length) continue;
+
+    if (!assigned.length) {
+      missing.forEach((item, index) => {
+        item.shelf = Math.min(shelfCount - 1, Math.floor((index * shelfCount) / missing.length));
+        changed = true;
+      });
+      continue;
+    }
+
+    const shelfSizes = Array.from({ length: shelfCount }, (_, shelf) =>
+      assigned.filter((item) => item.shelf === shelf).length
+    );
+    missing.forEach((item) => {
+      const shelf = shelfSizes.indexOf(Math.min(...shelfSizes));
+      item.shelf = shelf;
+      shelfSizes[shelf] += 1;
+      changed = true;
+    });
+  }
+
+  if (changed) persistInventory();
+}
+
 function renderInventory() {
+  ensureInventoryShelves();
   const active = activeInventory();
   const filtered = active.filter((item) => state.location === "すべて" || item.location === state.location);
   renderFridgeScene(active);
@@ -1752,37 +1791,47 @@ function renderPantryShelf(items, emptyText) {
   return `<div class="pantry-foods">${items.map(renderFridgeFood).join("")}</div>`;
 }
 
+function itemsOnShelf(active, location, shelf) {
+  return active.filter((item) => item.location === location && item.shelf === shelf);
+}
+
 function renderFridgeScene(active) {
   const frozen = active.filter((item) => item.location === "冷凍");
   const chilled = active.filter((item) => item.location === "冷蔵");
   const pantry = active.filter((item) => item.location === "常温");
-  const visibleFrozen = frozen.slice(0, 4);
-  const visibleChilled = chilled.slice(0, 12);
-  const visiblePantry = pantry.slice(0, 8);
-  const firstShelfEnd = Math.ceil(visibleChilled.length / 3);
-  const secondShelfEnd = Math.ceil((visibleChilled.length * 2) / 3);
-  const pantryShelfEnd = Math.ceil(visiblePantry.length / 2);
-  const hiddenFridgeCount = Math.max(0, frozen.length - visibleFrozen.length)
-    + Math.max(0, chilled.length - visibleChilled.length);
-  const hiddenPantryCount = Math.max(0, pantry.length - visiblePantry.length);
+  const frozenShelf = itemsOnShelf(active, "冷凍", 0);
+  const chilledShelves = [0, 1, 2].map((shelf) => itemsOnShelf(active, "冷蔵", shelf));
+  const pantryShelves = [0, 1].map((shelf) => itemsOnShelf(active, "常温", shelf));
+  const visibleFrozen = frozenShelf.slice(0, STORAGE_SHELF_CAPACITIES.冷凍);
+  const visibleChilledShelves = chilledShelves.map((items) =>
+    items.slice(0, STORAGE_SHELF_CAPACITIES.冷蔵)
+  );
+  const visiblePantryShelves = pantryShelves.map((items) =>
+    items.slice(0, STORAGE_SHELF_CAPACITIES.常温)
+  );
+  const hiddenFridgeCount = frozenShelf.length - visibleFrozen.length
+    + chilledShelves.reduce((count, items, shelf) =>
+      count + items.length - visibleChilledShelves[shelf].length, 0);
+  const hiddenPantryCount = pantryShelves.reduce((count, items, shelf) =>
+    count + items.length - visiblePantryShelves[shelf].length, 0);
 
   elements.fridgeScene.innerHTML = `
     <div class="fridge-appliance">
-      <div class="fridge-freezer" data-drop-location="冷凍">
+      <div class="fridge-freezer" data-drop-location="冷凍" data-drop-shelf="0">
         <span class="fridge-compartment-label">冷凍室</span>
         ${renderFridgeShelf(visibleFrozen, "冷凍食材はまだありません")}
       </div>
       <div class="fridge-chamber">
         <span class="fridge-light" aria-hidden="true"></span>
         <span class="fridge-compartment-label">冷蔵室</span>
-        <div class="fridge-shelf" data-drop-location="冷蔵">
-          ${renderFridgeShelf(visibleChilled.slice(0, firstShelfEnd), "冷蔵食材を入れてみましょう")}
+        <div class="fridge-shelf" data-drop-location="冷蔵" data-drop-shelf="0">
+          ${renderFridgeShelf(visibleChilledShelves[0], "冷蔵食材を入れてみましょう")}
         </div>
-        <div class="fridge-shelf" data-drop-location="冷蔵">
-          ${renderFridgeShelf(visibleChilled.slice(firstShelfEnd, secondShelfEnd), "この棚は空いています")}
+        <div class="fridge-shelf" data-drop-location="冷蔵" data-drop-shelf="1">
+          ${renderFridgeShelf(visibleChilledShelves[1], "この棚は空いています")}
         </div>
-        <div class="fridge-shelf" data-drop-location="冷蔵">
-          ${renderFridgeShelf(visibleChilled.slice(secondShelfEnd), "この棚は空いています")}
+        <div class="fridge-shelf" data-drop-location="冷蔵" data-drop-shelf="2">
+          ${renderFridgeShelf(visibleChilledShelves[2], "この棚は空いています")}
         </div>
       </div>
       <div class="fridge-crisper">
@@ -1802,11 +1851,11 @@ function renderFridgeScene(active) {
       </div>
       <div class="pantry-cabinet">
         <div class="pantry-top" aria-hidden="true"></div>
-        <div class="pantry-compartment" data-drop-location="常温">
-          ${renderPantryShelf(visiblePantry.slice(0, pantryShelfEnd), "乾物や缶詰の棚")}
+        <div class="pantry-compartment" data-drop-location="常温" data-drop-shelf="0">
+          ${renderPantryShelf(visiblePantryShelves[0], "乾物や缶詰の棚")}
         </div>
-        <div class="pantry-compartment" data-drop-location="常温">
-          ${renderPantryShelf(visiblePantry.slice(pantryShelfEnd), "調味料や主食の棚")}
+        <div class="pantry-compartment" data-drop-location="常温" data-drop-shelf="1">
+          ${renderPantryShelf(visiblePantryShelves[1], "調味料や主食の棚")}
         </div>
         <div class="pantry-base">
           <span>常温ストック</span>
@@ -2601,6 +2650,7 @@ function addOrMergeInventoryItem({ name, quantity, unit, location, priority = fa
   );
 
   if (existing) {
+    if (existing.location !== location || existing.active === false) delete existing.shelf;
     existing.quantity = existing.active !== false && existing.unit === unit
       ? Number((existing.quantity + quantity).toFixed(2))
       : quantity;
@@ -2711,6 +2761,7 @@ function saveIngredient(event) {
   if (editingId) {
     const item = state.inventory.find((candidate) => candidate.id === editingId);
     if (item) {
+      if (item.location !== location) delete item.shelf;
       Object.assign(item, {
         name,
         quantity,
@@ -2901,16 +2952,45 @@ function renderAll() {
   renderCookingHistory();
 }
 
-function moveInventoryItem(itemId, targetLocation, targetId = null, placeAfter = false) {
+function moveInventoryItem(itemId, targetLocation, targetShelf, targetId = null, placeAfter = false) {
   const sourceIndex = state.inventory.findIndex((item) => item.id === itemId);
-  if (sourceIndex < 0 || !INVENTORY_LOCATIONS.includes(targetLocation)) return false;
+  const shelfCount = STORAGE_SHELF_COUNTS[targetLocation];
+  if (
+    sourceIndex < 0
+    || !INVENTORY_LOCATIONS.includes(targetLocation)
+    || !Number.isInteger(targetShelf)
+    || targetShelf < 0
+    || targetShelf >= shelfCount
+  ) return false;
 
-  const [item] = state.inventory.splice(sourceIndex, 1);
+  const item = state.inventory[sourceIndex];
   const previousLocation = item.location;
+  const previousShelf = item.shelf;
+  const targetShelfSize = state.inventory.filter((candidate) =>
+    candidate.id !== itemId
+    && candidate.location === targetLocation
+    && candidate.shelf === targetShelf
+    && candidate.active !== false
+    && candidate.quantity > 0
+  ).length;
+  if (
+    targetShelfSize >= STORAGE_SHELF_CAPACITIES[targetLocation]
+    && (previousLocation !== targetLocation || previousShelf !== targetShelf)
+  ) {
+    showToast("この段はいっぱいです");
+    return false;
+  }
+
+  state.inventory.splice(sourceIndex, 1);
   item.location = targetLocation;
+  item.shelf = targetShelf;
 
   const targetIndex = targetId
-    ? state.inventory.findIndex((candidate) => candidate.id === targetId)
+    ? state.inventory.findIndex((candidate) =>
+      candidate.id === targetId
+      && candidate.location === targetLocation
+      && candidate.shelf === targetShelf
+    )
     : -1;
 
   if (targetIndex >= 0) {
@@ -2919,7 +2999,12 @@ function moveInventoryItem(itemId, targetLocation, targetId = null, placeAfter =
     let insertAt = state.inventory.length;
     for (let index = state.inventory.length - 1; index >= 0; index -= 1) {
       const candidate = state.inventory[index];
-      if (candidate.location === targetLocation && candidate.active !== false && candidate.quantity > 0) {
+      if (
+        candidate.location === targetLocation
+        && candidate.shelf === targetShelf
+        && candidate.active !== false
+        && candidate.quantity > 0
+      ) {
         insertAt = index + 1;
         break;
       }
@@ -2929,9 +3014,12 @@ function moveInventoryItem(itemId, targetLocation, targetId = null, placeAfter =
 
   persistInventory();
   renderAll();
-  showToast(previousLocation === targetLocation
-    ? `${item.name}の並び順を変更しました`
-    : `${item.name}を${targetLocation}へ移しました`);
+  const message = previousLocation !== targetLocation
+    ? `${item.name}を${targetLocation}へ移しました`
+    : previousShelf !== targetShelf
+      ? `${item.name}を${targetShelf + 1}段目へ移しました`
+      : `${item.name}の並び順を変更しました`;
+  showToast(message);
   return true;
 }
 
@@ -3033,12 +3121,14 @@ function finishFridgeDrag(event) {
 
   event.preventDefault();
   const location = drag.dropTarget?.dataset.dropLocation || null;
-  const shouldMove = drag.distance >= 8 && location;
+  const shelf = drag.dropTarget?.dataset.dropShelf;
+  const targetShelf = shelf === undefined ? null : Number(shelf);
+  const shouldMove = drag.distance >= 8 && location && Number.isInteger(targetShelf);
   const itemId = drag.itemId;
   const targetId = drag.targetId;
   const placeAfter = drag.placeAfter;
   cleanupFridgeDrag({ suppressClick: true });
-  if (shouldMove) moveInventoryItem(itemId, location, targetId, placeAfter);
+  if (shouldMove) moveInventoryItem(itemId, location, targetShelf, targetId, placeAfter);
 }
 
 document.querySelector("#add-ingredient").addEventListener("click", () => openIngredientDialog());
@@ -3121,7 +3211,11 @@ elements.receiptDialog.addEventListener("click", (event) => {
 
 elements.fridgeScene.addEventListener("pointerdown", (event) => {
   const source = event.target.closest("[data-drag-item]");
-  if (!source || (event.pointerType === "mouse" && event.button !== 0)) return;
+  if (
+    state.fridgeDrag
+    || !source
+    || (event.pointerType === "mouse" && event.button !== 0)
+  ) return;
 
   state.fridgeDrag = {
     pointerId: event.pointerId,
