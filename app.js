@@ -1756,9 +1756,10 @@ function renderFridgeScene(active) {
   const chilled = active.filter((item) => item.location === "冷蔵");
   const pantry = active.filter((item) => item.location === "常温");
   const visibleFrozen = frozen.slice(0, 4);
-  const visibleChilled = chilled.slice(0, 8);
+  const visibleChilled = chilled.slice(0, 12);
   const visiblePantry = pantry.slice(0, 8);
-  const firstShelfEnd = Math.ceil(visibleChilled.length / 2);
+  const firstShelfEnd = Math.ceil(visibleChilled.length / 3);
+  const secondShelfEnd = Math.ceil((visibleChilled.length * 2) / 3);
   const pantryShelfEnd = Math.ceil(visiblePantry.length / 2);
   const hiddenFridgeCount = Math.max(0, frozen.length - visibleFrozen.length)
     + Math.max(0, chilled.length - visibleChilled.length);
@@ -1777,7 +1778,10 @@ function renderFridgeScene(active) {
           ${renderFridgeShelf(visibleChilled.slice(0, firstShelfEnd), "冷蔵食材を入れてみましょう")}
         </div>
         <div class="fridge-shelf">
-          ${renderFridgeShelf(visibleChilled.slice(firstShelfEnd), "この棚は空いています")}
+          ${renderFridgeShelf(visibleChilled.slice(firstShelfEnd, secondShelfEnd), "この棚は空いています")}
+        </div>
+        <div class="fridge-shelf">
+          ${renderFridgeShelf(visibleChilled.slice(secondShelfEnd), "この棚は空いています")}
         </div>
       </div>
       <div class="fridge-crisper">

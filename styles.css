@@ -276,7 +276,7 @@ h3 {
 }
 
 .fridge-chamber {
-  min-height: 244px;
+  min-height: 278px;
   margin-top: 7px;
   padding: 27px 10px 7px;
 }
@@ -303,9 +303,9 @@ h3 {
 }
 
 .fridge-shelf {
-  min-height: 99px;
-  padding: 6px 1px 9px;
-  border-bottom: 5px solid #aebdb5;
+  min-height: 78px;
+  padding: 2px 1px 4px;
+  border-bottom: 4px solid #aebdb5;
   box-shadow: 0 3px 0 rgb(255 255 255 / 80%);
 }
 
@@ -318,7 +318,7 @@ h3 {
   grid-template-columns: repeat(auto-fit, 56px);
   justify-content: center;
   align-items: end;
-  min-height: 70px;
+  min-height: 64px;
   gap: 0 1px;
 }
 
@@ -329,7 +329,7 @@ h3 {
   align-content: end;
   width: 56px;
   min-width: 0;
-  min-height: 68px;
+  min-height: 62px;
   padding: 1px 0 0;
   border: 0;
   background: transparent;
