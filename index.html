@@ -6,9 +6,9 @@
   <meta name="theme-color" content="#f3f0e6">
   <meta name="description" content="冷蔵庫の在庫を管理し、残っている食材から今日作れる料理を提案するスマホ向けプロトタイプ">
   <title>冷蔵庫の現在地</title>
-  <link rel="stylesheet" href="styles.css?v=39">
+  <link rel="stylesheet" href="styles.css?v=40">
   <script src="vendor/tesseract/tesseract.min.js?v=7.0.0" defer></script>
-  <script src="app.js?v=44" defer></script>
+  <script src="app.js?v=45" defer></script>
 </head>
 <body>
   <div class="app-shell">
@@ -74,7 +74,7 @@
         <p class="privacy-note">在庫データは、この端末のブラウザ内だけに保存されます。</p>
       </section>
 
-      <section class="view" id="suggestions-view" aria-labelledby="suggestions-title" hidden>
+      <section class="view" id="suggestions-view" aria-label="レシピ" hidden>
         <section class="today-ingredient-control" aria-labelledby="today-ingredient-title">
           <button
             class="today-ingredient-trigger"
@@ -98,14 +98,6 @@
             </select>
           </label>
         </section>
-
-        <div class="suggestion-heading">
-          <div>
-            <p class="eyebrow">冷蔵庫から、ひとつ決める</p>
-            <h2 id="suggestions-title">今日のごはん</h2>
-          </div>
-          <button class="button button-secondary" type="button" id="review-inventory">在庫管理</button>
-        </div>
 
         <div class="recipe-list" id="recipe-list" aria-live="polite"></div>
         <div class="recipe-more" id="recipe-more">

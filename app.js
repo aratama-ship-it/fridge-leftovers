@@ -3,7 +3,7 @@ const SHOPPING_STORAGE_KEY = "fridge-leftovers-shopping-v1";
 const COOKING_HISTORY_STORAGE_KEY = "fridge-leftovers-cooking-history-v1";
 const SHELF_COUNTS_STORAGE_KEY = "fridge-leftovers-shelf-counts-v1";
 const RECENT_INGREDIENTS_STORAGE_KEY = "fridge-leftovers-recent-ingredients-v1";
-const APP_VERSION = "0.7.1";
+const APP_VERSION = "0.7.2";
 const RECIPE_PAGE_SIZE = 3;
 const RECIPE_LIST_SERVINGS = 1;
 
@@ -4031,7 +4031,6 @@ document.querySelector("#close-dialog").addEventListener("click", closeIngredien
 document.querySelector("#cancel-dialog").addEventListener("click", closeIngredientDialog);
 document.querySelector("#consume-ingredient").addEventListener("click", consumeCurrentIngredient);
 document.querySelector("#delete-ingredient").addEventListener("click", deleteCurrentIngredient);
-document.querySelector("#review-inventory").addEventListener("click", () => showView("management"));
 document.querySelector("#close-receipt-dialog").addEventListener("click", closeReceiptDialog);
 document.querySelector("#cancel-receipt-dialog").addEventListener("click", closeReceiptDialog);
 document.querySelector("#receipt-manual-add").addEventListener("click", () => {

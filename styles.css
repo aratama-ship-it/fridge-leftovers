@@ -90,7 +90,6 @@ summary:focus-visible {
 }
 
 .header-line,
-.suggestion-heading,
 .dialog-head {
   display: flex;
   align-items: flex-start;
@@ -1157,11 +1156,6 @@ body.is-fridge-dragging .food-consume-station {
   color: var(--muted);
   font-size: 0.75rem;
   line-height: 1.6;
-}
-
-.suggestion-heading {
-  align-items: center;
-  margin: 24px 0 18px;
 }
 
 .today-ingredient-control {
