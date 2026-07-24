@@ -2,7 +2,7 @@ const STORAGE_KEY = "fridge-leftovers-inventory-v2";
 const SHOPPING_STORAGE_KEY = "fridge-leftovers-shopping-v1";
 const COOKING_HISTORY_STORAGE_KEY = "fridge-leftovers-cooking-history-v1";
 const SHELF_COUNTS_STORAGE_KEY = "fridge-leftovers-shelf-counts-v1";
-const APP_VERSION = "0.1.0";
+const APP_VERSION = "0.2.0";
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
@@ -1738,6 +1738,19 @@ function inventoryMap() {
   return map;
 }
 
+function ensureInventoryGaugeBaselines() {
+  let changed = false;
+  state.inventory.forEach((item) => {
+    if (item.active === false || item.quantity <= 0) return;
+    const maxQuantity = Number(item.maxQuantity);
+    if (!Number.isFinite(maxQuantity) || maxQuantity <= 0 || maxQuantity < item.quantity) {
+      item.maxQuantity = item.quantity;
+      changed = true;
+    }
+  });
+  if (changed) persistInventory();
+}
+
 function ensureInventoryShelves() {
   let changed = false;
 
@@ -1775,6 +1788,7 @@ function ensureInventoryShelves() {
 }
 
 function renderInventory() {
+  ensureInventoryGaugeBaselines();
   ensureInventoryShelves();
   const active = activeInventory();
   const filtered = active.filter((item) => state.location === "すべて" || item.location === state.location);
@@ -1802,14 +1816,19 @@ function renderInventory() {
   `).join("");
 }
 
-function isLowInventoryItem(item) {
-  return item.quantity <= item.step * 1.5;
+function inventoryLevel(item) {
+  const maxQuantity = Number(item.maxQuantity);
+  if (!Number.isFinite(maxQuantity) || maxQuantity <= 0) return 1;
+  return Math.max(0, Math.min(1, item.quantity / maxQuantity));
 }
 
 function renderFridgeFood(item) {
-  const low = isLowInventoryItem(item);
+  const level = inventoryLevel(item);
+  const percentage = Math.round(level * 100);
+  const levelClass = level <= 0.25 ? " is-critical" : level <= 0.5 ? " is-warning" : "";
   return `
-    <button class="fridge-food${item.priority ? " is-priority" : ""}${low ? " is-low" : ""}" type="button" data-fridge-edit="${escapeHtml(item.id)}" data-drag-item="${escapeHtml(item.id)}" aria-label="${escapeHtml(item.name)} ${low ? "少なめ" : "あります"}。タップで在庫を編集、長押しで棚を移動">
+    <button class="fridge-food${item.priority ? " is-priority" : ""}" type="button" data-fridge-edit="${escapeHtml(item.id)}" data-drag-item="${escapeHtml(item.id)}" aria-label="${escapeHtml(item.name)}、残量約${percentage}パーセント。タップで在庫を編集、長押しで棚を移動">
+      <span class="food-hp-gauge${levelClass}" aria-hidden="true"><span style="--food-level:${percentage}%"></span></span>
       ${renderIngredientIllustration(item.id, item.name)}
     </button>
   `;
@@ -2689,10 +2708,15 @@ function addOrMergeInventoryItem({ name, quantity, unit, location, priority = fa
   );
 
   if (existing) {
-    if (existing.location !== location || existing.active === false) delete existing.shelf;
-    existing.quantity = existing.active !== false && existing.unit === unit
+    const wasInactive = existing.active === false;
+    const sameUnit = existing.unit === unit;
+    if (existing.location !== location || wasInactive) delete existing.shelf;
+    existing.quantity = !wasInactive && sameUnit
       ? Number((existing.quantity + quantity).toFixed(2))
       : quantity;
+    existing.maxQuantity = wasInactive || !sameUnit
+      ? existing.quantity
+      : Math.max(Number(existing.maxQuantity) || 0, existing.quantity);
     existing.unit = unit;
     existing.location = location;
     existing.priority = existing.priority || priority;
@@ -2712,7 +2736,8 @@ function addOrMergeInventoryItem({ name, quantity, unit, location, priority = fa
     priority,
     active: true,
     confirmedAt: todayIso(),
-    step: stepForUnit(unit)
+    step: stepForUnit(unit),
+    maxQuantity: quantity
   });
   return "added";
 }
@@ -2806,6 +2831,9 @@ function saveIngredient(event) {
   if (editingId) {
     const item = state.inventory.find((candidate) => candidate.id === editingId);
     if (item) {
+      const maxQuantity = item.unit === unit
+        ? Math.max(Number(item.maxQuantity) || 0, quantity)
+        : quantity;
       if (item.location !== location) delete item.shelf;
       Object.assign(item, {
         name,
@@ -2815,7 +2843,8 @@ function saveIngredient(event) {
         priority: elements.ingredientPriority.checked,
         active: true,
         confirmedAt: todayIso(),
-        step: stepForUnit(unit)
+        step: stepForUnit(unit),
+        maxQuantity
       });
       showToast(`${name}を更新しました`);
     }
@@ -3378,6 +3407,7 @@ elements.inventoryList.addEventListener("click", (event) => {
   if (button.dataset.action === "increase") {
     updateItem(item.id, (current) => {
       current.quantity = Number((current.quantity + current.step).toFixed(2));
+      current.maxQuantity = Math.max(Number(current.maxQuantity) || 0, current.quantity);
       current.confirmedAt = todayIso();
     });
   }
