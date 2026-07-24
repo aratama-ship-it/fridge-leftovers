@@ -6,9 +6,9 @@
   <meta name="theme-color" content="#f3f0e6">
   <meta name="description" content="冷蔵庫の在庫を管理し、残っている食材から今日作れる料理を提案するスマホ向けプロトタイプ">
   <title>冷蔵庫の現在地</title>
-  <link rel="stylesheet" href="styles.css?v=32">
+  <link rel="stylesheet" href="styles.css?v=33">
   <script src="vendor/tesseract/tesseract.min.js?v=7.0.0" defer></script>
-  <script src="app.js?v=35" defer></script>
+  <script src="app.js?v=36" defer></script>
 </head>
 <body>
   <div class="app-shell">
@@ -89,6 +89,7 @@
             <div class="serving-buttons" id="serving-buttons">
               <button type="button" class="choice-button is-active" data-servings="1" aria-pressed="true">1人</button>
               <button type="button" class="choice-button" data-servings="2" aria-pressed="false">2人</button>
+              <button type="button" class="choice-button" data-servings="3" aria-pressed="false">3人</button>
               <button type="button" class="choice-button" data-servings="4" aria-pressed="false">4人</button>
             </div>
           </fieldset>
@@ -330,6 +331,37 @@
       <div class="dialog-actions receipt-dialog-actions">
         <button class="button button-secondary" type="button" id="cancel-receipt-dialog">キャンセル</button>
         <button class="button button-primary" type="submit" id="add-receipt-candidates" disabled>選択した食材を追加</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog class="ingredient-dialog cook-confirm-dialog" id="cook-confirm-dialog" aria-labelledby="cook-confirm-title">
+    <form id="cook-confirm-form">
+      <div class="dialog-head">
+        <div>
+          <p class="eyebrow">作る前の確認</p>
+          <h2 id="cook-confirm-title">何人分作りますか？</h2>
+        </div>
+        <button class="icon-button" type="button" id="close-cook-confirm" aria-label="閉じる">×</button>
+      </div>
+
+      <p class="cook-confirm-recipe" id="cook-confirm-recipe"></p>
+
+      <fieldset class="cook-serving-fieldset">
+        <legend>作る人数</legend>
+        <div class="cook-serving-options" id="cook-serving-options">
+          <button class="cook-serving-button" type="button" data-cook-servings="1" aria-pressed="false"><strong>1</strong><span>人分</span></button>
+          <button class="cook-serving-button" type="button" data-cook-servings="2" aria-pressed="false"><strong>2</strong><span>人分</span></button>
+          <button class="cook-serving-button" type="button" data-cook-servings="3" aria-pressed="false"><strong>3</strong><span>人分</span></button>
+          <button class="cook-serving-button" type="button" data-cook-servings="4" aria-pressed="false"><strong>4</strong><span>人分</span></button>
+        </div>
+      </fieldset>
+
+      <p class="cook-confirm-message" id="cook-confirm-message" aria-live="polite"></p>
+
+      <div class="dialog-actions">
+        <button class="button button-secondary" type="button" id="cancel-cook-confirm">キャンセル</button>
+        <button class="button button-primary cook-confirm-button" type="submit" id="confirm-cook">この人数で作る</button>
       </div>
     </form>
   </dialog>

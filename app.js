@@ -2,7 +2,7 @@ const STORAGE_KEY = "fridge-leftovers-inventory-v2";
 const SHOPPING_STORAGE_KEY = "fridge-leftovers-shopping-v1";
 const COOKING_HISTORY_STORAGE_KEY = "fridge-leftovers-cooking-history-v1";
 const SHELF_COUNTS_STORAGE_KEY = "fridge-leftovers-shelf-counts-v1";
-const APP_VERSION = "0.3.4";
+const APP_VERSION = "0.4.0";
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
@@ -1490,7 +1490,9 @@ const state = {
   shelfCounts: { ...DEFAULT_STORAGE_SHELF_COUNTS },
   ingredientNameSuggestion: null,
   dismissedIngredientSuggestionFor: "",
-  ingredientTargetShelf: null
+  ingredientTargetShelf: null,
+  pendingCookRecipeId: null,
+  pendingCookServings: 1
 };
 
 const elements = {
@@ -1545,6 +1547,12 @@ const elements = {
   receiptError: document.querySelector("#receipt-error"),
   receiptErrorMessage: document.querySelector("#receipt-error-message"),
   addReceiptCandidates: document.querySelector("#add-receipt-candidates"),
+  cookConfirmDialog: document.querySelector("#cook-confirm-dialog"),
+  cookConfirmForm: document.querySelector("#cook-confirm-form"),
+  cookConfirmRecipe: document.querySelector("#cook-confirm-recipe"),
+  cookServingOptions: document.querySelector("#cook-serving-options"),
+  cookConfirmMessage: document.querySelector("#cook-confirm-message"),
+  confirmCook: document.querySelector("#confirm-cook"),
   toast: document.querySelector("#toast"),
   toastMessage: document.querySelector("#toast-message"),
   toastAction: document.querySelector("#toast-action"),
@@ -2078,20 +2086,20 @@ function itemForRequirement(requirement) {
   return item;
 }
 
-function requiredAmount(requirement) {
-  return requirement.quantity * state.servings;
+function requiredAmount(requirement, servings = state.servings) {
+  return requirement.quantity * servings;
 }
 
-function shortageFor(recipe) {
+function shortageFor(recipe, servings = state.servings) {
   return recipe.required.filter((requirement) => {
     const item = itemForRequirement(requirement);
-    return !item || item.quantity < requiredAmount(requirement);
+    return !item || item.quantity < requiredAmount(requirement, servings);
   });
 }
 
-function optionalReady(option) {
+function optionalReady(option, servings = state.servings) {
   const item = itemForRequirement(option);
-  return Boolean(item && item.quantity >= option.quantity * state.servings);
+  return Boolean(item && item.quantity >= option.quantity * servings);
 }
 
 function makeShoppingItemId() {
@@ -3104,21 +3112,101 @@ function undoCookingHistoryEntry(historyId) {
   showToast(`${entry.recipeName}の調理を取り消し、食材を戻しました`);
 }
 
-function cookRecipe(recipeId) {
+function setServings(servings, { render = true } = {}) {
+  const next = Number(servings);
+  if (![1, 2, 3, 4].includes(next)) return false;
+  state.servings = next;
+  document.querySelectorAll(".choice-button").forEach((button) => {
+    const active = Number(button.dataset.servings) === next;
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-pressed", String(active));
+  });
+  if (render) renderRecipes();
+  return true;
+}
+
+function updateCookConfirmation() {
+  const recipe = RECIPES.find((candidate) => candidate.id === state.pendingCookRecipeId);
+  if (!recipe) return;
+
+  const servings = state.pendingCookServings;
+  elements.cookServingOptions.querySelectorAll("[data-cook-servings]").forEach((button) => {
+    const active = Number(button.dataset.cookServings) === servings;
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-pressed", String(active));
+  });
+
+  const shortages = shortageFor(recipe, servings);
+  elements.cookConfirmMessage.classList.toggle("is-missing", shortages.length > 0);
+  if (shortages.length) {
+    const missingText = shortages.map((requirement) => {
+      const item = itemForRequirement(requirement);
+      const missing = Math.max(
+        0,
+        requiredAmount(requirement, servings) - (Number(item?.quantity) || 0)
+      );
+      return `${requirement.name} あと${formatQuantity(missing, requirement.unit)}`;
+    }).join("、");
+    elements.cookConfirmMessage.textContent = `${servings}人分には、${missingText}が足りません。`;
+  } else {
+    elements.cookConfirmMessage.textContent = `${servings}人分として、使った食材を在庫から減らします。`;
+  }
+  elements.confirmCook.disabled = shortages.length > 0;
+  elements.confirmCook.textContent = `${servings}人分で作る`;
+}
+
+function openCookConfirmation(recipeId) {
   const recipe = RECIPES.find((candidate) => candidate.id === recipeId);
-  if (!recipe || shortageFor(recipe).length) return;
+  if (!recipe) return;
+
+  state.pendingCookRecipeId = recipe.id;
+  state.pendingCookServings = state.servings;
+  elements.cookConfirmRecipe.textContent = recipe.name;
+  updateCookConfirmation();
+  elements.cookConfirmDialog.showModal();
+  requestAnimationFrame(() => {
+    elements.cookServingOptions
+      .querySelector(`[data-cook-servings="${state.pendingCookServings}"]`)
+      ?.focus();
+  });
+}
+
+function closeCookConfirmation() {
+  state.pendingCookRecipeId = null;
+  state.pendingCookServings = state.servings;
+  if (elements.cookConfirmDialog.open) elements.cookConfirmDialog.close();
+}
+
+function confirmCookRecipe(event) {
+  event.preventDefault();
+  const recipeId = state.pendingCookRecipeId;
+  const servings = state.pendingCookServings;
+  const recipe = RECIPES.find((candidate) => candidate.id === recipeId);
+  if (!recipe || shortageFor(recipe, servings).length) {
+    updateCookConfirmation();
+    return;
+  }
+
+  setServings(servings, { render: false });
+  closeCookConfirmation();
+  cookRecipe(recipeId, servings);
+}
+
+function cookRecipe(recipeId, servings = state.servings) {
+  const recipe = RECIPES.find((candidate) => candidate.id === recipeId);
+  if (!recipe || shortageFor(recipe, servings).length) return;
 
   const used = [...recipe.required];
   recipe.optional.forEach((option) => {
     const key = `${recipe.id}:${option.id}`;
-    if (optionalReady(option) && state.selectedOptionals[key] !== false) used.push(option);
+    if (optionalReady(option, servings) && state.selectedOptionals[key] !== false) used.push(option);
   });
 
   const changes = [];
   used.forEach((ingredient) => {
     const item = itemForRequirement(ingredient);
     if (!item) return;
-    const quantity = ingredient.quantity * state.servings;
+    const quantity = ingredient.quantity * servings;
     changes.push({
       itemId: item.id,
       name: item.name,
@@ -3137,7 +3225,7 @@ function cookRecipe(recipeId) {
     id: makeCookingHistoryId(),
     recipeId: recipe.id,
     recipeName: recipe.name,
-    servings: state.servings,
+    servings,
     cookedAt: new Date().toISOString(),
     undoneAt: null,
     changes
@@ -3576,6 +3664,23 @@ elements.receiptDialog.addEventListener("click", (event) => {
   if (event.target === elements.receiptDialog) closeReceiptDialog();
 });
 
+elements.cookConfirmDialog.addEventListener("click", (event) => {
+  if (event.target === elements.cookConfirmDialog) closeCookConfirmation();
+});
+elements.cookConfirmDialog.addEventListener("close", () => {
+  state.pendingCookRecipeId = null;
+  state.pendingCookServings = state.servings;
+});
+document.querySelector("#close-cook-confirm").addEventListener("click", closeCookConfirmation);
+document.querySelector("#cancel-cook-confirm").addEventListener("click", closeCookConfirmation);
+elements.cookServingOptions.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-cook-servings]");
+  if (!button) return;
+  state.pendingCookServings = Number(button.dataset.cookServings);
+  updateCookConfirmation();
+});
+elements.cookConfirmForm.addEventListener("submit", confirmCookRecipe);
+
 elements.fridgeScene.addEventListener("pointerdown", (event) => {
   const source = event.target.closest("[data-drag-item]");
   if (
@@ -3660,13 +3765,7 @@ document.querySelectorAll(".nav-button").forEach((button) => {
 
 document.querySelectorAll(".choice-button").forEach((button) => {
   button.addEventListener("click", () => {
-    state.servings = Number(button.dataset.servings);
-    document.querySelectorAll(".choice-button").forEach((candidate) => {
-      const active = candidate === button;
-      candidate.classList.toggle("is-active", active);
-      candidate.setAttribute("aria-pressed", String(active));
-    });
-    renderRecipes();
+    setServings(button.dataset.servings);
   });
 });
 
@@ -3728,7 +3827,7 @@ elements.recipeList.addEventListener("change", (event) => {
 
 elements.recipeList.addEventListener("click", (event) => {
   const button = event.target.closest("[data-cook]");
-  if (button) cookRecipe(button.dataset.cook);
+  if (button) openCookConfirmation(button.dataset.cook);
 });
 
 elements.shoppingRecommendations.addEventListener("click", (event) => {

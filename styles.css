@@ -169,6 +169,7 @@ h3 {
 .item-name-button,
 .storage-tab,
 .choice-button,
+.cook-serving-button,
 .nav-button,
 .quantity-button,
 .row-action,
@@ -1044,7 +1045,7 @@ body.is-fridge-dragging {
 
 .serving-buttons {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 7px;
 }
 
@@ -1901,6 +1902,95 @@ input[type="number"] {
 .name-suggestion .button {
   min-height: 40px;
   font-size: 0.75rem;
+}
+
+.cook-confirm-dialog {
+  width: min(calc(100% - 24px), 440px);
+  margin-bottom: 12px;
+  border-radius: 14px;
+}
+
+.cook-confirm-recipe {
+  margin: -5px 0 0;
+  color: var(--ink);
+  font-size: 1.05rem;
+  font-weight: 900;
+  text-align: center;
+}
+
+.cook-serving-fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.cook-serving-fieldset legend {
+  margin-bottom: 9px;
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.cook-serving-options {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.cook-serving-button {
+  display: grid;
+  place-items: center;
+  gap: 1px;
+  min-height: 64px;
+  padding: 7px 2px;
+  border: 1px solid var(--line-strong);
+  border-radius: 7px;
+  background: var(--paper-raised);
+  color: var(--ink);
+}
+
+.cook-serving-button strong {
+  font-family: sans-serif;
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.cook-serving-button span {
+  color: var(--muted);
+  font-size: 0.65rem;
+  font-weight: 800;
+}
+
+.cook-serving-button.is-active {
+  border-color: var(--leaf);
+  background: var(--leaf);
+  color: #fff;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 28%);
+}
+
+.cook-serving-button.is-active span {
+  color: #fff;
+}
+
+.cook-confirm-message {
+  min-height: 44px;
+  margin: 0;
+  padding: 10px 12px;
+  border-left: 4px solid var(--leaf);
+  background: rgb(47 100 75 / 8%);
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.55;
+}
+
+.cook-confirm-message.is-missing {
+  border-left-color: var(--warm);
+  background: rgb(177 76 46 / 8%);
+  color: var(--warm);
+}
+
+.cook-confirm-button:disabled {
+  opacity: 0.42;
 }
 
 .dialog-head {
