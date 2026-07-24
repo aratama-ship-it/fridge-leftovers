@@ -1165,12 +1165,12 @@ body.is-fridge-dragging .food-consume-station {
 
 .today-ingredient-trigger {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 74px;
+  grid-template-columns: minmax(0, 1fr) 82px;
   align-items: center;
-  gap: 8px;
+  gap: 5px;
   width: 100%;
-  min-height: 82px;
-  padding: 8px 8px 8px 13px;
+  min-height: 76px;
+  padding: 2px 5px 2px 12px;
   border: 2px solid #6e8b78;
   border-left-width: 7px;
   border-radius: 8px;
@@ -1188,19 +1188,12 @@ body.is-fridge-dragging .food-consume-station {
 
 .today-ingredient-copy {
   display: grid;
-  gap: 2px;
+  gap: 1px;
   min-width: 0;
 }
 
-.today-ingredient-copy small {
-  color: var(--leaf);
-  font-size: 0.61rem;
-  font-weight: 800;
-  letter-spacing: 0.11em;
-}
-
 .today-ingredient-copy strong {
-  font-size: 1rem;
+  font-size: 0.96rem;
   line-height: 1.25;
 }
 
@@ -1219,8 +1212,8 @@ body.is-fridge-dragging .food-consume-station {
   position: relative;
   display: grid;
   place-items: center;
-  width: 70px;
-  height: 64px;
+  width: 80px;
+  height: 70px;
   justify-self: end;
 }
 
@@ -1232,10 +1225,14 @@ body.is-fridge-dragging .food-consume-station {
     rotate(calc((var(--priority-art-index) - 1) * 6deg));
 }
 
+.today-ingredient-art-piece:only-child {
+  transform: none;
+}
+
 .today-ingredient-art-piece .ingredient-illustration,
 .today-ingredient-art-piece .ingredient-initial {
-  width: 58px;
-  height: 58px;
+  width: 70px;
+  height: 70px;
   filter: drop-shadow(0 2px 2px rgb(37 52 43 / 18%));
 }
 

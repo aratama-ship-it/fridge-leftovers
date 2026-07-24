@@ -3,7 +3,7 @@ const SHOPPING_STORAGE_KEY = "fridge-leftovers-shopping-v1";
 const COOKING_HISTORY_STORAGE_KEY = "fridge-leftovers-cooking-history-v1";
 const SHELF_COUNTS_STORAGE_KEY = "fridge-leftovers-shelf-counts-v1";
 const RECENT_INGREDIENTS_STORAGE_KEY = "fridge-leftovers-recent-ingredients-v1";
-const APP_VERSION = "0.7.2";
+const APP_VERSION = "0.7.3";
 const RECIPE_PAGE_SIZE = 3;
 const RECIPE_LIST_SERVINGS = 1;
 
@@ -2657,8 +2657,6 @@ function setTodayIngredientPriority(selectedId) {
   state.visibleRecipeCount = RECIPE_PAGE_SIZE;
   persistInventory();
   renderAll();
-  const selected = activeInventory().find((item) => item.id === selectedId);
-  showToast(selected ? `${selected.name}を使う料理を優先します` : "食材の指定を解除しました");
 }
 
 function openTodayIngredientDialog() {
