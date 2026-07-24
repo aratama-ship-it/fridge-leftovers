@@ -2017,6 +2017,67 @@ input[type="number"] {
   font-weight: 700;
 }
 
+.ingredient-receipt-shortcut {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) 16px;
+  align-items: center;
+  gap: 10px;
+  min-height: 66px;
+  padding: 8px 11px 8px 10px;
+  border: 1px solid #9aac9f;
+  border-left: 5px solid #557766;
+  border-radius: 7px;
+  background: #edf3ed;
+  color: var(--ink);
+  text-align: left;
+}
+
+.ingredient-receipt-shortcut[hidden] {
+  display: none;
+}
+
+.ingredient-receipt-shortcut:active,
+.ingredient-receipt-shortcut:focus-visible {
+  border-color: var(--leaf);
+  outline: 2px solid var(--leaf);
+  outline-offset: 2px;
+  background: #e3eee5;
+}
+
+.ingredient-receipt-shortcut > span:nth-child(2) {
+  display: grid;
+  gap: 2px;
+}
+
+.ingredient-receipt-shortcut strong {
+  font-size: 0.82rem;
+}
+
+.ingredient-receipt-shortcut small {
+  color: var(--muted);
+  font-size: 0.65rem;
+}
+
+.ingredient-receipt-icon {
+  justify-self: center;
+  width: 29px;
+  height: 39px;
+  border: 1px solid #6c7b72;
+  background:
+    linear-gradient(#b85f49, #b85f49) 6px 28px / 16px 2px no-repeat,
+    repeating-linear-gradient(180deg, #89978e 0 1px, transparent 1px 6px) 6px 7px / 16px 16px no-repeat,
+    #fffdf6;
+  box-shadow: 2px 2px 0 rgb(75 91 82 / 14%);
+  clip-path: polygon(0 0, 100% 0, 100% 92%, 84% 100%, 67% 92%, 50% 100%, 33% 92%, 16% 100%, 0 92%);
+}
+
+.ingredient-receipt-arrow {
+  color: #557766;
+  font-family: sans-serif;
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
 .ingredient-picker[hidden],
 .ingredient-picker-layer[hidden],
 .ingredient-details[hidden],

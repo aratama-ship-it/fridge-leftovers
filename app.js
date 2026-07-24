@@ -3,7 +3,7 @@ const SHOPPING_STORAGE_KEY = "fridge-leftovers-shopping-v1";
 const COOKING_HISTORY_STORAGE_KEY = "fridge-leftovers-cooking-history-v1";
 const SHELF_COUNTS_STORAGE_KEY = "fridge-leftovers-shelf-counts-v1";
 const RECENT_INGREDIENTS_STORAGE_KEY = "fridge-leftovers-recent-ingredients-v1";
-const APP_VERSION = "0.6.1";
+const APP_VERSION = "0.6.2";
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
@@ -1595,6 +1595,7 @@ const elements = {
   ingredientPickerReselect: document.querySelector("#ingredient-picker-reselect"),
   ingredientDetails: document.querySelector("#ingredient-details"),
   selectedIngredientPreview: document.querySelector("#selected-ingredient-preview"),
+  ingredientReceiptShortcut: document.querySelector("#ingredient-receipt-shortcut"),
   ingredientNameField: document.querySelector("#ingredient-name-field"),
   ingredientName: document.querySelector("#ingredient-name"),
   nameSuggestion: document.querySelector("#name-suggestion"),
@@ -3172,6 +3173,7 @@ function openIngredientDialog(item = null, preferredLocation = null, preferredSh
   elements.ingredientDetails.hidden = true;
   elements.selectedIngredientPreview.hidden = true;
   elements.ingredientNameField.hidden = false;
+  elements.ingredientReceiptShortcut.hidden = Boolean(item);
   if (item) {
     showIngredientDetails({ editing: true });
     elements.dialogTitle.textContent = `${item.name}の在庫`;
@@ -3913,12 +3915,16 @@ elements.ingredientPickerReselect.addEventListener("click", () => {
   }
 });
 
-document.querySelector("#add-ingredient").addEventListener("click", () => openIngredientDialog());
-elements.headerAddIngredient.addEventListener("click", () => openIngredientDialog());
-document.querySelector("#scan-receipt").addEventListener("click", () => {
+function startReceiptScanFromDevice() {
+  if (elements.dialog.open) closeIngredientDialog();
   elements.receiptInput.value = "";
   elements.receiptInput.click();
-});
+}
+
+document.querySelector("#add-ingredient").addEventListener("click", () => openIngredientDialog());
+elements.headerAddIngredient.addEventListener("click", () => openIngredientDialog());
+document.querySelector("#scan-receipt").addEventListener("click", startReceiptScanFromDevice);
+elements.ingredientReceiptShortcut.addEventListener("click", startReceiptScanFromDevice);
 document.querySelector("#close-dialog").addEventListener("click", closeIngredientDialog);
 document.querySelector("#cancel-dialog").addEventListener("click", closeIngredientDialog);
 document.querySelector("#consume-ingredient").addEventListener("click", consumeCurrentIngredient);
