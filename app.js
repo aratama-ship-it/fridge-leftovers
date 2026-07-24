@@ -2,7 +2,7 @@ const STORAGE_KEY = "fridge-leftovers-inventory-v2";
 const SHOPPING_STORAGE_KEY = "fridge-leftovers-shopping-v1";
 const COOKING_HISTORY_STORAGE_KEY = "fridge-leftovers-cooking-history-v1";
 const SHELF_COUNTS_STORAGE_KEY = "fridge-leftovers-shelf-counts-v1";
-const APP_VERSION = "0.3.2";
+const APP_VERSION = "0.3.3";
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
@@ -1925,28 +1925,30 @@ function renderShelfAddButton(location, shelf) {
   `;
 }
 
-function renderFridgeShelf(items, location, shelf) {
-  const canAdd = items.length < STORAGE_SHELF_CAPACITIES[location];
+function renderFridgeShelf(items, location, shelf, showAdd = false) {
   return `
     <div class="fridge-foods">
       ${items.map(renderFridgeFood).join("")}
-      ${canAdd ? renderShelfAddButton(location, shelf) : ""}
+      ${showAdd ? renderShelfAddButton(location, shelf) : ""}
     </div>
   `;
 }
 
-function renderPantryShelf(items, shelf) {
-  const canAdd = items.length < STORAGE_SHELF_CAPACITIES.常温;
+function renderPantryShelf(items, shelf, showAdd = false) {
   return `
     <div class="pantry-foods">
       ${items.map(renderFridgeFood).join("")}
-      ${canAdd ? renderShelfAddButton("常温", shelf) : ""}
+      ${showAdd ? renderShelfAddButton("常温", shelf) : ""}
     </div>
   `;
 }
 
 function itemsOnShelf(active, location, shelf) {
   return active.filter((item) => item.location === location && item.shelf === shelf);
+}
+
+function addShelfForStorage(shelves, location) {
+  return shelves.findIndex((items) => items.length < STORAGE_SHELF_CAPACITIES[location]);
 }
 
 function renderShelfControl(location) {
@@ -1981,6 +1983,9 @@ function renderFridgeScene(active) {
   const visiblePantryShelves = pantryShelves.map((items) =>
     items.slice(0, STORAGE_SHELF_CAPACITIES.常温)
   );
+  const frozenAddShelf = addShelfForStorage(frozenShelves, "冷凍");
+  const chilledAddShelf = addShelfForStorage(chilledShelves, "冷蔵");
+  const pantryAddShelf = addShelfForStorage(pantryShelves, "常温");
   const hiddenFridgeCount = frozenShelves.reduce((count, items, shelf) =>
     count + items.length - visibleFrozenShelves[shelf].length, 0)
     + chilledShelves.reduce((count, items, shelf) =>
@@ -1994,7 +1999,7 @@ function renderFridgeScene(active) {
         <span class="fridge-compartment-label">冷凍室</span>
         ${visibleFrozenShelves.map((items, shelf) => `
           <div class="freezer-shelf" data-drop-location="冷凍" data-drop-shelf="${shelf}">
-            ${renderFridgeShelf(items, "冷凍", shelf)}
+            ${renderFridgeShelf(items, "冷凍", shelf, shelf === frozenAddShelf)}
           </div>
         `).join("")}
         ${renderShelfControl("冷凍")}
@@ -2004,7 +2009,7 @@ function renderFridgeScene(active) {
         <span class="fridge-compartment-label">冷蔵室</span>
         ${visibleChilledShelves.map((items, shelf) => `
           <div class="fridge-shelf" data-drop-location="冷蔵" data-drop-shelf="${shelf}">
-            ${renderFridgeShelf(items, "冷蔵", shelf)}
+            ${renderFridgeShelf(items, "冷蔵", shelf, shelf === chilledAddShelf)}
           </div>
         `).join("")}
         ${renderShelfControl("冷蔵")}
@@ -2023,10 +2028,10 @@ function renderFridgeScene(active) {
       <div class="pantry-cabinet">
         <div class="pantry-top" aria-hidden="true"></div>
         <div class="pantry-compartment" data-drop-location="常温" data-drop-shelf="0">
-          ${renderPantryShelf(visiblePantryShelves[0], 0)}
+          ${renderPantryShelf(visiblePantryShelves[0], 0, pantryAddShelf === 0)}
         </div>
         <div class="pantry-compartment" data-drop-location="常温" data-drop-shelf="1">
-          ${renderPantryShelf(visiblePantryShelves[1], 1)}
+          ${renderPantryShelf(visiblePantryShelves[1], 1, pantryAddShelf === 1)}
         </div>
         <div class="pantry-base">
           <span>常温ストック</span>
