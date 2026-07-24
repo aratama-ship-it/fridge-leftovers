@@ -3070,6 +3070,10 @@ function beginFridgeDrag() {
   navigator.vibrate?.(18);
 }
 
+function shouldPlaceAfterTarget(pointerX, targetRect) {
+  return pointerX >= targetRect.left + targetRect.width / 2;
+}
+
 function updateFridgeDrag(event) {
   const drag = state.fridgeDrag;
   if (!drag || drag.pointerId !== event.pointerId) return;
@@ -3101,9 +3105,7 @@ function updateFridgeDrag(event) {
     : targetFood?.dataset.dragItem || null;
   if (targetFood && drag.targetId) {
     const rect = targetFood.getBoundingClientRect();
-    const verticallyAfter = event.clientY > rect.top + rect.height * 0.65;
-    const sameRow = Math.abs(event.clientY - (rect.top + rect.height / 2)) < rect.height * 0.3;
-    drag.placeAfter = verticallyAfter || (sameRow && event.clientX > rect.left + rect.width / 2);
+    drag.placeAfter = shouldPlaceAfterTarget(event.clientX, rect);
   } else {
     drag.placeAfter = false;
   }
