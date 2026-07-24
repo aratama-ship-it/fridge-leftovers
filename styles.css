@@ -644,28 +644,31 @@ h3 {
 }
 
 .inventory-row {
-  padding: 15px 2px 16px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px 8px;
+  padding: 7px 2px 8px;
   border-top: 1px solid var(--line-strong);
 }
 
 .inventory-row.is-priority {
   border-left: 4px solid var(--warm);
-  padding-left: 10px;
-}
-
-.item-heading {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
+  padding-left: 7px;
 }
 
 .item-identity {
   display: grid;
-  grid-template-columns: 56px minmax(0, 1fr);
+  grid-template-columns: 44px minmax(0, 1fr);
   align-items: center;
-  gap: 11px;
+  gap: 7px;
   min-width: 0;
+}
+
+.inventory-row .ingredient-illustration,
+.inventory-row .ingredient-initial {
+  width: 44px;
+  height: 44px;
 }
 
 .ingredient-illustration,
@@ -740,7 +743,10 @@ h3 {
 }
 
 .item-name-button {
-  min-height: 0;
+  display: grid;
+  align-content: center;
+  min-width: 0;
+  min-height: 44px;
   padding: 0;
   background: transparent;
   color: var(--ink);
@@ -749,15 +755,23 @@ h3 {
 
 .item-name {
   display: block;
-  font-size: 1.08rem;
+  overflow: hidden;
+  font-size: 0.92rem;
   font-weight: 800;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .item-meta {
   display: block;
-  margin-top: 3px;
+  overflow: hidden;
+  margin-top: 1px;
   color: var(--muted);
-  font-size: 0.76rem;
+  font-size: 0.65rem;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .item-meta.is-stale {
@@ -765,18 +779,16 @@ h3 {
   font-weight: 700;
 }
 
-.priority-label {
+.item-meta strong {
   color: var(--warm);
-  font-size: 0.74rem;
-  font-weight: 800;
 }
 
 .quantity-control {
   display: grid;
-  grid-template-columns: 48px minmax(100px, 1fr) 48px;
+  grid-template-columns: 44px minmax(58px, auto) 44px;
   align-items: stretch;
-  gap: 6px;
-  margin-top: 12px;
+  gap: 2px;
+  margin: 0;
 }
 
 .quantity-button {
@@ -791,25 +803,28 @@ h3 {
   display: grid;
   place-items: center;
   min-height: 44px;
+  padding-inline: 4px;
   border-block: 1px solid var(--line);
+  font-size: 0.82rem;
   font-variant-numeric: tabular-nums;
   font-weight: 800;
 }
 
 .row-actions {
+  grid-column: 1 / -1;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
-  margin-top: 10px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 2px;
+  margin: 0;
 }
 
 .row-action {
   min-width: 0;
-  padding: 8px 4px;
+  padding: 4px 2px;
   border-bottom: 2px solid var(--line);
   background: transparent;
   color: var(--muted);
-  font-size: 0.77rem;
+  font-size: 0.68rem;
   font-weight: 700;
 }
 

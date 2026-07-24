@@ -1817,15 +1817,14 @@ function renderInventoryRow(item) {
   const confirmation = confirmationLabel(item);
   return `
     <article class="inventory-row${item.priority ? " is-priority" : ""}">
-      <div class="item-heading">
-        <div class="item-identity">
-          ${renderIngredientIllustration(item.id, item.name)}
-          <button class="item-name-button" type="button" data-action="edit" data-id="${escapeHtml(item.id)}">
-            <span class="item-name">${escapeHtml(item.name)}</span>
-            <span class="item-meta${confirmation.stale ? " is-stale" : ""}">${escapeHtml(item.location)}・${confirmation.text}</span>
-          </button>
-        </div>
-        ${item.priority ? '<span class="priority-label">先に使う</span>' : ""}
+      <div class="item-identity">
+        ${renderIngredientIllustration(item.id, item.name)}
+        <button class="item-name-button" type="button" data-action="edit" data-id="${escapeHtml(item.id)}">
+          <span class="item-name">${escapeHtml(item.name)}</span>
+          <span class="item-meta${confirmation.stale ? " is-stale" : ""}">
+            ${escapeHtml(item.location)}・${confirmation.text}${item.priority ? '<strong>・先に使う</strong>' : ""}
+          </span>
+        </button>
       </div>
 
       <div class="quantity-control" aria-label="${escapeHtml(item.name)}の残量">
