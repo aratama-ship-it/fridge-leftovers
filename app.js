@@ -2,7 +2,7 @@ const STORAGE_KEY = "fridge-leftovers-inventory-v2";
 const SHOPPING_STORAGE_KEY = "fridge-leftovers-shopping-v1";
 const COOKING_HISTORY_STORAGE_KEY = "fridge-leftovers-cooking-history-v1";
 const SHELF_COUNTS_STORAGE_KEY = "fridge-leftovers-shelf-counts-v1";
-const APP_VERSION = "0.4.1";
+const APP_VERSION = "0.5.0";
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
@@ -2026,6 +2026,18 @@ function renderFridgeScene(active) {
       ${hiddenFridgeCount ? `<span class="fridge-overflow">ほか ${hiddenFridgeCount}品</span>` : ""}
     </div>
 
+    <section class="food-consume-station" data-consume-drop aria-label="食べて使い切った食材をここへ">
+      <div class="food-consume-copy">
+        <p class="eyebrow">食べたらここへ</p>
+        <strong>ぱくっと使い切り</strong>
+        <small>食材を子どもへ運ぶ</small>
+      </div>
+      <div class="food-child-character" aria-hidden="true">
+        <span class="food-child-bubble">ぱくっ</span>
+        <img src="assets/food-child-drop-target.png?v=20260724-1" alt="">
+      </div>
+    </section>
+
     <section class="pantry-visual" aria-labelledby="pantry-title">
       <div class="pantry-heading">
         <div>
@@ -3027,7 +3039,7 @@ function updateItem(id, updater) {
   renderAll();
 }
 
-function consumeItem(item) {
+function consumeItem(item, message = `${item.name}を使い切りにしました`) {
   const snapshot = { ...item };
   item.active = false;
   item.consumedAt = todayIso();
@@ -3041,7 +3053,7 @@ function consumeItem(item) {
   };
   persistInventory();
   renderAll();
-  showToast(`${item.name}を使い切りにしました`, true);
+  showToast(message, true);
 }
 
 function deleteItem(item) {
@@ -3378,6 +3390,11 @@ function clearFridgeDropTarget(drag) {
   drag.targetId = null;
 }
 
+function clearFridgeConsumeTarget(drag) {
+  drag.consumeTarget?.classList.remove("is-ready-to-eat");
+  drag.consumeTarget = null;
+}
+
 function shelfFoodElements(dropTarget) {
   const row = dropTarget?.querySelector(".fridge-foods, .pantry-foods");
   if (!row) return { row: null, foods: [] };
@@ -3483,6 +3500,7 @@ function cleanupFridgeDrag({ suppressClick = false } = {}) {
 
   clearTimeout(drag.timer);
   clearFridgeDropTarget(drag);
+  clearFridgeConsumeTarget(drag);
   drag.ghost?.remove();
   drag.source?.classList.remove("is-dragging");
   drag.source?.removeAttribute("aria-grabbed");
@@ -3542,6 +3560,18 @@ function updateFridgeDrag(event) {
   drag.ghost.style.transform = `translate3d(${event.clientX - drag.startX}px, ${event.clientY - drag.startY}px, 0) scale(1.08)`;
 
   const hovered = document.elementFromPoint(event.clientX, event.clientY);
+  const consumeTarget = hovered?.closest("[data-consume-drop]") || null;
+  if (consumeTarget) {
+    if (consumeTarget !== drag.consumeTarget) {
+      clearFridgeDropTarget(drag);
+      clearFridgeConsumeTarget(drag);
+      drag.consumeTarget = consumeTarget;
+      drag.consumeTarget.classList.add("is-ready-to-eat");
+    }
+    return;
+  }
+  clearFridgeConsumeTarget(drag);
+
   const dropTarget = hovered?.closest("[data-drop-location]") || null;
   if (dropTarget !== drag.dropTarget) {
     clearFridgeDropTarget(drag);
@@ -3572,14 +3602,27 @@ function finishFridgeDrag(event) {
   }
 
   event.preventDefault();
+  const shouldConsume = drag.distance >= 8 && Boolean(drag.consumeTarget);
+  const consumeTarget = drag.consumeTarget;
   const location = drag.dropTarget?.dataset.dropLocation || null;
   const shelf = drag.dropTarget?.dataset.dropShelf;
   const targetShelf = shelf === undefined ? null : Number(shelf);
   const shouldMove = drag.distance >= 8 && location && Number.isInteger(targetShelf);
   const itemId = drag.itemId;
+  const source = drag.source;
   const targetId = drag.targetId;
   const placeAfter = drag.placeAfter;
   cleanupFridgeDrag({ suppressClick: true });
+  if (shouldConsume) {
+    consumeTarget?.classList.add("did-eat");
+    source?.classList.add("is-being-eaten");
+    navigator.vibrate?.([20, 25, 20]);
+    setTimeout(() => {
+      const item = state.inventory.find((candidate) => candidate.id === itemId);
+      if (item) consumeItem(item, `${item.name}を食べて使い切りました`);
+    }, 240);
+    return;
+  }
   if (shouldMove) moveInventoryItem(itemId, location, targetShelf, targetId, placeAfter);
 }
 
@@ -3715,6 +3758,7 @@ elements.fridgeScene.addEventListener("pointerdown", (event) => {
     active: false,
     ghost: null,
     dropTarget: null,
+    consumeTarget: null,
     targetId: null,
     placeAfter: false,
     previewRow: null,

@@ -589,6 +589,144 @@ body.is-fridge-dragging {
   -webkit-user-select: none;
 }
 
+.food-consume-station {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 122px;
+  align-items: center;
+  width: min(100%, 390px);
+  min-height: 122px;
+  margin: 21px auto 0;
+  padding: 9px 7px 5px 15px;
+  overflow: hidden;
+  border: 2px dashed #b78458;
+  border-radius: 12px;
+  background:
+    linear-gradient(90deg, rgb(255 255 255 / 36%) 1px, transparent 1px),
+    #f4ead7;
+  background-size: 18px 100%;
+  transition:
+    transform 150ms ease,
+    border-color 150ms ease,
+    background-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.food-consume-copy {
+  display: grid;
+  align-self: center;
+  gap: 3px;
+}
+
+.food-consume-copy p {
+  margin: 0;
+}
+
+.food-consume-copy strong {
+  color: #634a34;
+  font-size: 0.95rem;
+}
+
+.food-consume-copy small {
+  color: #806c57;
+  font-size: 0.66rem;
+}
+
+.food-child-character {
+  position: relative;
+  display: grid;
+  place-items: end center;
+  height: 106px;
+}
+
+.food-child-character img {
+  width: 108px;
+  height: 108px;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+  transition: transform 150ms ease;
+}
+
+.food-child-bubble {
+  position: absolute;
+  z-index: 2;
+  top: 2px;
+  left: -5px;
+  padding: 4px 7px;
+  border: 1px solid #b55d43;
+  border-radius: 50%;
+  background: #fffaf0;
+  color: #b14e39;
+  font-size: 0.64rem;
+  font-weight: 900;
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.7);
+  transition: opacity 120ms ease, transform 120ms ease;
+}
+
+body.is-fridge-dragging .food-consume-station {
+  border-color: #c2704e;
+}
+
+.food-consume-station.is-ready-to-eat {
+  border-style: solid;
+  border-color: #b14e39;
+  background-color: #fff0d8;
+  box-shadow: 0 0 0 4px rgb(177 78 57 / 12%);
+  transform: scale(1.02);
+}
+
+.food-consume-station.is-ready-to-eat .food-child-character img {
+  transform: translateY(-3px) scale(1.07);
+}
+
+.food-consume-station.is-ready-to-eat .food-child-bubble {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.fridge-food.is-being-eaten {
+  pointer-events: none;
+  animation: food-eaten 240ms ease forwards;
+}
+
+.food-consume-station.did-eat .food-child-character {
+  animation: child-eat-bounce 220ms ease;
+}
+
+@keyframes food-eaten {
+  to {
+    opacity: 0;
+    transform: scale(0.25) rotate(8deg);
+  }
+}
+
+@keyframes child-eat-bounce {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+
+  45% {
+    transform: translateY(-5px) scale(1.05);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .food-consume-station,
+  .food-child-character img,
+  .food-child-bubble {
+    transition: none;
+  }
+
+  .fridge-food.is-being-eaten,
+  .food-consume-station.did-eat .food-child-character {
+    animation: none;
+  }
+}
+
 .fridge-empty {
   display: grid;
   place-items: center;
