@@ -1481,7 +1481,6 @@ const state = {
 
 const elements = {
   saveStatus: document.querySelector("#save-status"),
-  inventoryOverview: document.querySelector("#inventory-overview"),
   fridgeScene: document.querySelector("#fridge-scene"),
   inventoryList: document.querySelector("#inventory-list"),
   finishedSection: document.querySelector("#finished-section"),
@@ -1704,13 +1703,6 @@ function inventoryMap() {
 function renderInventory() {
   const active = activeInventory();
   const filtered = active.filter((item) => state.location === "すべて" || item.location === state.location);
-  const priorityCount = active.filter((item) => item.priority).length;
-  const staleCount = active.filter((item) => confirmationLabel(item).stale).length;
-
-  const notes = [`${active.length}品`];
-  if (priorityCount) notes.push(`使い切り優先 ${priorityCount}品`);
-  if (staleCount) notes.push(`要確認 ${staleCount}品`);
-  elements.inventoryOverview.textContent = notes.join("・");
   renderFridgeScene(active);
 
   if (!filtered.length) {

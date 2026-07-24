@@ -77,7 +77,6 @@ summary:focus-visible {
 }
 
 .header-line,
-.inventory-overview,
 .suggestion-heading,
 .dialog-head {
   display: flex;
@@ -124,22 +123,6 @@ h3 {
 
 .view {
   padding: 20px 16px 30px;
-}
-
-.inventory-overview {
-  align-items: center;
-  margin-bottom: 18px;
-}
-
-.inventory-glance-note {
-  flex: none;
-  padding-left: 10px;
-  border-left: 3px solid var(--warm);
-  color: var(--muted);
-  font-size: 0.7rem;
-  font-weight: 700;
-  line-height: 1.5;
-  text-align: right;
 }
 
 .overview-copy {
@@ -2100,10 +2083,6 @@ input[type="number"] {
   .nav-button {
     padding-inline: 2px;
     font-size: 0.62rem;
-  }
-
-  .inventory-glance-note {
-    font-size: 0.64rem;
   }
 
   .recipe.is-featured {
