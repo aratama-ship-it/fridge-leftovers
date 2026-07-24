@@ -6,9 +6,9 @@
   <meta name="theme-color" content="#f3f0e6">
   <meta name="description" content="冷蔵庫の在庫を管理し、残っている食材から今日作れる料理を提案するスマホ向けプロトタイプ">
   <title>冷蔵庫の現在地</title>
-  <link rel="stylesheet" href="styles.css?v=37">
+  <link rel="stylesheet" href="styles.css?v=38">
   <script src="vendor/tesseract/tesseract.min.js?v=7.0.0" defer></script>
-  <script src="app.js?v=42" defer></script>
+  <script src="app.js?v=43" defer></script>
 </head>
 <body>
   <div class="app-shell">
@@ -75,6 +75,28 @@
       </section>
 
       <section class="view" id="suggestions-view" aria-labelledby="suggestions-title" hidden>
+        <section class="today-ingredient-control" aria-labelledby="today-ingredient-title">
+          <div class="today-ingredient-heading">
+            <div>
+              <p class="eyebrow">使い切り優先</p>
+              <h3 id="today-ingredient-title">今日使いたい食材</h3>
+            </div>
+            <span aria-hidden="true">◎</span>
+          </div>
+          <label for="today-ingredient-select">
+            在庫から選ぶ
+            <select id="today-ingredient-select"></select>
+          </label>
+          <p id="today-ingredient-hint" aria-live="polite"></p>
+          <label class="recipe-sort-control" for="priority-select">
+            候補の並べ方
+            <select id="priority-select">
+              <option value="no-shop">作りやすい順</option>
+              <option value="quick">短時間順</option>
+            </select>
+          </label>
+        </section>
+
         <div class="suggestion-heading">
           <div>
             <p class="eyebrow">冷蔵庫から、ひとつ決める</p>
@@ -83,28 +105,13 @@
           <button class="button button-secondary" type="button" id="review-inventory">在庫管理</button>
         </div>
 
-        <div class="meal-controls" aria-label="料理の提案条件">
-          <fieldset>
-            <legend>何人分？</legend>
-            <div class="serving-buttons" id="serving-buttons">
-              <button type="button" class="choice-button is-active" data-servings="1" aria-pressed="true">1人</button>
-              <button type="button" class="choice-button" data-servings="2" aria-pressed="false">2人</button>
-              <button type="button" class="choice-button" data-servings="3" aria-pressed="false">3人</button>
-              <button type="button" class="choice-button" data-servings="4" aria-pressed="false">4人</button>
-            </div>
-          </fieldset>
-
-          <label for="priority-select">
-            今いちばん大事なこと
-            <select id="priority-select">
-              <option value="no-shop">買い足しなし</option>
-              <option value="rescue">使い切り優先</option>
-              <option value="quick">短時間で作る</option>
-            </select>
-          </label>
-        </div>
-
         <div class="recipe-list" id="recipe-list" aria-live="polite"></div>
+        <div class="recipe-more" id="recipe-more">
+          <button type="button" id="show-more-recipes">
+            <span>あと3つ見る</span>
+            <small id="recipe-visible-count"></small>
+          </button>
+        </div>
       </section>
 
       <section class="view shopping-view" id="shopping-view" aria-labelledby="shopping-title" hidden>

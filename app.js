@@ -3,7 +3,9 @@ const SHOPPING_STORAGE_KEY = "fridge-leftovers-shopping-v1";
 const COOKING_HISTORY_STORAGE_KEY = "fridge-leftovers-cooking-history-v1";
 const SHELF_COUNTS_STORAGE_KEY = "fridge-leftovers-shelf-counts-v1";
 const RECENT_INGREDIENTS_STORAGE_KEY = "fridge-leftovers-recent-ingredients-v1";
-const APP_VERSION = "0.6.3";
+const APP_VERSION = "0.7.0";
+const RECIPE_PAGE_SIZE = 3;
+const RECIPE_LIST_SERVINGS = 1;
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
@@ -1535,6 +1537,7 @@ const state = {
   servings: 1,
   priority: "no-shop",
   selectedOptionals: {},
+  visibleRecipeCount: RECIPE_PAGE_SIZE,
   storageEnabled: true,
   lastUndo: null,
   toastTimer: null,
@@ -1565,6 +1568,11 @@ const elements = {
   finishedCount: document.querySelector("#finished-count"),
   finishedList: document.querySelector("#finished-list"),
   recipeList: document.querySelector("#recipe-list"),
+  recipeMore: document.querySelector("#recipe-more"),
+  showMoreRecipes: document.querySelector("#show-more-recipes"),
+  recipeVisibleCount: document.querySelector("#recipe-visible-count"),
+  todayIngredientSelect: document.querySelector("#today-ingredient-select"),
+  todayIngredientHint: document.querySelector("#today-ingredient-hint"),
   inventoryView: document.querySelector("#inventory-view"),
   managementView: document.querySelector("#management-view"),
   suggestionsView: document.querySelector("#suggestions-view"),
@@ -2572,28 +2580,61 @@ function renderShopping() {
     : '<p class="shopping-empty-list">買うものを追加すると、ここが店内用のチェックリストになります。</p>';
 }
 
+function renderTodayIngredientControl() {
+  const inventory = activeInventory();
+  const priorityItems = inventory.filter((item) => item.priority);
+  const multiplePriorities = priorityItems.length > 1;
+  const selectedId = priorityItems.length === 1 ? priorityItems[0].id : "";
+  const multipleOption = multiplePriorities
+    ? `<option value="__multiple__">複数指定中（${priorityItems.length}品）</option>`
+    : "";
+
+  elements.todayIngredientSelect.innerHTML = `
+    <option value="">指定しない</option>
+    ${multipleOption}
+    ${inventory.map((item) => `
+      <option value="${escapeHtml(item.id)}">${escapeHtml(item.name)}</option>
+    `).join("")}
+  `;
+  elements.todayIngredientSelect.disabled = inventory.length === 0;
+  elements.todayIngredientSelect.value = multiplePriorities ? "__multiple__" : selectedId;
+  elements.todayIngredientHint.textContent = multiplePriorities
+    ? `${priorityItems.map((item) => item.name).join("、")}を使う料理を優先しています。選び直すと1品に絞ります。`
+    : priorityItems.length === 1
+      ? `${priorityItems[0].name}を使う料理を先に表示します。`
+      : inventory.length
+        ? "指定しない場合は、今作りやすい料理を優先します。"
+        : "在庫へ食材を追加すると、ここから選べます。";
+  elements.prioritySelect.value = state.priority === "quick" ? "quick" : "no-shop";
+}
+
 function recipeScore(recipe) {
-  const shortagePenalty = shortageFor(recipe).length * 100;
+  const shortagePenalty = shortageFor(recipe, RECIPE_LIST_SERVINGS).length * 100;
   const priorityIds = new Set(activeInventory().filter((item) => item.priority).map((item) => item.id));
   const priorityUse = [...recipe.required, ...recipe.optional].filter((ingredient) => priorityIds.has(ingredient.id)).length;
-  if (state.priority === "rescue") return priorityUse * 40 - shortagePenalty - recipe.minutes;
-  if (state.priority === "quick") return 30 - recipe.minutes - shortagePenalty;
-  return 50 - shortagePenalty - recipe.minutes / 10;
+  const priorityBoost = priorityUse * 40;
+  if (state.priority === "quick") return priorityBoost + 30 - recipe.minutes - shortagePenalty;
+  return priorityBoost + 50 - shortagePenalty - recipe.minutes / 10;
 }
 
 function renderRecipes() {
-  const ordered = [...RECIPES].sort((a, b) => recipeScore(b) - recipeScore(a)).slice(0, 3);
-  elements.recipeList.innerHTML = ordered.map((recipe, index) => renderRecipe(recipe, index)).join("");
+  renderTodayIngredientControl();
+  const ordered = [...RECIPES].sort((a, b) => recipeScore(b) - recipeScore(a));
+  const visibleCount = Math.min(state.visibleRecipeCount, ordered.length);
+  const visible = ordered.slice(0, visibleCount);
+  elements.recipeList.innerHTML = visible.map((recipe, index) => renderRecipe(recipe, index)).join("");
+  elements.recipeMore.hidden = visibleCount >= ordered.length;
+  elements.recipeVisibleCount.textContent = `${visibleCount} / ${ordered.length}件を表示`;
 }
 
 function renderRecipe(recipe, index) {
-  const shortages = shortageFor(recipe);
+  const shortages = shortageFor(recipe, RECIPE_LIST_SERVINGS);
   const featured = index === 0;
   const searchQuery = encodeURIComponent(recipe.name);
   const googleSearchUrl = `https://www.google.com/search?q=${searchQuery}`;
   const youtubeSearchUrl = `https://www.youtube.com/results?search_query=${searchQuery}`;
   const status = shortages.length
-    ? `不足：${shortages.map((item) => `${item.name} ${formatQuantity(requiredAmount(item), item.unit)}`).join("、")}`
+    ? `不足：${shortages.map((item) => `${item.name} ${formatQuantity(requiredAmount(item, RECIPE_LIST_SERVINGS), item.unit)}`).join("、")}`
     : "最低限必要なものが揃っています";
   const ingredientSummary = recipe.required.map((requirement) => `
     <span class="${shortages.some((item) => item.id === requirement.id) ? "is-missing" : ""}">
@@ -2605,12 +2646,12 @@ function renderRecipe(recipe, index) {
 
   const requiredLines = recipe.required.map((requirement) => {
     const item = itemForRequirement(requirement);
-    const enough = Boolean(item && item.quantity >= requiredAmount(requirement));
+    const enough = Boolean(item && item.quantity >= requiredAmount(requirement, RECIPE_LIST_SERVINGS));
     return `
       <li class="ingredient-line">
         <span class="ingredient-with-icon">
           ${renderIngredientIllustration(requirement.id, requirement.name, true)}
-          <span>${escapeHtml(requirement.name)} ${formatQuantity(requiredAmount(requirement), requirement.unit)}</span>
+          <span>${escapeHtml(requirement.name)} ${formatQuantity(requiredAmount(requirement, RECIPE_LIST_SERVINGS), requirement.unit)}</span>
         </span>
         <span class="ingredient-state${enough ? " is-ready" : ""}">${enough ? "あります" : "足りません"}</span>
       </li>
@@ -2618,7 +2659,7 @@ function renderRecipe(recipe, index) {
   }).join("");
 
   const optionalLines = recipe.optional.map((option) => {
-    const ready = optionalReady(option);
+    const ready = optionalReady(option, RECIPE_LIST_SERVINGS);
     const key = `${recipe.id}:${option.id}`;
     const checked = ready && state.selectedOptionals[key] !== false;
     return `
@@ -2628,7 +2669,7 @@ function renderRecipe(recipe, index) {
           <span class="ingredient-with-icon">
             ${renderIngredientIllustration(option.id, option.name, true)}
             <span>
-              ${escapeHtml(option.name)} ${formatQuantity(option.quantity * state.servings, option.unit)}
+              ${escapeHtml(option.name)} ${formatQuantity(option.quantity * RECIPE_LIST_SERVINGS, option.unit)}
               <small>${escapeHtml(option.benefit)}・${ready ? "冷蔵庫にあります" : "なくても作れます"}</small>
             </span>
           </span>
@@ -2653,7 +2694,7 @@ function renderRecipe(recipe, index) {
           </a>
         </nav>
       </div>
-      <p class="recipe-meta">調理時間の目安 約${recipe.minutes}分・${state.servings}人分</p>
+      <p class="recipe-meta">調理時間の目安 約${recipe.minutes}分</p>
       <div class="recipe-ingredient-summary" aria-label="主に使う食材">${ingredientSummary}</div>
       <p class="recipe-status${shortages.length ? " is-missing" : ""}">${status}</p>
 
@@ -3400,11 +3441,6 @@ function setServings(servings, { render = true } = {}) {
   const next = Number(servings);
   if (![1, 2, 3, 4].includes(next)) return false;
   state.servings = next;
-  document.querySelectorAll(".choice-button").forEach((button) => {
-    const active = Number(button.dataset.servings) === next;
-    button.classList.toggle("is-active", active);
-    button.setAttribute("aria-pressed", String(active));
-  });
   if (render) renderRecipes();
   return true;
 }
@@ -4114,14 +4150,30 @@ document.querySelectorAll(".nav-button").forEach((button) => {
   button.addEventListener("click", () => showView(button.dataset.view));
 });
 
-document.querySelectorAll(".choice-button").forEach((button) => {
-  button.addEventListener("click", () => {
-    setServings(button.dataset.servings);
+elements.todayIngredientSelect.addEventListener("change", () => {
+  const selectedId = elements.todayIngredientSelect.value;
+  if (selectedId === "__multiple__") return;
+  state.inventory.forEach((item) => {
+    item.priority = item.active !== false && item.id === selectedId;
   });
+  state.visibleRecipeCount = RECIPE_PAGE_SIZE;
+  persistInventory();
+  renderAll();
+  const selected = activeInventory().find((item) => item.id === selectedId);
+  showToast(selected ? `${selected.name}を使う料理を優先します` : "食材の指定を解除しました");
 });
 
 elements.prioritySelect.addEventListener("change", () => {
   state.priority = elements.prioritySelect.value;
+  state.visibleRecipeCount = RECIPE_PAGE_SIZE;
+  renderRecipes();
+});
+
+elements.showMoreRecipes.addEventListener("click", () => {
+  state.visibleRecipeCount = Math.min(
+    state.visibleRecipeCount + RECIPE_PAGE_SIZE,
+    RECIPES.length
+  );
   renderRecipes();
 });
 

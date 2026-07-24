@@ -168,7 +168,6 @@ h3 {
 .icon-button,
 .item-name-button,
 .storage-tab,
-.choice-button,
 .cook-serving-button,
 .nav-button,
 .quantity-button,
@@ -1162,48 +1161,78 @@ body.is-fridge-dragging .food-consume-station {
 
 .suggestion-heading {
   align-items: center;
-  margin-bottom: 18px;
+  margin: 24px 0 18px;
 }
 
-.meal-controls {
+.today-ingredient-control {
   display: grid;
-  gap: 16px;
-  padding: 15px 0 18px;
-  border-block: 1px solid var(--line-strong);
+  gap: 11px;
+  padding: 13px 14px 14px;
+  border: 2px solid #6e8b78;
+  border-left-width: 7px;
+  background:
+    linear-gradient(90deg, rgb(255 255 255 / 45%) 1px, transparent 1px),
+    #e8efe7;
+  background-size: 18px 100%;
 }
 
-.meal-controls fieldset {
+.today-ingredient-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.today-ingredient-heading p,
+.today-ingredient-heading h3 {
   margin: 0;
-  padding: 0;
-  border: 0;
 }
 
-.meal-controls legend,
-.meal-controls label {
+.today-ingredient-heading h3 {
+  margin-top: 2px;
+  font-size: 1.05rem;
+}
+
+.today-ingredient-heading > span {
   display: grid;
-  gap: 7px;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 2px solid #6e8b78;
+  border-radius: 50%;
+  background: #f8faf4;
+  color: #557161;
+  font-family: sans-serif;
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.today-ingredient-control label {
+  display: grid;
+  gap: 6px;
   color: var(--muted);
-  font-size: 0.8rem;
-  font-weight: 700;
-}
-
-.serving-buttons {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 7px;
-}
-
-.choice-button {
-  border: 1px solid var(--line-strong);
-  background: var(--paper-raised);
-  color: var(--ink);
+  font-size: 0.72rem;
   font-weight: 800;
 }
 
-.choice-button.is-active {
-  border-color: var(--leaf);
-  background: var(--leaf);
-  color: #fff;
+.today-ingredient-control > p {
+  min-height: 18px;
+  margin: -3px 0 0;
+  color: #52675b;
+  font-size: 0.68rem;
+  line-height: 1.45;
+}
+
+.today-ingredient-control .recipe-sort-control {
+  grid-template-columns: minmax(0, 1fr) minmax(140px, 0.85fr);
+  align-items: center;
+  padding-top: 9px;
+  border-top: 1px solid #b1beb3;
+}
+
+.today-ingredient-control .recipe-sort-control select {
+  min-height: 40px;
+  padding-block: 7px;
 }
 
 select,
@@ -1222,6 +1251,46 @@ input[type="number"] {
   display: grid;
   gap: 17px;
   margin-top: 18px;
+}
+
+.recipe-more {
+  margin-top: 17px;
+}
+
+.recipe-more[hidden] {
+  display: none;
+}
+
+.recipe-more button {
+  display: grid;
+  width: 100%;
+  min-height: 58px;
+  place-items: center;
+  gap: 1px;
+  padding: 8px 12px;
+  border: 2px dashed #718779;
+  border-radius: 6px;
+  background: #f2f3ea;
+  color: #405448;
+}
+
+.recipe-more button:active,
+.recipe-more button:focus-visible {
+  border-style: solid;
+  border-color: var(--leaf);
+  outline: 2px solid var(--leaf);
+  outline-offset: 2px;
+  background: #e8efe7;
+}
+
+.recipe-more span {
+  font-size: 0.85rem;
+  font-weight: 900;
+}
+
+.recipe-more small {
+  color: var(--muted);
+  font-size: 0.62rem;
 }
 
 .recipe {
