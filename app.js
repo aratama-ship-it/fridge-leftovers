@@ -2,7 +2,7 @@ const STORAGE_KEY = "fridge-leftovers-inventory-v2";
 const SHOPPING_STORAGE_KEY = "fridge-leftovers-shopping-v1";
 const COOKING_HISTORY_STORAGE_KEY = "fridge-leftovers-cooking-history-v1";
 const SHELF_COUNTS_STORAGE_KEY = "fridge-leftovers-shelf-counts-v1";
-const APP_VERSION = "0.2.0";
+const APP_VERSION = "0.2.1";
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
