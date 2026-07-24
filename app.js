@@ -2364,17 +2364,6 @@ function showView(viewName) {
   window.scrollTo({ top: 0, behavior: "auto" });
 }
 
-function showManagementItem(id) {
-  showView("management");
-  requestAnimationFrame(() => {
-    const button = [...elements.inventoryList.querySelectorAll('[data-action="edit"]')]
-      .find((candidate) => candidate.dataset.id === id);
-    if (!button) return;
-    button.scrollIntoView({ block: "center", behavior: "smooth" });
-    button.focus({ preventScroll: true });
-  });
-}
-
 function normalizedReceiptLine(value) {
   return String(value)
     .normalize("NFKC")
@@ -2773,7 +2762,7 @@ function saveReceiptCandidates(event) {
 function openIngredientDialog(item = null, preferredLocation = null) {
   elements.form.reset();
   if (item) {
-    elements.dialogTitle.textContent = "食材を編集";
+    elements.dialogTitle.textContent = `${item.name}の在庫`;
     elements.ingredientId.value = item.id;
     elements.ingredientName.value = item.name;
     elements.ingredientQuantity.value = item.quantity;
@@ -2790,7 +2779,13 @@ function openIngredientDialog(item = null, preferredLocation = null) {
     elements.deleteIngredient.hidden = true;
   }
   elements.dialog.showModal();
-  requestAnimationFrame(() => elements.ingredientName.focus());
+  requestAnimationFrame(() => {
+    if (item) {
+      elements.dialog.querySelector("#close-dialog").focus();
+    } else {
+      elements.ingredientName.focus();
+    }
+  });
 }
 
 function closeIngredientDialog() {
@@ -3161,8 +3156,8 @@ function updateFridgeDrag(event) {
   drag.distance = Math.max(drag.distance, distance);
 
   if (!drag.active) {
-    if (distance > 10) cleanupFridgeDrag({ suppressClick: true });
-    return;
+    if (distance >= 8) beginFridgeDrag();
+    if (!drag.active) return;
   }
 
   event.preventDefault();
@@ -3334,7 +3329,8 @@ elements.fridgeScene.addEventListener("click", (event) => {
   }
   const button = event.target.closest("[data-fridge-edit]");
   if (!button) return;
-  showManagementItem(button.dataset.fridgeEdit);
+  const item = state.inventory.find((candidate) => candidate.id === button.dataset.fridgeEdit);
+  if (item) openIngredientDialog(item);
 });
 
 document.querySelectorAll(".storage-tab").forEach((button) => {
