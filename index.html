@@ -6,9 +6,9 @@
   <meta name="theme-color" content="#f3f0e6">
   <meta name="description" content="冷蔵庫の在庫を管理し、残っている食材から今日作れる料理を提案するスマホ向けプロトタイプ">
   <title>冷蔵庫の現在地</title>
-  <link rel="stylesheet" href="styles.css?v=13">
+  <link rel="stylesheet" href="styles.css?v=14">
   <script src="vendor/tesseract/tesseract.min.js?v=7.0.0" defer></script>
-  <script src="app.js?v=14" defer></script>
+  <script src="app.js?v=15" defer></script>
 </head>
 <body>
   <div class="app-shell">
@@ -198,6 +198,21 @@
 
         <p class="privacy-note">買い物リストも、この端末のブラウザ内だけに保存されます。</p>
       </section>
+
+      <section class="view history-view" id="history-view" aria-labelledby="history-title" hidden>
+        <div class="history-heading">
+          <div>
+            <p class="eyebrow">調理後も、あとから戻せる</p>
+            <h2 id="history-title">調理履歴</h2>
+            <p class="overview-copy">「これを作る」で減った食材を記録しています。</p>
+          </div>
+          <span class="history-mark" aria-hidden="true">↶</span>
+        </div>
+
+        <div class="cooking-history-list" id="cooking-history-list" aria-live="polite"></div>
+
+        <p class="privacy-note">調理履歴も、この端末のブラウザ内だけに保存されます。</p>
+      </section>
     </main>
 
     <nav class="bottom-nav" aria-label="主な画面">
@@ -207,15 +222,19 @@
       </button>
       <button type="button" class="nav-button" data-view="management">
         <span aria-hidden="true">▤</span>
-        在庫管理
+        在庫
       </button>
       <button type="button" class="nav-button" data-view="suggestions">
         <span aria-hidden="true">⌁</span>
-        今日のごはん
+        ごはん
       </button>
       <button type="button" class="nav-button" data-view="shopping">
         <span class="nav-icon-with-count" aria-hidden="true">✓<small id="shopping-nav-count" hidden></small></span>
         買い物
+      </button>
+      <button type="button" class="nav-button" data-view="history">
+        <span aria-hidden="true">↶</span>
+        履歴
       </button>
     </nav>
   </div>

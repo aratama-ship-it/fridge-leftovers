@@ -1,5 +1,6 @@
 const STORAGE_KEY = "fridge-leftovers-inventory-v2";
 const SHOPPING_STORAGE_KEY = "fridge-leftovers-shopping-v1";
+const COOKING_HISTORY_STORAGE_KEY = "fridge-leftovers-cooking-history-v1";
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
@@ -1464,6 +1465,7 @@ const INVENTORY_LOCATIONS = ["冷蔵", "冷凍", "常温"];
 const state = {
   inventory: [],
   shopping: [],
+  cookingHistory: [],
   location: "すべて",
   servings: 1,
   priority: "no-shop",
@@ -1490,6 +1492,8 @@ const elements = {
   managementView: document.querySelector("#management-view"),
   suggestionsView: document.querySelector("#suggestions-view"),
   shoppingView: document.querySelector("#shopping-view"),
+  historyView: document.querySelector("#history-view"),
+  cookingHistoryList: document.querySelector("#cooking-history-list"),
   shoppingOverview: document.querySelector("#shopping-overview"),
   shoppingForm: document.querySelector("#shopping-form"),
   shoppingName: document.querySelector("#shopping-name"),
@@ -1579,6 +1583,32 @@ function persistShoppingList() {
   if (!state.storageEnabled) return;
   try {
     localStorage.setItem(SHOPPING_STORAGE_KEY, JSON.stringify(state.shopping));
+  } catch {
+    state.storageEnabled = false;
+    elements.saveStatus.textContent = "保存できません";
+  }
+}
+
+function loadCookingHistory() {
+  try {
+    const saved = localStorage.getItem(COOKING_HISTORY_STORAGE_KEY);
+    if (!saved) {
+      state.cookingHistory = [];
+      return;
+    }
+    const parsed = JSON.parse(saved);
+    state.cookingHistory = Array.isArray(parsed)
+      ? parsed.filter((entry) => entry && Array.isArray(entry.changes)).slice(0, 50)
+      : [];
+  } catch {
+    state.cookingHistory = [];
+  }
+}
+
+function persistCookingHistory() {
+  if (!state.storageEnabled) return;
+  try {
+    localStorage.setItem(COOKING_HISTORY_STORAGE_KEY, JSON.stringify(state.cookingHistory.slice(0, 50)));
   } catch {
     state.storageEnabled = false;
     elements.saveStatus.textContent = "保存できません";
@@ -2169,11 +2199,62 @@ function renderRecipe(recipe, index) {
   `;
 }
 
+function formatCookingTime(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "日時不明";
+  return new Intl.DateTimeFormat("ja-JP", {
+    month: "numeric",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit"
+  }).format(date);
+}
+
+function renderCookingHistory() {
+  if (!state.cookingHistory.length) {
+    elements.cookingHistoryList.innerHTML = `
+      <div class="history-empty">
+        <span aria-hidden="true">♨</span>
+        <p><strong>まだ調理履歴はありません</strong><br>おすすめから料理を作ると、ここに記録されます。</p>
+      </div>
+    `;
+    return;
+  }
+
+  elements.cookingHistoryList.innerHTML = state.cookingHistory.map((entry) => {
+    const undone = Boolean(entry.undoneAt);
+    const changes = entry.changes.map((change) => `
+      <li>
+        ${renderIngredientIllustration(change.itemId, change.name, true)}
+        <span>${escapeHtml(change.name)}</span>
+        <strong>−${formatQuantity(change.quantity, change.unit)}</strong>
+      </li>
+    `).join("");
+
+    return `
+      <article class="history-entry${undone ? " is-undone" : ""}">
+        <div class="history-entry-heading">
+          <div>
+            <p class="history-time">${escapeHtml(formatCookingTime(entry.cookedAt))}・${Number(entry.servings) || 1}人分</p>
+            <h3>${escapeHtml(entry.recipeName)}</h3>
+          </div>
+          <span class="history-state">${undone ? "取り消し済み" : "在庫に反映済み"}</span>
+        </div>
+        <ul class="history-changes" aria-label="減った食材">${changes}</ul>
+        <button class="history-undo-button" type="button" data-history-undo="${escapeHtml(entry.id)}"${undone ? " disabled" : ""}>
+          ${undone ? "取り消しました" : "この調理を取り消す"}
+        </button>
+      </article>
+    `;
+  }).join("");
+}
+
 function showView(viewName) {
   elements.inventoryView.hidden = viewName !== "inventory";
   elements.managementView.hidden = viewName !== "management";
   elements.suggestionsView.hidden = viewName !== "suggestions";
   elements.shoppingView.hidden = viewName !== "shopping";
+  elements.historyView.hidden = viewName !== "history";
   document.querySelectorAll(".nav-button").forEach((button) => {
     const active = button.dataset.view === viewName;
     button.classList.toggle("is-active", active);
@@ -2185,6 +2266,7 @@ function showView(viewName) {
   });
   if (viewName === "suggestions") renderRecipes();
   if (viewName === "shopping") renderShopping();
+  if (viewName === "history") renderCookingHistory();
   window.scrollTo({ top: 0, behavior: "auto" });
 }
 
@@ -2711,6 +2793,51 @@ function restoreItem(id) {
   });
 }
 
+function makeCookingHistoryId() {
+  if (globalThis.crypto?.randomUUID) return `cooking-${crypto.randomUUID()}`;
+  return `cooking-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function undoCookingHistoryEntry(historyId) {
+  const entry = state.cookingHistory.find((candidate) => candidate.id === historyId);
+  if (!entry || entry.undoneAt) return;
+
+  const incompatible = entry.changes.find((change) => {
+    const item = state.inventory.find((candidate) => candidate.id === change.itemId);
+    return item && item.unit !== change.unit;
+  });
+  if (incompatible) {
+    showToast(`${incompatible.name}の単位が変わっているため取り消せません`);
+    return;
+  }
+
+  entry.changes.forEach((change) => {
+    let item = state.inventory.find((candidate) => candidate.id === change.itemId);
+    if (!item) {
+      item = {
+        ...change.snapshot,
+        id: change.itemId,
+        name: change.name,
+        unit: change.unit,
+        quantity: 0,
+        active: true
+      };
+      state.inventory.push(item);
+    }
+    item.quantity = Number(((Number(item.quantity) || 0) + change.quantity).toFixed(2));
+    item.active = true;
+    item.confirmedAt = todayIso();
+    delete item.consumedAt;
+  });
+
+  entry.undoneAt = new Date().toISOString();
+  state.lastUndo = null;
+  persistInventory();
+  persistCookingHistory();
+  renderAll();
+  showToast(`${entry.recipeName}の調理を取り消し、食材を戻しました`);
+}
+
 function cookRecipe(recipeId) {
   const recipe = RECIPES.find((candidate) => candidate.id === recipeId);
   if (!recipe || shortageFor(recipe).length) return;
@@ -2721,20 +2848,42 @@ function cookRecipe(recipeId) {
     if (optionalReady(option) && state.selectedOptionals[key] !== false) used.push(option);
   });
 
+  const changes = [];
   used.forEach((ingredient) => {
     const item = itemForRequirement(ingredient);
     if (!item) return;
-    item.quantity = Math.max(0, item.quantity - ingredient.quantity * state.servings);
+    const quantity = ingredient.quantity * state.servings;
+    changes.push({
+      itemId: item.id,
+      name: item.name,
+      unit: item.unit,
+      quantity,
+      snapshot: { ...item }
+    });
+    item.quantity = Number(Math.max(0, item.quantity - quantity).toFixed(2));
     if (item.quantity === 0) {
       item.active = false;
       item.consumedAt = todayIso();
     }
   });
 
+  const historyEntry = {
+    id: makeCookingHistoryId(),
+    recipeId: recipe.id,
+    recipeName: recipe.name,
+    servings: state.servings,
+    cookedAt: new Date().toISOString(),
+    undoneAt: null,
+    changes
+  };
+  state.cookingHistory.unshift(historyEntry);
+  state.cookingHistory = state.cookingHistory.slice(0, 50);
+  state.lastUndo = () => undoCookingHistoryEntry(historyEntry.id);
   persistInventory();
+  persistCookingHistory();
   renderAll();
   showView("inventory");
-  showToast(`${recipe.name}を作った分だけ在庫を更新しました`);
+  showToast(`${recipe.name}を作った分だけ在庫を更新しました`, true);
 }
 
 function showToast(message, withUndo = false) {
@@ -2752,6 +2901,7 @@ function renderAll() {
   renderInventory();
   renderRecipes();
   renderShopping();
+  renderCookingHistory();
 }
 
 document.querySelector("#add-ingredient").addEventListener("click", () => openIngredientDialog());
@@ -3007,12 +3157,20 @@ elements.clearBought.addEventListener("click", () => {
   showToast("購入済みの項目を消しました");
 });
 
+elements.cookingHistoryList.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-history-undo]");
+  if (!button) return;
+  undoCookingHistoryEntry(button.dataset.historyUndo);
+});
+
 elements.toastAction.addEventListener("click", () => {
-  if (state.lastUndo) state.lastUndo();
+  const undo = state.lastUndo;
   state.lastUndo = null;
   elements.toast.hidden = true;
+  if (undo) undo();
 });
 
 loadInventory();
 loadShoppingList();
+loadCookingHistory();
 renderAll();
