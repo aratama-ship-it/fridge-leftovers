@@ -979,6 +979,59 @@ input[type="number"] {
   font-size: 1.02rem;
 }
 
+.recipe-heading-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.recipe-heading-row > div {
+  min-width: 0;
+}
+
+.recipe-heading-row h3 {
+  margin: 0;
+}
+
+.recipe-search-links {
+  display: flex;
+  flex: none;
+  gap: 5px;
+}
+
+.recipe-search-link {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border: 1px solid var(--line-strong);
+  border-radius: 50%;
+  background: var(--paper-raised);
+  color: var(--ink);
+  font-size: 0.8rem;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.recipe-search-link.is-google {
+  color: #315eb4;
+}
+
+.recipe-search-link.is-youtube {
+  border-color: #c94a42;
+  background: #c94a42;
+  color: #fff;
+  font-size: 0.7rem;
+}
+
+.recipe-search-link:hover,
+.recipe-search-link:active,
+.recipe-search-link:focus-visible {
+  outline: 2px solid var(--leaf);
+  outline-offset: 2px;
+}
+
 .recipe-rank {
   margin: 0 0 3px;
   color: var(--leaf);

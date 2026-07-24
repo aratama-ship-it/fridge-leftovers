@@ -2075,6 +2075,9 @@ function renderRecipes() {
 function renderRecipe(recipe, index) {
   const shortages = shortageFor(recipe);
   const featured = index === 0;
+  const searchQuery = encodeURIComponent(recipe.name);
+  const googleSearchUrl = `https://www.google.com/search?q=${searchQuery}`;
+  const youtubeSearchUrl = `https://www.youtube.com/results?search_query=${searchQuery}`;
   const status = shortages.length
     ? `不足：${shortages.map((item) => `${item.name} ${formatQuantity(requiredAmount(item), item.unit)}`).join("、")}`
     : "最低限必要なものが揃っています";
@@ -2122,8 +2125,20 @@ function renderRecipe(recipe, index) {
 
   return `
     <article class="recipe${featured ? " is-featured" : " is-alternative"}">
-      <p class="recipe-rank">${featured ? "今日のおすすめ" : "ほかの候補"}</p>
-      <h3>${escapeHtml(recipe.name)}</h3>
+      <div class="recipe-heading-row">
+        <div>
+          <p class="recipe-rank">${featured ? "今日のおすすめ" : "ほかの候補"}</p>
+          <h3>${escapeHtml(recipe.name)}</h3>
+        </div>
+        <nav class="recipe-search-links" aria-label="${escapeHtml(recipe.name)}を外部サイトで検索">
+          <a class="recipe-search-link is-google" href="${googleSearchUrl}" target="_blank" rel="noopener noreferrer" aria-label="${escapeHtml(recipe.name)}をGoogleで検索" title="Googleで検索">
+            <span aria-hidden="true">G</span>
+          </a>
+          <a class="recipe-search-link is-youtube" href="${youtubeSearchUrl}" target="_blank" rel="noopener noreferrer" aria-label="${escapeHtml(recipe.name)}をYouTubeで検索" title="YouTubeで検索">
+            <span aria-hidden="true">▶</span>
+          </a>
+        </nav>
+      </div>
       <p class="recipe-meta">調理時間の目安 約${recipe.minutes}分・${state.servings}人分</p>
       <div class="recipe-ingredient-summary" aria-label="主に使う食材">${ingredientSummary}</div>
       <p class="recipe-status${shortages.length ? " is-missing" : ""}">${status}</p>
