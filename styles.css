@@ -114,11 +114,31 @@ h3 {
   font-size: 1.08rem;
 }
 
-.save-status {
+.header-add-button {
   flex: none;
-  margin-top: 3px;
-  color: var(--muted);
-  font-size: 0.72rem;
+  min-height: 44px;
+  padding: 7px 10px;
+  border: 1px solid var(--leaf);
+  border-radius: 3px;
+  background: var(--leaf);
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.header-add-button span {
+  margin-right: 2px;
+  font-size: 1rem;
+}
+
+.header-add-button:hover,
+.header-add-button:active,
+.header-add-button:focus-visible {
+  background: var(--leaf-dark);
+}
+
+.header-add-button[hidden] {
+  display: none;
 }
 
 .view {

@@ -1480,7 +1480,7 @@ const state = {
 };
 
 const elements = {
-  saveStatus: document.querySelector("#save-status"),
+  headerAddIngredient: document.querySelector("#header-add-ingredient"),
   fridgeScene: document.querySelector("#fridge-scene"),
   inventoryList: document.querySelector("#inventory-list"),
   finishedSection: document.querySelector("#finished-section"),
@@ -1536,6 +1536,11 @@ function cloneDefaults() {
   return DEFAULT_INVENTORY.map((item) => ({ ...item }));
 }
 
+function markStorageUnavailable() {
+  state.storageEnabled = false;
+  showToast("データを保存できません");
+}
+
 function loadInventory() {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
@@ -1547,9 +1552,8 @@ function loadInventory() {
     const parsed = JSON.parse(saved);
     state.inventory = Array.isArray(parsed) ? parsed : cloneDefaults();
   } catch {
-    state.storageEnabled = false;
     state.inventory = cloneDefaults();
-    elements.saveStatus.textContent = "保存できません";
+    markStorageUnavailable();
   }
 }
 
@@ -1557,10 +1561,8 @@ function persistInventory() {
   if (!state.storageEnabled) return;
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state.inventory));
-    elements.saveStatus.textContent = "この端末に保存済み";
   } catch {
-    state.storageEnabled = false;
-    elements.saveStatus.textContent = "保存できません";
+    markStorageUnavailable();
   }
 }
 
@@ -1583,8 +1585,7 @@ function persistShoppingList() {
   try {
     localStorage.setItem(SHOPPING_STORAGE_KEY, JSON.stringify(state.shopping));
   } catch {
-    state.storageEnabled = false;
-    elements.saveStatus.textContent = "保存できません";
+    markStorageUnavailable();
   }
 }
 
@@ -1609,8 +1610,7 @@ function persistCookingHistory() {
   try {
     localStorage.setItem(COOKING_HISTORY_STORAGE_KEY, JSON.stringify(state.cookingHistory.slice(0, 50)));
   } catch {
-    state.storageEnabled = false;
-    elements.saveStatus.textContent = "保存できません";
+    markStorageUnavailable();
   }
 }
 
@@ -2241,6 +2241,7 @@ function renderCookingHistory() {
 }
 
 function showView(viewName) {
+  elements.headerAddIngredient.hidden = viewName !== "inventory";
   elements.inventoryView.hidden = viewName !== "inventory";
   elements.managementView.hidden = viewName !== "management";
   elements.suggestionsView.hidden = viewName !== "suggestions";
@@ -2896,9 +2897,9 @@ function renderAll() {
 }
 
 document.querySelector("#add-ingredient").addEventListener("click", () => openIngredientDialog());
+elements.headerAddIngredient.addEventListener("click", () => openIngredientDialog());
 document.querySelector("#home-shopping").addEventListener("click", () => showView("shopping"));
 document.querySelector("#home-suggestions").addEventListener("click", () => showView("suggestions"));
-document.querySelector("#home-add").addEventListener("click", () => openIngredientDialog());
 document.querySelector("#scan-receipt").addEventListener("click", () => {
   elements.receiptInput.value = "";
   elements.receiptInput.click();
