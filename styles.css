@@ -334,6 +334,9 @@ h3 {
   border: 0;
   background: transparent;
   color: var(--ink);
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .fridge-food::after {
@@ -374,6 +377,41 @@ h3 {
 .fridge-food .ingredient-initial {
   width: 52px;
   height: 52px;
+}
+
+.fridge-food.is-dragging {
+  opacity: 0.18;
+  pointer-events: none;
+}
+
+.fridge-drag-ghost {
+  position: fixed;
+  z-index: 100;
+  margin: 0;
+  border: 1px solid rgb(82 103 91 / 72%);
+  border-radius: 10px;
+  background: rgb(251 250 245 / 94%);
+  box-shadow: 0 12px 25px rgb(54 65 58 / 28%);
+  pointer-events: none;
+  transform: scale(1.08);
+  transform-origin: center;
+  will-change: transform;
+}
+
+[data-drop-location] {
+  transition: background-color 120ms ease, outline-color 120ms ease;
+}
+
+[data-drop-location].is-drop-target {
+  outline: 2px dashed var(--leaf);
+  outline-offset: -4px;
+  background-color: rgb(198 219 196 / 48%);
+}
+
+body.is-fridge-dragging {
+  cursor: grabbing;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .fridge-empty {

@@ -1476,7 +1476,9 @@ const state = {
   receiptCandidates: [],
   receiptWorker: null,
   receiptRunId: 0,
-  receiptObjectUrl: null
+  receiptObjectUrl: null,
+  fridgeDrag: null,
+  suppressFridgeClickUntil: 0
 };
 
 const elements = {
@@ -1734,7 +1736,7 @@ function isLowInventoryItem(item) {
 function renderFridgeFood(item) {
   const low = isLowInventoryItem(item);
   return `
-    <button class="fridge-food${item.priority ? " is-priority" : ""}${low ? " is-low" : ""}" type="button" data-fridge-edit="${escapeHtml(item.id)}" aria-label="${escapeHtml(item.name)} ${low ? "少なめ" : "あります"}。在庫を編集">
+    <button class="fridge-food${item.priority ? " is-priority" : ""}${low ? " is-low" : ""}" type="button" data-fridge-edit="${escapeHtml(item.id)}" data-drag-item="${escapeHtml(item.id)}" aria-label="${escapeHtml(item.name)} ${low ? "少なめ" : "あります"}。タップで在庫を編集、長押しで棚を移動">
       ${renderIngredientIllustration(item.id, item.name)}
     </button>
   `;
@@ -1766,20 +1768,20 @@ function renderFridgeScene(active) {
 
   elements.fridgeScene.innerHTML = `
     <div class="fridge-appliance">
-      <div class="fridge-freezer">
+      <div class="fridge-freezer" data-drop-location="冷凍">
         <span class="fridge-compartment-label">冷凍室</span>
         ${renderFridgeShelf(visibleFrozen, "冷凍食材はまだありません")}
       </div>
       <div class="fridge-chamber">
         <span class="fridge-light" aria-hidden="true"></span>
         <span class="fridge-compartment-label">冷蔵室</span>
-        <div class="fridge-shelf">
+        <div class="fridge-shelf" data-drop-location="冷蔵">
           ${renderFridgeShelf(visibleChilled.slice(0, firstShelfEnd), "冷蔵食材を入れてみましょう")}
         </div>
-        <div class="fridge-shelf">
+        <div class="fridge-shelf" data-drop-location="冷蔵">
           ${renderFridgeShelf(visibleChilled.slice(firstShelfEnd, secondShelfEnd), "この棚は空いています")}
         </div>
-        <div class="fridge-shelf">
+        <div class="fridge-shelf" data-drop-location="冷蔵">
           ${renderFridgeShelf(visibleChilled.slice(secondShelfEnd), "この棚は空いています")}
         </div>
       </div>
@@ -1800,10 +1802,10 @@ function renderFridgeScene(active) {
       </div>
       <div class="pantry-cabinet">
         <div class="pantry-top" aria-hidden="true"></div>
-        <div class="pantry-compartment">
+        <div class="pantry-compartment" data-drop-location="常温">
           ${renderPantryShelf(visiblePantry.slice(0, pantryShelfEnd), "乾物や缶詰の棚")}
         </div>
-        <div class="pantry-compartment">
+        <div class="pantry-compartment" data-drop-location="常温">
           ${renderPantryShelf(visiblePantry.slice(pantryShelfEnd), "調味料や主食の棚")}
         </div>
         <div class="pantry-base">
@@ -2899,6 +2901,146 @@ function renderAll() {
   renderCookingHistory();
 }
 
+function moveInventoryItem(itemId, targetLocation, targetId = null, placeAfter = false) {
+  const sourceIndex = state.inventory.findIndex((item) => item.id === itemId);
+  if (sourceIndex < 0 || !INVENTORY_LOCATIONS.includes(targetLocation)) return false;
+
+  const [item] = state.inventory.splice(sourceIndex, 1);
+  const previousLocation = item.location;
+  item.location = targetLocation;
+
+  const targetIndex = targetId
+    ? state.inventory.findIndex((candidate) => candidate.id === targetId)
+    : -1;
+
+  if (targetIndex >= 0) {
+    state.inventory.splice(targetIndex + (placeAfter ? 1 : 0), 0, item);
+  } else {
+    let insertAt = state.inventory.length;
+    for (let index = state.inventory.length - 1; index >= 0; index -= 1) {
+      const candidate = state.inventory[index];
+      if (candidate.location === targetLocation && candidate.active !== false && candidate.quantity > 0) {
+        insertAt = index + 1;
+        break;
+      }
+    }
+    state.inventory.splice(insertAt, 0, item);
+  }
+
+  persistInventory();
+  renderAll();
+  showToast(previousLocation === targetLocation
+    ? `${item.name}の並び順を変更しました`
+    : `${item.name}を${targetLocation}へ移しました`);
+  return true;
+}
+
+function clearFridgeDropTarget(drag) {
+  drag.dropTarget?.classList.remove("is-drop-target");
+  drag.dropTarget = null;
+  drag.targetId = null;
+}
+
+function cleanupFridgeDrag({ suppressClick = false } = {}) {
+  const drag = state.fridgeDrag;
+  if (!drag) return;
+
+  clearTimeout(drag.timer);
+  clearFridgeDropTarget(drag);
+  drag.ghost?.remove();
+  drag.source?.classList.remove("is-dragging");
+  drag.source?.removeAttribute("aria-grabbed");
+  document.body.classList.remove("is-fridge-dragging");
+
+  if (drag.source?.hasPointerCapture?.(drag.pointerId)) {
+    drag.source.releasePointerCapture(drag.pointerId);
+  }
+  state.fridgeDrag = null;
+  if (suppressClick) state.suppressFridgeClickUntil = Date.now() + 450;
+}
+
+function beginFridgeDrag() {
+  const drag = state.fridgeDrag;
+  if (!drag || drag.active || !drag.source.isConnected) return;
+
+  const rect = drag.source.getBoundingClientRect();
+  drag.active = true;
+  drag.ghost = drag.source.cloneNode(true);
+  drag.ghost.classList.add("fridge-drag-ghost");
+  drag.ghost.removeAttribute("data-fridge-edit");
+  drag.ghost.removeAttribute("data-drag-item");
+  drag.ghost.setAttribute("aria-hidden", "true");
+  drag.ghost.style.left = `${rect.left}px`;
+  drag.ghost.style.top = `${rect.top}px`;
+  drag.ghost.style.width = `${rect.width}px`;
+  drag.ghost.style.height = `${rect.height}px`;
+  document.body.append(drag.ghost);
+
+  drag.source.classList.add("is-dragging");
+  drag.source.setAttribute("aria-grabbed", "true");
+  document.body.classList.add("is-fridge-dragging");
+  navigator.vibrate?.(18);
+}
+
+function updateFridgeDrag(event) {
+  const drag = state.fridgeDrag;
+  if (!drag || drag.pointerId !== event.pointerId) return;
+
+  drag.lastX = event.clientX;
+  drag.lastY = event.clientY;
+  const distance = Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY);
+  drag.distance = Math.max(drag.distance, distance);
+
+  if (!drag.active) {
+    if (distance > 10) cleanupFridgeDrag({ suppressClick: true });
+    return;
+  }
+
+  event.preventDefault();
+  drag.ghost.style.transform = `translate3d(${event.clientX - drag.startX}px, ${event.clientY - drag.startY}px, 0) scale(1.08)`;
+
+  const hovered = document.elementFromPoint(event.clientX, event.clientY);
+  const dropTarget = hovered?.closest("[data-drop-location]") || null;
+  if (dropTarget !== drag.dropTarget) {
+    clearFridgeDropTarget(drag);
+    drag.dropTarget = dropTarget;
+    drag.dropTarget?.classList.add("is-drop-target");
+  }
+
+  const targetFood = hovered?.closest("[data-drag-item]");
+  drag.targetId = targetFood?.dataset.dragItem === drag.itemId
+    ? null
+    : targetFood?.dataset.dragItem || null;
+  if (targetFood && drag.targetId) {
+    const rect = targetFood.getBoundingClientRect();
+    const verticallyAfter = event.clientY > rect.top + rect.height * 0.65;
+    const sameRow = Math.abs(event.clientY - (rect.top + rect.height / 2)) < rect.height * 0.3;
+    drag.placeAfter = verticallyAfter || (sameRow && event.clientX > rect.left + rect.width / 2);
+  } else {
+    drag.placeAfter = false;
+  }
+}
+
+function finishFridgeDrag(event) {
+  const drag = state.fridgeDrag;
+  if (!drag || drag.pointerId !== event.pointerId) return;
+
+  clearTimeout(drag.timer);
+  if (!drag.active) {
+    cleanupFridgeDrag();
+    return;
+  }
+
+  event.preventDefault();
+  const location = drag.dropTarget?.dataset.dropLocation || null;
+  const shouldMove = drag.distance >= 8 && location;
+  const itemId = drag.itemId;
+  const targetId = drag.targetId;
+  const placeAfter = drag.placeAfter;
+  cleanupFridgeDrag({ suppressClick: true });
+  if (shouldMove) moveInventoryItem(itemId, location, targetId, placeAfter);
+}
+
 document.querySelector("#add-ingredient").addEventListener("click", () => openIngredientDialog());
 elements.headerAddIngredient.addEventListener("click", () => openIngredientDialog());
 document.querySelector("#home-shopping").addEventListener("click", () => showView("shopping"));
@@ -2977,7 +3119,40 @@ elements.receiptDialog.addEventListener("click", (event) => {
   if (event.target === elements.receiptDialog) closeReceiptDialog();
 });
 
+elements.fridgeScene.addEventListener("pointerdown", (event) => {
+  const source = event.target.closest("[data-drag-item]");
+  if (!source || (event.pointerType === "mouse" && event.button !== 0)) return;
+
+  state.fridgeDrag = {
+    pointerId: event.pointerId,
+    itemId: source.dataset.dragItem,
+    source,
+    startX: event.clientX,
+    startY: event.clientY,
+    lastX: event.clientX,
+    lastY: event.clientY,
+    distance: 0,
+    active: false,
+    ghost: null,
+    dropTarget: null,
+    targetId: null,
+    placeAfter: false,
+    timer: setTimeout(beginFridgeDrag, 280)
+  };
+  source.setPointerCapture?.(event.pointerId);
+});
+
+elements.fridgeScene.addEventListener("pointermove", updateFridgeDrag);
+elements.fridgeScene.addEventListener("pointerup", finishFridgeDrag);
+elements.fridgeScene.addEventListener("pointercancel", () => {
+  cleanupFridgeDrag({ suppressClick: Boolean(state.fridgeDrag?.active) });
+});
+
 elements.fridgeScene.addEventListener("click", (event) => {
+  if (Date.now() < state.suppressFridgeClickUntil) {
+    event.preventDefault();
+    return;
+  }
   const pantryAdd = event.target.closest("[data-pantry-add]");
   if (pantryAdd) {
     openIngredientDialog(null, "常温");
