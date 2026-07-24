@@ -6,9 +6,9 @@
   <meta name="theme-color" content="#f3f0e6">
   <meta name="description" content="冷蔵庫の在庫を管理し、残っている食材から今日作れる料理を提案するスマホ向けプロトタイプ">
   <title>冷蔵庫の現在地</title>
-  <link rel="stylesheet" href="styles.css?v=27">
+  <link rel="stylesheet" href="styles.css?v=28">
   <script src="vendor/tesseract/tesseract.min.js?v=7.0.0" defer></script>
-  <script src="app.js?v=30" defer></script>
+  <script src="app.js?v=31" defer></script>
 </head>
 <body>
   <div class="app-shell">
@@ -224,6 +224,14 @@
         食材名
         <input id="ingredient-name" name="name" type="text" autocomplete="off" required placeholder="例：キャベツ">
       </label>
+
+      <section class="name-suggestion" id="name-suggestion" aria-live="polite" hidden>
+        <p>登録済みの名称「<strong id="suggested-ingredient-name"></strong>」に変更しますか？</p>
+        <div>
+          <button class="button button-secondary" type="button" id="keep-ingredient-name">このまま登録</button>
+          <button class="button button-primary" type="button" id="accept-ingredient-name">変更する</button>
+        </div>
+      </section>
 
       <div class="form-grid">
         <label for="ingredient-quantity">

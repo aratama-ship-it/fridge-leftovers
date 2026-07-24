@@ -2,7 +2,7 @@ const STORAGE_KEY = "fridge-leftovers-inventory-v2";
 const SHOPPING_STORAGE_KEY = "fridge-leftovers-shopping-v1";
 const COOKING_HISTORY_STORAGE_KEY = "fridge-leftovers-cooking-history-v1";
 const SHELF_COUNTS_STORAGE_KEY = "fridge-leftovers-shelf-counts-v1";
-const APP_VERSION = "0.2.1";
+const APP_VERSION = "0.3.0";
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
@@ -1487,7 +1487,9 @@ const state = {
   receiptObjectUrl: null,
   fridgeDrag: null,
   suppressFridgeClickUntil: 0,
-  shelfCounts: { ...DEFAULT_STORAGE_SHELF_COUNTS }
+  shelfCounts: { ...DEFAULT_STORAGE_SHELF_COUNTS },
+  ingredientNameSuggestion: null,
+  dismissedIngredientSuggestionFor: ""
 };
 
 const elements = {
@@ -1519,6 +1521,10 @@ const elements = {
   dialogTitle: document.querySelector("#dialog-title"),
   ingredientId: document.querySelector("#ingredient-id"),
   ingredientName: document.querySelector("#ingredient-name"),
+  nameSuggestion: document.querySelector("#name-suggestion"),
+  suggestedIngredientName: document.querySelector("#suggested-ingredient-name"),
+  keepIngredientName: document.querySelector("#keep-ingredient-name"),
+  acceptIngredientName: document.querySelector("#accept-ingredient-name"),
   ingredientQuantity: document.querySelector("#ingredient-quantity"),
   ingredientUnit: document.querySelector("#ingredient-unit"),
   ingredientLocation: document.querySelector("#ingredient-location"),
@@ -1671,6 +1677,76 @@ function makeId(name) {
 function canonicalIngredientId(id, name) {
   if (INGREDIENT_ILLUSTRATIONS[id]) return id;
   return ALIASES.get(String(name).trim()) || id;
+}
+
+function normalizeIngredientNameForMatch(value) {
+  return String(value)
+    .normalize("NFKC")
+    .trim()
+    .replace(/\s+/g, "")
+    .replace(/[ぁ-ゖ]/g, (character) =>
+      String.fromCharCode(character.charCodeAt(0) + 0x60)
+    )
+    .toLowerCase();
+}
+
+function ingredientNameDistance(left, right) {
+  const a = [...left];
+  const b = [...right];
+  const rows = Array.from({ length: a.length + 1 }, () => Array(b.length + 1).fill(0));
+  for (let row = 0; row <= a.length; row += 1) rows[row][0] = row;
+  for (let column = 0; column <= b.length; column += 1) rows[0][column] = column;
+
+  for (let row = 1; row <= a.length; row += 1) {
+    for (let column = 1; column <= b.length; column += 1) {
+      const substitution = rows[row - 1][column - 1] + (a[row - 1] === b[column - 1] ? 0 : 1);
+      rows[row][column] = Math.min(
+        rows[row - 1][column] + 1,
+        rows[row][column - 1] + 1,
+        substitution
+      );
+    }
+  }
+  return rows[a.length][b.length];
+}
+
+function suggestIngredientName(value) {
+  const trimmed = String(value).trim();
+  if (ALIASES.has(trimmed)) return null;
+  const normalized = normalizeIngredientNameForMatch(trimmed);
+  if ([...normalized].length < 3) return null;
+
+  const candidates = new Map();
+  ALIASES.forEach((id, alias) => {
+    const normalizedAlias = normalizeIngredientNameForMatch(alias);
+    if (Math.abs([...normalizedAlias].length - [...normalized].length) > 1) return;
+    const distance = ingredientNameDistance(normalized, normalizedAlias);
+    if (distance > 1) return;
+    const current = candidates.get(id);
+    if (!current || distance < current.distance) candidates.set(id, { distance });
+  });
+
+  if (!candidates.size) return null;
+  const bestDistance = Math.min(...[...candidates.values()].map((candidate) => candidate.distance));
+  const matches = [...candidates.entries()].filter(([, candidate]) => candidate.distance === bestDistance);
+  if (matches.length !== 1) return null;
+
+  const [id] = matches[0];
+  const canonical = RECEIPT_RULES.find((rule) => rule.id === id)?.name
+    || [...ALIASES.entries()].find(([, candidateId]) => candidateId === id)?.[0];
+  if (!canonical || canonical === trimmed) return null;
+  return { id, name: canonical, distance: bestDistance };
+}
+
+function updateIngredientNameSuggestion() {
+  const typedName = elements.ingredientName.value;
+  const normalized = normalizeIngredientNameForMatch(typedName);
+  const suggestion = suggestIngredientName(typedName);
+  const dismissed = state.dismissedIngredientSuggestionFor === normalized;
+  state.ingredientNameSuggestion = suggestion;
+  elements.nameSuggestion.hidden = !suggestion || dismissed;
+  if (suggestion) elements.suggestedIngredientName.textContent = suggestion.name;
+  return suggestion && !dismissed ? suggestion : null;
 }
 
 function renderIngredientIllustration(id, name, small = false) {
@@ -2788,6 +2864,9 @@ function saveReceiptCandidates(event) {
 
 function openIngredientDialog(item = null, preferredLocation = null) {
   elements.form.reset();
+  state.ingredientNameSuggestion = null;
+  state.dismissedIngredientSuggestionFor = "";
+  elements.nameSuggestion.hidden = true;
   if (item) {
     elements.dialogTitle.textContent = `${item.name}の在庫`;
     elements.ingredientId.value = item.id;
@@ -2816,6 +2895,9 @@ function openIngredientDialog(item = null, preferredLocation = null) {
 }
 
 function closeIngredientDialog() {
+  state.ingredientNameSuggestion = null;
+  state.dismissedIngredientSuggestionFor = "";
+  elements.nameSuggestion.hidden = true;
   elements.dialog.close();
 }
 
@@ -2826,6 +2908,10 @@ function saveIngredient(event) {
   const unit = elements.ingredientUnit.value;
   const location = elements.ingredientLocation.value;
   if (!name || !Number.isFinite(quantity) || quantity <= 0) return;
+  if (updateIngredientNameSuggestion()) {
+    elements.acceptIngredientName.focus();
+    return;
+  }
 
   const editingId = elements.ingredientId.value;
   if (editingId) {
@@ -3261,6 +3347,24 @@ document.querySelector("#select-all-receipt").addEventListener("click", () => {
   updateReceiptSelectionState();
 });
 elements.form.addEventListener("submit", saveIngredient);
+elements.ingredientName.addEventListener("input", () => {
+  state.dismissedIngredientSuggestionFor = "";
+  updateIngredientNameSuggestion();
+});
+elements.acceptIngredientName.addEventListener("click", () => {
+  const suggestion = state.ingredientNameSuggestion;
+  if (!suggestion) return;
+  elements.ingredientName.value = suggestion.name;
+  state.ingredientNameSuggestion = null;
+  state.dismissedIngredientSuggestionFor = normalizeIngredientNameForMatch(suggestion.name);
+  elements.nameSuggestion.hidden = true;
+  elements.form.requestSubmit();
+});
+elements.keepIngredientName.addEventListener("click", () => {
+  state.dismissedIngredientSuggestionFor = normalizeIngredientNameForMatch(elements.ingredientName.value);
+  elements.nameSuggestion.hidden = true;
+  elements.form.requestSubmit();
+});
 elements.shoppingName.addEventListener("input", () => {
   const ingredientId = ALIASES.get(elements.shoppingName.value.trim());
   const known = RECEIPT_RULES.find((rule) => rule.id === ingredientId);
