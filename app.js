@@ -2,7 +2,7 @@ const STORAGE_KEY = "fridge-leftovers-inventory-v2";
 const SHOPPING_STORAGE_KEY = "fridge-leftovers-shopping-v1";
 const COOKING_HISTORY_STORAGE_KEY = "fridge-leftovers-cooking-history-v1";
 const SHELF_COUNTS_STORAGE_KEY = "fridge-leftovers-shelf-counts-v1";
-const APP_VERSION = "0.3.1";
+const APP_VERSION = "0.3.2";
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
@@ -1489,7 +1489,8 @@ const state = {
   suppressFridgeClickUntil: 0,
   shelfCounts: { ...DEFAULT_STORAGE_SHELF_COUNTS },
   ingredientNameSuggestion: null,
-  dismissedIngredientSuggestionFor: ""
+  dismissedIngredientSuggestionFor: "",
+  ingredientTargetShelf: null
 };
 
 const elements = {
@@ -1910,14 +1911,38 @@ function renderFridgeFood(item) {
   `;
 }
 
-function renderFridgeShelf(items, emptyText) {
-  if (!items.length) return `<p class="fridge-empty">${escapeHtml(emptyText)}</p>`;
-  return `<div class="fridge-foods">${items.map(renderFridgeFood).join("")}</div>`;
+function renderShelfAddButton(location, shelf) {
+  const storageName = location === "常温" ? "パントリー" : `${location}室`;
+  const locationClass = location === "冷凍"
+    ? "freezer"
+    : location === "常温"
+      ? "pantry"
+      : "chilled";
+  return `
+    <button class="shelf-add-food shelf-add-food-${locationClass}" type="button" data-shelf-add="${escapeHtml(location)}" data-shelf-add-index="${shelf}" aria-label="${storageName}${shelf + 1}段目に食材を追加">
+      <span aria-hidden="true">＋</span>
+    </button>
+  `;
 }
 
-function renderPantryShelf(items, emptyText) {
-  if (!items.length) return `<p class="pantry-empty">${escapeHtml(emptyText)}</p>`;
-  return `<div class="pantry-foods">${items.map(renderFridgeFood).join("")}</div>`;
+function renderFridgeShelf(items, location, shelf) {
+  const canAdd = items.length < STORAGE_SHELF_CAPACITIES[location];
+  return `
+    <div class="fridge-foods">
+      ${items.map(renderFridgeFood).join("")}
+      ${canAdd ? renderShelfAddButton(location, shelf) : ""}
+    </div>
+  `;
+}
+
+function renderPantryShelf(items, shelf) {
+  const canAdd = items.length < STORAGE_SHELF_CAPACITIES.常温;
+  return `
+    <div class="pantry-foods">
+      ${items.map(renderFridgeFood).join("")}
+      ${canAdd ? renderShelfAddButton("常温", shelf) : ""}
+    </div>
+  `;
 }
 
 function itemsOnShelf(active, location, shelf) {
@@ -1969,7 +1994,7 @@ function renderFridgeScene(active) {
         <span class="fridge-compartment-label">冷凍室</span>
         ${visibleFrozenShelves.map((items, shelf) => `
           <div class="freezer-shelf" data-drop-location="冷凍" data-drop-shelf="${shelf}">
-            ${renderFridgeShelf(items, shelf === 0 ? "冷凍食材はまだありません" : "この棚は空いています")}
+            ${renderFridgeShelf(items, "冷凍", shelf)}
           </div>
         `).join("")}
         ${renderShelfControl("冷凍")}
@@ -1979,7 +2004,7 @@ function renderFridgeScene(active) {
         <span class="fridge-compartment-label">冷蔵室</span>
         ${visibleChilledShelves.map((items, shelf) => `
           <div class="fridge-shelf" data-drop-location="冷蔵" data-drop-shelf="${shelf}">
-            ${renderFridgeShelf(items, shelf === 0 ? "冷蔵食材を入れてみましょう" : "この棚は空いています")}
+            ${renderFridgeShelf(items, "冷蔵", shelf)}
           </div>
         `).join("")}
         ${renderShelfControl("冷蔵")}
@@ -1998,10 +2023,10 @@ function renderFridgeScene(active) {
       <div class="pantry-cabinet">
         <div class="pantry-top" aria-hidden="true"></div>
         <div class="pantry-compartment" data-drop-location="常温" data-drop-shelf="0">
-          ${renderPantryShelf(visiblePantryShelves[0], "乾物や缶詰の棚")}
+          ${renderPantryShelf(visiblePantryShelves[0], 0)}
         </div>
         <div class="pantry-compartment" data-drop-location="常温" data-drop-shelf="1">
-          ${renderPantryShelf(visiblePantryShelves[1], "調味料や主食の棚")}
+          ${renderPantryShelf(visiblePantryShelves[1], 1)}
         </div>
         <div class="pantry-base">
           <span>常温ストック</span>
@@ -2777,7 +2802,7 @@ function closeReceiptDialog() {
   if (elements.receiptDialog.open) elements.receiptDialog.close();
 }
 
-function addOrMergeInventoryItem({ name, quantity, unit, location, priority = false }) {
+function addOrMergeInventoryItem({ name, quantity, unit, location, priority = false, shelf = null }) {
   const canonicalId = ALIASES.get(name) || makeId(name);
   const existing = state.inventory.find((item) =>
     item.id === canonicalId || item.name === name
@@ -2799,11 +2824,12 @@ function addOrMergeInventoryItem({ name, quantity, unit, location, priority = fa
     existing.active = true;
     existing.confirmedAt = todayIso();
     existing.step = stepForUnit(unit);
+    if (Number.isInteger(shelf)) existing.shelf = shelf;
     delete existing.consumedAt;
     return "merged";
   }
 
-  state.inventory.push({
+  const item = {
     id: canonicalId,
     name,
     quantity,
@@ -2814,7 +2840,9 @@ function addOrMergeInventoryItem({ name, quantity, unit, location, priority = fa
     confirmedAt: todayIso(),
     step: stepForUnit(unit),
     maxQuantity: quantity
-  });
+  };
+  if (Number.isInteger(shelf)) item.shelf = shelf;
+  state.inventory.push(item);
   return "added";
 }
 
@@ -2862,10 +2890,11 @@ function saveReceiptCandidates(event) {
   showToast(`レシートから${entries.length}品を在庫に追加しました`);
 }
 
-function openIngredientDialog(item = null, preferredLocation = null) {
+function openIngredientDialog(item = null, preferredLocation = null, preferredShelf = null) {
   elements.form.reset();
   state.ingredientNameSuggestion = null;
   state.dismissedIngredientSuggestionFor = "";
+  state.ingredientTargetShelf = null;
   elements.nameSuggestion.hidden = true;
   if (item) {
     elements.dialogTitle.textContent = `${item.name}の在庫`;
@@ -2877,7 +2906,26 @@ function openIngredientDialog(item = null, preferredLocation = null) {
     elements.ingredientPriority.checked = item.priority;
     elements.deleteIngredient.hidden = false;
   } else {
-    elements.dialogTitle.textContent = "食材を追加";
+    const hasShelfTarget = (
+      INVENTORY_LOCATIONS.includes(preferredLocation)
+      && Number.isInteger(preferredShelf)
+      && preferredShelf >= 0
+      && preferredShelf < state.shelfCounts[preferredLocation]
+    );
+    if (hasShelfTarget) {
+      state.ingredientTargetShelf = {
+        location: preferredLocation,
+        shelf: preferredShelf
+      };
+    }
+    const storageName = preferredLocation === "常温"
+      ? "パントリー"
+      : preferredLocation
+        ? `${preferredLocation}室`
+        : "";
+    elements.dialogTitle.textContent = hasShelfTarget
+      ? `${storageName} ${preferredShelf + 1}段目に追加`
+      : "食材を追加";
     elements.ingredientId.value = "";
     elements.ingredientQuantity.value = 1;
     elements.ingredientUnit.value = "個";
@@ -2897,6 +2945,7 @@ function openIngredientDialog(item = null, preferredLocation = null) {
 function closeIngredientDialog() {
   state.ingredientNameSuggestion = null;
   state.dismissedIngredientSuggestionFor = "";
+  state.ingredientTargetShelf = null;
   elements.nameSuggestion.hidden = true;
   elements.dialog.close();
 }
@@ -2935,12 +2984,16 @@ function saveIngredient(event) {
       showToast(`${name}を更新しました`);
     }
   } else {
+    const targetShelf = state.ingredientTargetShelf?.location === location
+      ? state.ingredientTargetShelf.shelf
+      : null;
     const result = addOrMergeInventoryItem({
       name,
       quantity,
       unit,
       location,
-      priority: elements.ingredientPriority.checked
+      priority: elements.ingredientPriority.checked,
+      shelf: targetShelf
     });
     showToast(result === "merged" ? `${name}の残量に追加しました` : `${name}を追加しました`);
   }
@@ -3559,6 +3612,15 @@ elements.fridgeScene.addEventListener("pointercancel", () => {
 elements.fridgeScene.addEventListener("click", (event) => {
   if (Date.now() < state.suppressFridgeClickUntil) {
     event.preventDefault();
+    return;
+  }
+  const shelfAdd = event.target.closest("[data-shelf-add]");
+  if (shelfAdd) {
+    openIngredientDialog(
+      null,
+      shelfAdd.dataset.shelfAdd,
+      Number(shelfAdd.dataset.shelfAddIndex)
+    );
     return;
   }
   const shelfControl = event.target.closest("[data-shelf-change]");
