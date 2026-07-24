@@ -1736,7 +1736,6 @@ function renderFridgeFood(item) {
   return `
     <button class="fridge-food${item.priority ? " is-priority" : ""}${low ? " is-low" : ""}" type="button" data-fridge-edit="${escapeHtml(item.id)}" aria-label="${escapeHtml(item.name)} ${low ? "少なめ" : "あります"}。在庫を編集">
       ${renderIngredientIllustration(item.id, item.name)}
-      ${low ? '<span class="fridge-food-state">少なめ</span>' : ""}
     </button>
   `;
 }

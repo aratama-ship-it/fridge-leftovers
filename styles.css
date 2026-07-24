@@ -365,29 +365,15 @@ h3 {
 
 .fridge-food.is-low .ingredient-illustration,
 .fridge-food.is-low .ingredient-initial {
-  transform: scale(0.76);
-  transform-origin: center bottom;
-  filter: saturate(0.8);
-  opacity: 0.78;
+  filter: saturate(0.9);
+  -webkit-mask-image: linear-gradient(to right, #000 0 50%, rgb(0 0 0 / 28%) 50% 100%);
+  mask-image: linear-gradient(to right, #000 0 50%, rgb(0 0 0 / 28%) 50% 100%);
 }
 
 .fridge-food .ingredient-illustration,
 .fridge-food .ingredient-initial {
   width: 52px;
   height: 52px;
-}
-
-.fridge-food-state {
-  position: relative;
-  z-index: 1;
-  margin-top: -5px;
-  padding: 2px 4px;
-  border: 1px solid #b47b67;
-  background: #fff8ef;
-  color: var(--warm);
-  font-size: 0.56rem;
-  font-weight: 800;
-  white-space: nowrap;
 }
 
 .fridge-empty {
