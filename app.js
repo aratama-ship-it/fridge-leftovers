@@ -2,7 +2,7 @@ const STORAGE_KEY = "fridge-leftovers-inventory-v2";
 const SHOPPING_STORAGE_KEY = "fridge-leftovers-shopping-v1";
 const COOKING_HISTORY_STORAGE_KEY = "fridge-leftovers-cooking-history-v1";
 const SHELF_COUNTS_STORAGE_KEY = "fridge-leftovers-shelf-counts-v1";
-const APP_VERSION = "0.5.0";
+const APP_VERSION = "0.6.0";
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
@@ -1461,6 +1461,62 @@ const RECEIPT_RULES = [
   { id: "konnyaku", name: "こんにゃく", pattern: /(?:こんにゃく|コンニャク|蒟蒻)/, quantity: 1, unit: "枚", location: "冷蔵" }
 ];
 
+const ILLUSTRATED_INGREDIENT_CATEGORIES = [
+  {
+    id: "vegetables",
+    name: "野菜・きのこ",
+    note: "葉物・根菜・薬味",
+    representatives: ["cabbage", "carrot", "tomato"],
+    items: [
+      "cabbage", "mushroom", "onion", "carrot", "tomato", "potato", "green-onion",
+      "radish", "lettuce", "cucumber", "spinach", "eggplant", "bell-pepper",
+      "broccoli", "garlic", "ginger", "bean-sprouts", "garlic-chives", "pumpkin"
+    ]
+  },
+  {
+    id: "seafood",
+    name: "魚介",
+    note: "魚・えび・缶詰",
+    representatives: ["salmon", "mackerel", "shrimp"],
+    items: ["salmon", "mackerel", "yellowtail", "shrimp", "tuna"]
+  },
+  {
+    id: "meat",
+    name: "肉",
+    note: "豚・鶏・牛・ひき肉",
+    representatives: ["pork", "chicken", "beef"],
+    items: ["pork", "chicken", "beef", "ground-meat"]
+  },
+  {
+    id: "protein",
+    name: "卵・乳・豆",
+    note: "卵・乳製品・大豆",
+    representatives: ["eggs", "milk", "tofu"],
+    items: ["eggs", "milk", "yogurt", "tofu", "natto", "cheese", "butter", "miso"]
+  },
+  {
+    id: "staples",
+    name: "主食・麺",
+    note: "ごはん・パン・麺",
+    representatives: ["rice", "bread", "udon"],
+    items: ["rice", "bread", "pasta", "udon", "soba", "yakisoba-noodles", "macaroni", "breadcrumbs"]
+  },
+  {
+    id: "fruit",
+    name: "果物",
+    note: "いつもの果物",
+    representatives: ["banana", "apple"],
+    items: ["banana", "apple"]
+  },
+  {
+    id: "other",
+    name: "乾物・その他",
+    note: "海藻・こんにゃく",
+    representatives: ["wakame", "konnyaku"],
+    items: ["wakame", "konnyaku"]
+  }
+];
+
 const INVENTORY_UNITS = ["個", "g", "ml", "本", "株", "袋", "パック", "膳", "切れ", "缶", "枚"];
 const INVENTORY_LOCATIONS = ["冷蔵", "冷凍", "常温"];
 const DEFAULT_STORAGE_SHELF_COUNTS = { 冷蔵: 3, 冷凍: 1, 常温: 2 };
@@ -1491,6 +1547,8 @@ const state = {
   ingredientNameSuggestion: null,
   dismissedIngredientSuggestionFor: "",
   ingredientTargetShelf: null,
+  ingredientPreferredLocation: null,
+  ingredientPickerCategory: null,
   pendingCookRecipeId: null,
   pendingCookServings: 1
 };
@@ -1523,6 +1581,18 @@ const elements = {
   form: document.querySelector("#ingredient-form"),
   dialogTitle: document.querySelector("#dialog-title"),
   ingredientId: document.querySelector("#ingredient-id"),
+  ingredientPicker: document.querySelector("#ingredient-picker"),
+  ingredientCategoryLayer: document.querySelector("#ingredient-category-layer"),
+  ingredientCategoryGrid: document.querySelector("#ingredient-category-grid"),
+  ingredientItemLayer: document.querySelector("#ingredient-item-layer"),
+  ingredientItemGrid: document.querySelector("#ingredient-item-grid"),
+  ingredientPickerCategoryTitle: document.querySelector("#ingredient-picker-category-title"),
+  ingredientManualMode: document.querySelector("#ingredient-manual-mode"),
+  ingredientPickerBack: document.querySelector("#ingredient-picker-back"),
+  ingredientPickerReselect: document.querySelector("#ingredient-picker-reselect"),
+  ingredientDetails: document.querySelector("#ingredient-details"),
+  selectedIngredientPreview: document.querySelector("#selected-ingredient-preview"),
+  ingredientNameField: document.querySelector("#ingredient-name-field"),
   ingredientName: document.querySelector("#ingredient-name"),
   nameSuggestion: document.querySelector("#name-suggestion"),
   suggestedIngredientName: document.querySelector("#suggested-ingredient-name"),
@@ -1775,6 +1845,132 @@ function renderIngredientIllustration(id, name, small = false) {
   const y = ((3.3 * ((row + 0.5) / 3) - 0.5) / 2.3) * 100;
   const atlasClass = atlas === "base" ? "" : ` ingredient-illustration-${atlas}`;
   return `<span class="ingredient-illustration${atlasClass}${sizeClass}" style="--atlas-x:${x}%;--atlas-y:${y}%;" aria-hidden="true"></span>`;
+}
+
+function illustratedIngredientItem(id) {
+  if (id === "rice") {
+    return {
+      id: "rice",
+      name: "ごはん",
+      quantity: 1,
+      unit: "膳",
+      location: "冷凍"
+    };
+  }
+
+  const rule = RECEIPT_RULES.find((candidate) => candidate.id === id);
+  if (!rule) return null;
+  return {
+    id: rule.id,
+    name: rule.name,
+    quantity: rule.quantity,
+    unit: rule.unit,
+    location: rule.location
+  };
+}
+
+function renderIngredientCategoryPicker() {
+  elements.ingredientCategoryGrid.innerHTML = ILLUSTRATED_INGREDIENT_CATEGORIES.map((category) => `
+    <button
+      class="ingredient-category-card"
+      type="button"
+      data-ingredient-category="${category.id}"
+      aria-label="${escapeHtml(category.name)}から選ぶ"
+    >
+      <span class="ingredient-category-pictures" aria-hidden="true">
+        ${category.representatives.map((id) => {
+          const item = illustratedIngredientItem(id);
+          return item ? renderIngredientIllustration(item.id, item.name) : "";
+        }).join("")}
+      </span>
+      <span class="ingredient-category-copy">
+        <strong>${escapeHtml(category.name)}</strong>
+        <small>${escapeHtml(category.note)}</small>
+      </span>
+      <span class="ingredient-category-arrow" aria-hidden="true">›</span>
+    </button>
+  `).join("");
+}
+
+function showIngredientCategoryLayer({ focus = false } = {}) {
+  state.ingredientPickerCategory = null;
+  elements.ingredientCategoryLayer.hidden = false;
+  elements.ingredientItemLayer.hidden = true;
+  elements.ingredientPicker.hidden = false;
+  elements.ingredientDetails.hidden = true;
+  renderIngredientCategoryPicker();
+  if (focus) {
+    requestAnimationFrame(() => {
+      elements.ingredientCategoryGrid.querySelector("button")?.focus();
+    });
+  }
+}
+
+function showIngredientItemLayer(categoryId) {
+  const category = ILLUSTRATED_INGREDIENT_CATEGORIES.find((candidate) => candidate.id === categoryId);
+  if (!category) return;
+
+  state.ingredientPickerCategory = category.id;
+  elements.ingredientPicker.hidden = false;
+  elements.ingredientDetails.hidden = true;
+  elements.ingredientPickerCategoryTitle.textContent = category.name;
+  elements.ingredientItemGrid.innerHTML = category.items.map((id) => {
+    const item = illustratedIngredientItem(id);
+    if (!item) return "";
+    return `
+      <button
+        class="ingredient-item-card"
+        type="button"
+        data-ingredient-item="${item.id}"
+        aria-label="${escapeHtml(item.name)}を追加"
+      >
+        ${renderIngredientIllustration(item.id, item.name)}
+        <strong>${escapeHtml(item.name)}</strong>
+      </button>
+    `;
+  }).join("");
+  elements.ingredientCategoryLayer.hidden = true;
+  elements.ingredientItemLayer.hidden = false;
+  requestAnimationFrame(() => {
+    elements.ingredientItemGrid.querySelector("button")?.focus();
+  });
+}
+
+function showIngredientDetails({ catalogItem = null, manual = false, editing = false } = {}) {
+  elements.ingredientPicker.hidden = true;
+  elements.ingredientDetails.hidden = false;
+  elements.ingredientPickerReselect.hidden = editing;
+  elements.nameSuggestion.hidden = true;
+
+  if (catalogItem) {
+    elements.ingredientName.value = catalogItem.name;
+    elements.ingredientQuantity.value = catalogItem.quantity;
+    elements.ingredientUnit.value = catalogItem.unit;
+    elements.ingredientLocation.value = state.ingredientPreferredLocation || catalogItem.location;
+    elements.ingredientNameField.hidden = true;
+    elements.selectedIngredientPreview.hidden = false;
+    elements.selectedIngredientPreview.innerHTML = `
+      ${renderIngredientIllustration(catalogItem.id, catalogItem.name)}
+      <span>
+        <small>3. 残量と保存場所を確認</small>
+        <strong>${escapeHtml(catalogItem.name)}</strong>
+      </span>
+    `;
+  } else {
+    elements.ingredientNameField.hidden = false;
+    elements.selectedIngredientPreview.hidden = true;
+    elements.selectedIngredientPreview.innerHTML = "";
+    if (manual) elements.ingredientName.value = "";
+  }
+
+  requestAnimationFrame(() => {
+    if (manual) {
+      elements.ingredientName.focus();
+    } else if (catalogItem) {
+      elements.ingredientQuantity.focus();
+      elements.ingredientQuantity.select();
+    }
+  });
 }
 
 function stepForUnit(unit) {
@@ -2921,8 +3117,16 @@ function openIngredientDialog(item = null, preferredLocation = null, preferredSh
   state.ingredientNameSuggestion = null;
   state.dismissedIngredientSuggestionFor = "";
   state.ingredientTargetShelf = null;
+  state.ingredientPreferredLocation = preferredLocation
+    || (state.location === "すべて" ? null : state.location);
+  state.ingredientPickerCategory = null;
   elements.nameSuggestion.hidden = true;
+  elements.ingredientPicker.hidden = true;
+  elements.ingredientDetails.hidden = true;
+  elements.selectedIngredientPreview.hidden = true;
+  elements.ingredientNameField.hidden = false;
   if (item) {
+    showIngredientDetails({ editing: true });
     elements.dialogTitle.textContent = `${item.name}の在庫`;
     elements.ingredientId.value = item.id;
     elements.ingredientName.value = item.name;
@@ -2959,13 +3163,14 @@ function openIngredientDialog(item = null, preferredLocation = null, preferredSh
     elements.ingredientLocation.value = preferredLocation || (state.location === "すべて" ? "冷蔵" : state.location);
     elements.consumeIngredient.hidden = true;
     elements.deleteIngredient.hidden = true;
+    showIngredientCategoryLayer();
   }
   elements.dialog.showModal();
   requestAnimationFrame(() => {
     if (item) {
       elements.dialog.querySelector("#close-dialog").focus();
     } else {
-      elements.ingredientName.focus();
+      elements.ingredientCategoryGrid.querySelector("button")?.focus();
     }
   });
 }
@@ -2974,6 +3179,8 @@ function closeIngredientDialog() {
   state.ingredientNameSuggestion = null;
   state.dismissedIngredientSuggestionFor = "";
   state.ingredientTargetShelf = null;
+  state.ingredientPreferredLocation = null;
+  state.ingredientPickerCategory = null;
   elements.nameSuggestion.hidden = true;
   elements.dialog.close();
 }
@@ -3625,6 +3832,36 @@ function finishFridgeDrag(event) {
   }
   if (shouldMove) moveInventoryItem(itemId, location, targetShelf, targetId, placeAfter);
 }
+
+elements.ingredientCategoryGrid.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-ingredient-category]");
+  if (!button) return;
+  showIngredientItemLayer(button.dataset.ingredientCategory);
+});
+
+elements.ingredientItemGrid.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-ingredient-item]");
+  if (!button) return;
+  const item = illustratedIngredientItem(button.dataset.ingredientItem);
+  if (item) showIngredientDetails({ catalogItem: item });
+});
+
+elements.ingredientManualMode.addEventListener("click", () => {
+  state.ingredientPickerCategory = null;
+  showIngredientDetails({ manual: true });
+});
+
+elements.ingredientPickerBack.addEventListener("click", () => {
+  showIngredientCategoryLayer({ focus: true });
+});
+
+elements.ingredientPickerReselect.addEventListener("click", () => {
+  if (state.ingredientPickerCategory) {
+    showIngredientItemLayer(state.ingredientPickerCategory);
+  } else {
+    showIngredientCategoryLayer({ focus: true });
+  }
+});
 
 document.querySelector("#add-ingredient").addEventListener("click", () => openIngredientDialog());
 elements.headerAddIngredient.addEventListener("click", () => openIngredientDialog());

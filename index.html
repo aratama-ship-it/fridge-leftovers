@@ -6,9 +6,9 @@
   <meta name="theme-color" content="#f3f0e6">
   <meta name="description" content="冷蔵庫の在庫を管理し、残っている食材から今日作れる料理を提案するスマホ向けプロトタイプ">
   <title>冷蔵庫の現在地</title>
-  <link rel="stylesheet" href="styles.css?v=35">
+  <link rel="stylesheet" href="styles.css?v=36">
   <script src="vendor/tesseract/tesseract.min.js?v=7.0.0" defer></script>
-  <script src="app.js?v=38" defer></script>
+  <script src="app.js?v=39" defer></script>
 </head>
 <body>
   <div class="app-shell">
@@ -138,6 +138,8 @@
               <option value="パック">パック</option>
               <option value="膳">膳</option>
               <option value="切れ">切れ</option>
+              <option value="缶">缶</option>
+              <option value="枚">枚</option>
             </select>
           </label>
           <button class="button button-primary shopping-add-button" type="submit">リストに追加</button>
@@ -221,64 +223,95 @@
 
       <input type="hidden" id="ingredient-id">
 
-      <label for="ingredient-name">
-        食材名
-        <input id="ingredient-name" name="name" type="text" autocomplete="off" required placeholder="例：キャベツ">
-      </label>
+      <section class="ingredient-picker" id="ingredient-picker" aria-label="イラストから食材を選ぶ">
+        <div class="ingredient-picker-layer" id="ingredient-category-layer">
+          <div class="ingredient-picker-lead">
+            <p class="eyebrow">1. 種類を選ぶ</p>
+            <strong>どのあたりの食材ですか？</strong>
+            <small>売り場を探すように選べます</small>
+          </div>
+          <div class="ingredient-category-grid" id="ingredient-category-grid"></div>
+          <button class="ingredient-manual-button" type="button" id="ingredient-manual-mode">
+            一覧にない食材を文字で追加
+          </button>
+        </div>
 
-      <section class="name-suggestion" id="name-suggestion" aria-live="polite" hidden>
-        <p>登録済みの名称「<strong id="suggested-ingredient-name"></strong>」に変更しますか？</p>
-        <div>
-          <button class="button button-secondary" type="button" id="keep-ingredient-name">このまま登録</button>
-          <button class="button button-primary" type="button" id="accept-ingredient-name">変更する</button>
+        <div class="ingredient-picker-layer" id="ingredient-item-layer" hidden>
+          <button class="ingredient-picker-back" type="button" id="ingredient-picker-back">← 種類へ戻る</button>
+          <div class="ingredient-picker-lead">
+            <p class="eyebrow">2. 食材を選ぶ</p>
+            <strong id="ingredient-picker-category-title"></strong>
+            <small>イラストをタップしてください</small>
+          </div>
+          <div class="ingredient-item-grid" id="ingredient-item-grid"></div>
         </div>
       </section>
 
-      <div class="form-grid">
-        <label for="ingredient-quantity">
-          残量
-          <input id="ingredient-quantity" name="quantity" type="number" inputmode="decimal" min="0.25" step="0.25" required value="1">
+      <section class="ingredient-details" id="ingredient-details" hidden>
+        <button class="ingredient-picker-back" type="button" id="ingredient-picker-reselect">← 食材を選び直す</button>
+        <div class="selected-ingredient-preview" id="selected-ingredient-preview" hidden></div>
+
+        <label for="ingredient-name" id="ingredient-name-field">
+          食材名
+          <input id="ingredient-name" name="name" type="text" autocomplete="off" required placeholder="例：キャベツ">
         </label>
 
-        <label for="ingredient-unit">
-          単位
-          <select id="ingredient-unit" name="unit">
-            <option value="個">個</option>
-            <option value="g">g</option>
-            <option value="ml">ml</option>
-            <option value="本">本</option>
-            <option value="株">株</option>
-            <option value="袋">袋</option>
-            <option value="パック">パック</option>
-            <option value="膳">膳</option>
-            <option value="切れ">切れ</option>
+        <section class="name-suggestion" id="name-suggestion" aria-live="polite" hidden>
+          <p>登録済みの名称「<strong id="suggested-ingredient-name"></strong>」に変更しますか？</p>
+          <div>
+            <button class="button button-secondary" type="button" id="keep-ingredient-name">このまま登録</button>
+            <button class="button button-primary" type="button" id="accept-ingredient-name">変更する</button>
+          </div>
+        </section>
+
+        <div class="form-grid">
+          <label for="ingredient-quantity">
+            残量
+            <input id="ingredient-quantity" name="quantity" type="number" inputmode="decimal" min="0.25" step="0.25" required value="1">
+          </label>
+
+          <label for="ingredient-unit">
+            単位
+            <select id="ingredient-unit" name="unit">
+              <option value="個">個</option>
+              <option value="g">g</option>
+              <option value="ml">ml</option>
+              <option value="本">本</option>
+              <option value="株">株</option>
+              <option value="袋">袋</option>
+              <option value="パック">パック</option>
+              <option value="膳">膳</option>
+              <option value="切れ">切れ</option>
+              <option value="缶">缶</option>
+              <option value="枚">枚</option>
+            </select>
+          </label>
+        </div>
+
+        <label for="ingredient-location">
+          保存場所
+          <select id="ingredient-location" name="location">
+            <option value="冷蔵">冷蔵</option>
+            <option value="冷凍">冷凍</option>
+            <option value="常温">常温</option>
           </select>
         </label>
-      </div>
 
-      <label for="ingredient-location">
-        保存場所
-        <select id="ingredient-location" name="location">
-          <option value="冷蔵">冷蔵</option>
-          <option value="冷凍">冷凍</option>
-          <option value="常温">常温</option>
-        </select>
-      </label>
+        <label class="check-row" for="ingredient-priority">
+          <input id="ingredient-priority" name="priority" type="checkbox">
+          <span>
+            <strong>使い切り優先にする</strong>
+            <small>料理の提案で先に使う候補にします</small>
+          </span>
+        </label>
 
-      <label class="check-row" for="ingredient-priority">
-        <input id="ingredient-priority" name="priority" type="checkbox">
-        <span>
-          <strong>使い切り優先にする</strong>
-          <small>料理の提案で先に使う候補にします</small>
-        </span>
-      </label>
-
-      <div class="dialog-actions">
-        <button class="button button-consume" type="button" id="consume-ingredient" hidden>この食材を使い切った</button>
-        <button class="button button-danger" type="button" id="delete-ingredient" hidden>在庫から削除</button>
-        <button class="button button-secondary" type="button" id="cancel-dialog">キャンセル</button>
-        <button class="button button-primary" type="submit">保存</button>
-      </div>
+        <div class="dialog-actions">
+          <button class="button button-consume" type="button" id="consume-ingredient" hidden>この食材を使い切った</button>
+          <button class="button button-danger" type="button" id="delete-ingredient" hidden>在庫から削除</button>
+          <button class="button button-secondary" type="button" id="cancel-dialog">キャンセル</button>
+          <button class="button button-primary" type="submit">保存</button>
+        </div>
+      </section>
     </form>
   </dialog>
 
