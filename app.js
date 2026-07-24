@@ -1911,7 +1911,6 @@ function renderFridgeScene(active) {
           ${hiddenPantryCount ? `<span>ほか ${hiddenPantryCount}品</span>` : '<span aria-hidden="true">●</span>'}
         </div>
       </div>
-      <button class="pantry-add-button" type="button" data-pantry-add>＋ 常温品を追加</button>
     </section>
   `;
 }
@@ -3213,8 +3212,6 @@ function finishFridgeDrag(event) {
 
 document.querySelector("#add-ingredient").addEventListener("click", () => openIngredientDialog());
 elements.headerAddIngredient.addEventListener("click", () => openIngredientDialog());
-document.querySelector("#home-shopping").addEventListener("click", () => showView("shopping"));
-document.querySelector("#home-suggestions").addEventListener("click", () => showView("suggestions"));
 document.querySelector("#scan-receipt").addEventListener("click", () => {
   elements.receiptInput.value = "";
   elements.receiptInput.click();
@@ -3333,11 +3330,6 @@ elements.fridgeScene.addEventListener("click", (event) => {
       shelfControl.dataset.shelfLocation,
       Number(shelfControl.dataset.shelfChange)
     );
-    return;
-  }
-  const pantryAdd = event.target.closest("[data-pantry-add]");
-  if (pantryAdd) {
-    openIngredientDialog(null, "常温");
     return;
   }
   const button = event.target.closest("[data-fridge-edit]");
