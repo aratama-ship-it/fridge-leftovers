@@ -3,7 +3,7 @@ const SHOPPING_STORAGE_KEY = "fridge-leftovers-shopping-v1";
 const COOKING_HISTORY_STORAGE_KEY = "fridge-leftovers-cooking-history-v1";
 const SHELF_COUNTS_STORAGE_KEY = "fridge-leftovers-shelf-counts-v1";
 const RECENT_INGREDIENTS_STORAGE_KEY = "fridge-leftovers-recent-ingredients-v1";
-const APP_VERSION = "0.8.0";
+const APP_VERSION = "0.8.1";
 const RECIPE_PAGE_SIZE = 3;
 const RECIPE_LIST_SERVINGS = 1;
 
@@ -1562,6 +1562,7 @@ const state = {
 
 const elements = {
   appVersion: document.querySelector("#app-version"),
+  appHeader: document.querySelector("#app-header"),
   headerAddIngredient: document.querySelector("#header-add-ingredient"),
   fridgeScene: document.querySelector("#fridge-scene"),
   inventoryList: document.querySelector("#inventory-list"),
@@ -2899,6 +2900,7 @@ function renderCookingHistory() {
 }
 
 function showView(viewName) {
+  elements.appHeader.hidden = viewName !== "inventory";
   elements.headerAddIngredient.hidden = viewName !== "inventory";
   elements.inventoryView.hidden = viewName !== "inventory";
   elements.managementView.hidden = viewName !== "management";

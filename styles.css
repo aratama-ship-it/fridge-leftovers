@@ -80,6 +80,10 @@ summary:focus-visible {
   background: var(--paper-raised);
 }
 
+.app-header[hidden] {
+  display: none;
+}
+
 .eyebrow {
   margin: 0 0 5px;
   color: var(--leaf);
