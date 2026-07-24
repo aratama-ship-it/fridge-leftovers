@@ -3,7 +3,7 @@ const SHOPPING_STORAGE_KEY = "fridge-leftovers-shopping-v1";
 const COOKING_HISTORY_STORAGE_KEY = "fridge-leftovers-cooking-history-v1";
 const SHELF_COUNTS_STORAGE_KEY = "fridge-leftovers-shelf-counts-v1";
 const RECENT_INGREDIENTS_STORAGE_KEY = "fridge-leftovers-recent-ingredients-v1";
-const APP_VERSION = "0.7.3";
+const APP_VERSION = "0.8.0";
 const RECIPE_PAGE_SIZE = 3;
 const RECIPE_LIST_SERVINGS = 1;
 
@@ -1554,6 +1554,7 @@ const state = {
   ingredientPreferredLocation: null,
   ingredientPickerCategory: null,
   selectedIngredientCatalogId: null,
+  shoppingPickerCategory: null,
   recentIngredientIds: [],
   pendingCookRecipeId: null,
   pendingCookServings: 1
@@ -1589,6 +1590,12 @@ const elements = {
   shoppingName: document.querySelector("#shopping-name"),
   shoppingQuantity: document.querySelector("#shopping-quantity"),
   shoppingUnit: document.querySelector("#shopping-unit"),
+  shoppingCategoryLayer: document.querySelector("#shopping-category-layer"),
+  shoppingCategoryGrid: document.querySelector("#shopping-category-grid"),
+  shoppingItemLayer: document.querySelector("#shopping-item-layer"),
+  shoppingPickerBack: document.querySelector("#shopping-picker-back"),
+  shoppingPickerCategoryTitle: document.querySelector("#shopping-picker-category-title"),
+  shoppingFoodGrid: document.querySelector("#shopping-food-grid"),
   shoppingRecommendations: document.querySelector("#shopping-recommendations"),
   shoppingList: document.querySelector("#shopping-list"),
   shoppingNavCount: document.querySelector("#shopping-nav-count"),
@@ -2564,7 +2571,60 @@ function renderShoppingItem(item) {
   `;
 }
 
+function renderShoppingPicker() {
+  const category = ILLUSTRATED_INGREDIENT_CATEGORIES.find(
+    (candidate) => candidate.id === state.shoppingPickerCategory
+  );
+  elements.shoppingCategoryLayer.hidden = Boolean(category);
+  elements.shoppingItemLayer.hidden = !category;
+
+  if (!category) {
+    elements.shoppingCategoryGrid.innerHTML = ILLUSTRATED_INGREDIENT_CATEGORIES.map((candidate) => `
+      <button
+        class="shopping-category-button"
+        type="button"
+        data-shopping-category="${candidate.id}"
+        aria-label="${escapeHtml(candidate.name)}から買うものを選ぶ"
+      >
+        <span class="shopping-category-art" aria-hidden="true">
+          ${candidate.representatives.slice(0, 2).map((id) => {
+            const item = illustratedIngredientItem(id);
+            return item ? renderIngredientIllustration(item.id, item.name) : "";
+          }).join("")}
+        </span>
+        <strong>${escapeHtml(candidate.name)}</strong>
+      </button>
+    `).join("");
+    return;
+  }
+
+  elements.shoppingPickerCategoryTitle.textContent = category.name;
+  elements.shoppingFoodGrid.innerHTML = category.items.map((id) => {
+    const item = illustratedIngredientItem(id);
+    if (!item) return "";
+    const added = state.shopping.some((shoppingItem) =>
+      !shoppingItem.checked
+      && shoppingItem.ingredientId === item.id
+      && shoppingItem.unit === item.unit
+    );
+    return `
+      <button
+        class="shopping-food-button${added ? " is-added" : ""}"
+        type="button"
+        data-shopping-food="${item.id}"
+        aria-label="${escapeHtml(item.name)}${added ? "は追加済み" : "を買うものに追加"}"
+        ${added ? "disabled" : ""}
+      >
+        ${renderIngredientIllustration(item.id, item.name)}
+        <strong>${escapeHtml(item.name)}</strong>
+        <small>${added ? "✓ 追加済み" : formatQuantity(item.quantity, item.unit)}</small>
+      </button>
+    `;
+  }).join("");
+}
+
 function renderShopping() {
+  renderShoppingPicker();
   const unchecked = state.shopping.filter((item) => !item.checked).length;
   const checked = state.shopping.length - unchecked;
   elements.shoppingOverview.textContent = state.shopping.length
@@ -4068,6 +4128,38 @@ elements.shoppingName.addEventListener("input", () => {
   if (known && INVENTORY_UNITS.includes(known.unit)) {
     elements.shoppingUnit.value = known.unit;
   }
+});
+elements.shoppingCategoryGrid.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-shopping-category]");
+  if (!button) return;
+  state.shoppingPickerCategory = button.dataset.shoppingCategory;
+  renderShoppingPicker();
+  requestAnimationFrame(() => {
+    elements.shoppingFoodGrid.querySelector("button:not(:disabled)")?.focus();
+  });
+});
+elements.shoppingPickerBack.addEventListener("click", () => {
+  state.shoppingPickerCategory = null;
+  renderShoppingPicker();
+  requestAnimationFrame(() => {
+    elements.shoppingCategoryGrid.querySelector("button")?.focus();
+  });
+});
+elements.shoppingFoodGrid.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-shopping-food]");
+  if (!button || button.disabled) return;
+  const item = illustratedIngredientItem(button.dataset.shoppingFood);
+  if (!item) return;
+  addShoppingItem({
+    ingredientId: item.id,
+    name: item.name,
+    quantity: item.quantity,
+    unit: item.unit,
+    source: "illustration",
+    location: item.location
+  });
+  persistShoppingList();
+  renderShopping();
 });
 elements.shoppingForm.addEventListener("submit", (event) => {
   event.preventDefault();

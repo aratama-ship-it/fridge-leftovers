@@ -6,9 +6,9 @@
   <meta name="theme-color" content="#f3f0e6">
   <meta name="description" content="冷蔵庫の在庫を管理し、残っている食材から今日作れる料理を提案するスマホ向けプロトタイプ">
   <title>冷蔵庫の現在地</title>
-  <link rel="stylesheet" href="styles.css?v=41">
+  <link rel="stylesheet" href="styles.css?v=42">
   <script src="vendor/tesseract/tesseract.min.js?v=7.0.0" defer></script>
-  <script src="app.js?v=46" defer></script>
+  <script src="app.js?v=47" defer></script>
 </head>
 <body>
   <div class="app-shell">
@@ -117,33 +117,59 @@
           <span class="shopping-pencil" aria-hidden="true">／</span>
         </div>
 
-        <form class="shopping-add-form" id="shopping-form">
-          <label class="shopping-name-field" for="shopping-name">
-            買うもの
-            <input id="shopping-name" name="name" type="text" autocomplete="off" required placeholder="例：牛乳">
-          </label>
-          <label for="shopping-quantity">
-            数量
-            <input id="shopping-quantity" name="quantity" type="number" inputmode="decimal" min="0.25" step="0.25" required value="1">
-          </label>
-          <label for="shopping-unit">
-            単位
-            <select id="shopping-unit" name="unit">
-              <option value="個">個</option>
-              <option value="g">g</option>
-              <option value="ml">ml</option>
-              <option value="本">本</option>
-              <option value="株">株</option>
-              <option value="袋">袋</option>
-              <option value="パック">パック</option>
-              <option value="膳">膳</option>
-              <option value="切れ">切れ</option>
-              <option value="缶">缶</option>
-              <option value="枚">枚</option>
-            </select>
-          </label>
-          <button class="button button-primary shopping-add-button" type="submit">リストに追加</button>
-        </form>
+        <section class="shopping-illustration-picker" aria-labelledby="shopping-picker-title">
+          <div class="shopping-picker-heading">
+            <div>
+              <p class="eyebrow">イラストから追加</p>
+              <h3 id="shopping-picker-title">売り場を選ぶ</h3>
+            </div>
+            <small>タップで追加</small>
+          </div>
+
+          <div class="shopping-category-layer" id="shopping-category-layer">
+            <div class="shopping-category-grid" id="shopping-category-grid"></div>
+          </div>
+
+          <div class="shopping-item-layer" id="shopping-item-layer" hidden>
+            <button class="shopping-picker-back" type="button" id="shopping-picker-back">← 売り場へ戻る</button>
+            <div class="shopping-item-layer-heading">
+              <strong id="shopping-picker-category-title"></strong>
+              <small>買うものをタップ</small>
+            </div>
+            <div class="shopping-food-grid" id="shopping-food-grid"></div>
+          </div>
+        </section>
+
+        <details class="shopping-manual">
+          <summary>一覧にないものを文字で追加</summary>
+          <form class="shopping-add-form" id="shopping-form">
+            <label class="shopping-name-field" for="shopping-name">
+              買うもの
+              <input id="shopping-name" name="name" type="text" autocomplete="off" required placeholder="例：牛乳">
+            </label>
+            <label for="shopping-quantity">
+              数量
+              <input id="shopping-quantity" name="quantity" type="number" inputmode="decimal" min="0.25" step="0.25" required value="1">
+            </label>
+            <label for="shopping-unit">
+              単位
+              <select id="shopping-unit" name="unit">
+                <option value="個">個</option>
+                <option value="g">g</option>
+                <option value="ml">ml</option>
+                <option value="本">本</option>
+                <option value="株">株</option>
+                <option value="袋">袋</option>
+                <option value="パック">パック</option>
+                <option value="膳">膳</option>
+                <option value="切れ">切れ</option>
+                <option value="缶">缶</option>
+                <option value="枚">枚</option>
+              </select>
+            </label>
+            <button class="button button-primary shopping-add-button" type="submit">リストに追加</button>
+          </form>
+        </details>
 
         <section class="shopping-recommendations" aria-labelledby="shopping-recommendations-title">
           <div class="shopping-section-heading">
