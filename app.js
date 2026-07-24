@@ -1,6 +1,7 @@
 const STORAGE_KEY = "fridge-leftovers-inventory-v2";
 const SHOPPING_STORAGE_KEY = "fridge-leftovers-shopping-v1";
 const COOKING_HISTORY_STORAGE_KEY = "fridge-leftovers-cooking-history-v1";
+const SHELF_COUNTS_STORAGE_KEY = "fridge-leftovers-shelf-counts-v1";
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
@@ -1461,7 +1462,11 @@ const RECEIPT_RULES = [
 
 const INVENTORY_UNITS = ["個", "g", "ml", "本", "株", "袋", "パック", "膳", "切れ", "缶", "枚"];
 const INVENTORY_LOCATIONS = ["冷蔵", "冷凍", "常温"];
-const STORAGE_SHELF_COUNTS = { 冷蔵: 3, 冷凍: 1, 常温: 2 };
+const DEFAULT_STORAGE_SHELF_COUNTS = { 冷蔵: 3, 冷凍: 1, 常温: 2 };
+const STORAGE_SHELF_LIMITS = {
+  冷蔵: { min: 1, max: 5 },
+  冷凍: { min: 1, max: 3 }
+};
 const STORAGE_SHELF_CAPACITIES = { 冷蔵: 5, 冷凍: 5, 常温: 4 };
 
 const state = {
@@ -1480,7 +1485,8 @@ const state = {
   receiptRunId: 0,
   receiptObjectUrl: null,
   fridgeDrag: null,
-  suppressFridgeClickUntil: 0
+  suppressFridgeClickUntil: 0,
+  shelfCounts: { ...DEFAULT_STORAGE_SHELF_COUNTS }
 };
 
 const elements = {
@@ -1565,6 +1571,32 @@ function persistInventory() {
   if (!state.storageEnabled) return;
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state.inventory));
+  } catch {
+    markStorageUnavailable();
+  }
+}
+
+function loadShelfCounts() {
+  state.shelfCounts = { ...DEFAULT_STORAGE_SHELF_COUNTS };
+  try {
+    const saved = localStorage.getItem(SHELF_COUNTS_STORAGE_KEY);
+    if (!saved) return;
+    const parsed = JSON.parse(saved);
+    for (const [location, limits] of Object.entries(STORAGE_SHELF_LIMITS)) {
+      const count = Number(parsed?.[location]);
+      if (Number.isInteger(count)) {
+        state.shelfCounts[location] = Math.min(limits.max, Math.max(limits.min, count));
+      }
+    }
+  } catch {
+    markStorageUnavailable();
+  }
+}
+
+function persistShelfCounts() {
+  if (!state.storageEnabled) return;
+  try {
+    localStorage.setItem(SHELF_COUNTS_STORAGE_KEY, JSON.stringify(state.shelfCounts));
   } catch {
     markStorageUnavailable();
   }
@@ -1708,7 +1740,7 @@ function ensureInventoryShelves() {
   let changed = false;
 
   for (const location of INVENTORY_LOCATIONS) {
-    const shelfCount = STORAGE_SHELF_COUNTS[location];
+    const shelfCount = state.shelfCounts[location];
     const items = state.inventory.filter((item) =>
       item.location === location && item.active !== false && item.quantity > 0
     );
@@ -1795,19 +1827,40 @@ function itemsOnShelf(active, location, shelf) {
   return active.filter((item) => item.location === location && item.shelf === shelf);
 }
 
+function renderShelfControl(location) {
+  const count = state.shelfCounts[location];
+  const limits = STORAGE_SHELF_LIMITS[location];
+  return `
+    <div class="shelf-count-control shelf-count-control-${location === "冷凍" ? "freezer" : "chamber"}">
+      <button type="button" data-shelf-location="${location}" data-shelf-change="-1" aria-label="${location}室の棚を1段減らす"${count <= limits.min ? " disabled" : ""}>−</button>
+      <span aria-live="polite">${count}段</span>
+      <button type="button" data-shelf-location="${location}" data-shelf-change="1" aria-label="${location}室の棚を1段増やす"${count >= limits.max ? " disabled" : ""}>＋</button>
+    </div>
+  `;
+}
+
 function renderFridgeScene(active) {
   const pantry = active.filter((item) => item.location === "常温");
-  const frozenShelf = itemsOnShelf(active, "冷凍", 0);
-  const chilledShelves = [0, 1, 2].map((shelf) => itemsOnShelf(active, "冷蔵", shelf));
+  const frozenShelves = Array.from(
+    { length: state.shelfCounts.冷凍 },
+    (_, shelf) => itemsOnShelf(active, "冷凍", shelf)
+  );
+  const chilledShelves = Array.from(
+    { length: state.shelfCounts.冷蔵 },
+    (_, shelf) => itemsOnShelf(active, "冷蔵", shelf)
+  );
   const pantryShelves = [0, 1].map((shelf) => itemsOnShelf(active, "常温", shelf));
-  const visibleFrozen = frozenShelf.slice(0, STORAGE_SHELF_CAPACITIES.冷凍);
+  const visibleFrozenShelves = frozenShelves.map((items) =>
+    items.slice(0, STORAGE_SHELF_CAPACITIES.冷凍)
+  );
   const visibleChilledShelves = chilledShelves.map((items) =>
     items.slice(0, STORAGE_SHELF_CAPACITIES.冷蔵)
   );
   const visiblePantryShelves = pantryShelves.map((items) =>
     items.slice(0, STORAGE_SHELF_CAPACITIES.常温)
   );
-  const hiddenFridgeCount = frozenShelf.length - visibleFrozen.length
+  const hiddenFridgeCount = frozenShelves.reduce((count, items, shelf) =>
+    count + items.length - visibleFrozenShelves[shelf].length, 0)
     + chilledShelves.reduce((count, items, shelf) =>
       count + items.length - visibleChilledShelves[shelf].length, 0);
   const hiddenPantryCount = pantryShelves.reduce((count, items, shelf) =>
@@ -1815,22 +1868,24 @@ function renderFridgeScene(active) {
 
   elements.fridgeScene.innerHTML = `
     <div class="fridge-appliance">
-      <div class="fridge-freezer" data-drop-location="冷凍" data-drop-shelf="0">
+      <div class="fridge-freezer">
         <span class="fridge-compartment-label">冷凍室</span>
-        ${renderFridgeShelf(visibleFrozen, "冷凍食材はまだありません")}
+        ${visibleFrozenShelves.map((items, shelf) => `
+          <div class="freezer-shelf" data-drop-location="冷凍" data-drop-shelf="${shelf}">
+            ${renderFridgeShelf(items, shelf === 0 ? "冷凍食材はまだありません" : "この棚は空いています")}
+          </div>
+        `).join("")}
+        ${renderShelfControl("冷凍")}
       </div>
       <div class="fridge-chamber">
         <span class="fridge-light" aria-hidden="true"></span>
         <span class="fridge-compartment-label">冷蔵室</span>
-        <div class="fridge-shelf" data-drop-location="冷蔵" data-drop-shelf="0">
-          ${renderFridgeShelf(visibleChilledShelves[0], "冷蔵食材を入れてみましょう")}
-        </div>
-        <div class="fridge-shelf" data-drop-location="冷蔵" data-drop-shelf="1">
-          ${renderFridgeShelf(visibleChilledShelves[1], "この棚は空いています")}
-        </div>
-        <div class="fridge-shelf" data-drop-location="冷蔵" data-drop-shelf="2">
-          ${renderFridgeShelf(visibleChilledShelves[2], "この棚は空いています")}
-        </div>
+        ${visibleChilledShelves.map((items, shelf) => `
+          <div class="fridge-shelf" data-drop-location="冷蔵" data-drop-shelf="${shelf}">
+            ${renderFridgeShelf(items, shelf === 0 ? "冷蔵食材を入れてみましょう" : "この棚は空いています")}
+          </div>
+        `).join("")}
+        ${renderShelfControl("冷蔵")}
       </div>
       ${hiddenFridgeCount ? `<span class="fridge-overflow">ほか ${hiddenFridgeCount}品</span>` : ""}
     </div>
@@ -2946,9 +3001,38 @@ function renderAll() {
   renderCookingHistory();
 }
 
+function changeShelfCount(location, delta) {
+  const limits = STORAGE_SHELF_LIMITS[location];
+  const current = state.shelfCounts[location];
+  if (!limits || ![-1, 1].includes(delta)) return false;
+
+  const next = current + delta;
+  if (next < limits.min || next > limits.max) return false;
+
+  if (delta < 0) {
+    const lastShelf = current - 1;
+    const hasItems = state.inventory.some((item) =>
+      item.location === location
+      && item.shelf === lastShelf
+      && item.active !== false
+      && item.quantity > 0
+    );
+    if (hasItems) {
+      showToast("最下段の食材を移動してから棚を減らしてください");
+      return false;
+    }
+  }
+
+  state.shelfCounts[location] = next;
+  persistShelfCounts();
+  renderInventory();
+  showToast(`${location}室を${next}段にしました`);
+  return true;
+}
+
 function moveInventoryItem(itemId, targetLocation, targetShelf, targetId = null, placeAfter = false) {
   const sourceIndex = state.inventory.findIndex((item) => item.id === itemId);
-  const shelfCount = STORAGE_SHELF_COUNTS[targetLocation];
+  const shelfCount = state.shelfCounts[targetLocation];
   if (
     sourceIndex < 0
     || !INVENTORY_LOCATIONS.includes(targetLocation)
@@ -3243,6 +3327,14 @@ elements.fridgeScene.addEventListener("click", (event) => {
     event.preventDefault();
     return;
   }
+  const shelfControl = event.target.closest("[data-shelf-change]");
+  if (shelfControl) {
+    changeShelfCount(
+      shelfControl.dataset.shelfLocation,
+      Number(shelfControl.dataset.shelfChange)
+    );
+    return;
+  }
   const pantryAdd = event.target.closest("[data-pantry-add]");
   if (pantryAdd) {
     openIngredientDialog(null, "常温");
@@ -3430,6 +3522,7 @@ elements.toastAction.addEventListener("click", () => {
   if (undo) undo();
 });
 
+loadShelfCounts();
 loadInventory();
 loadShoppingList();
 loadCookingHistory();

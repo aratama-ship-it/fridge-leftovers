@@ -256,7 +256,7 @@ h3 {
 }
 
 .fridge-freezer {
-  min-height: 112px;
+  min-height: 0;
   padding: 26px 10px 8px;
   border-color: #7899a6;
   border-radius: 10px 10px 4px 4px;
@@ -269,19 +269,8 @@ h3 {
   color: #315866;
 }
 
-.fridge-freezer::after {
-  position: absolute;
-  right: 14px;
-  bottom: 7px;
-  width: 45px;
-  height: 3px;
-  border-radius: 3px;
-  background: #85aebb;
-  content: "";
-}
-
 .fridge-chamber {
-  min-height: 278px;
+  min-height: 0;
   margin-top: 7px;
   padding: 27px 10px 7px;
   background:
@@ -317,8 +306,69 @@ h3 {
   box-shadow: 0 3px 0 rgb(255 255 255 / 62%);
 }
 
-.fridge-shelf + .fridge-shelf {
+.freezer-shelf {
+  min-height: 78px;
+  padding: 2px 1px 4px;
+  border-bottom: 4px solid #8bafbd;
+  box-shadow: 0 3px 0 rgb(255 255 255 / 58%);
+}
+
+.fridge-shelf + .fridge-shelf,
+.freezer-shelf + .freezer-shelf {
   margin-top: 4px;
+}
+
+.shelf-count-control {
+  display: grid;
+  grid-template-columns: 48px 1fr 48px;
+  align-items: center;
+  min-height: 44px;
+  margin-top: 5px;
+  padding: 3px 5px;
+  border: 1px solid #84978c;
+  border-radius: 7px;
+  background: rgb(247 250 245 / 58%);
+}
+
+.shelf-count-control-freezer {
+  border-color: #7da4b3;
+  background: rgb(235 248 252 / 58%);
+}
+
+.shelf-count-control button {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 38px;
+  padding: 0;
+  border: 1px solid #65796d;
+  border-radius: 6px;
+  background: rgb(255 255 255 / 72%);
+  color: #35483e;
+  font-size: 1.45rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.shelf-count-control-freezer button {
+  border-color: #527887;
+  color: #315866;
+}
+
+.shelf-count-control button:last-child {
+  justify-self: end;
+}
+
+.shelf-count-control button:disabled {
+  opacity: 0.3;
+}
+
+.shelf-count-control span {
+  color: #405348;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-align: center;
 }
 
 .fridge-foods {
@@ -432,9 +482,9 @@ body.is-fridge-dragging {
 }
 
 .fridge-overflow {
-  position: absolute;
-  right: 14px;
-  bottom: 14px;
+  display: block;
+  width: max-content;
+  margin: 6px 4px 0 auto;
   padding: 3px 6px;
   border: 1px solid #8d9d94;
   background: #f7f8f2;
