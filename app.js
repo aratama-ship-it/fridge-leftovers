@@ -2,7 +2,8 @@ const STORAGE_KEY = "fridge-leftovers-inventory-v2";
 const SHOPPING_STORAGE_KEY = "fridge-leftovers-shopping-v1";
 const COOKING_HISTORY_STORAGE_KEY = "fridge-leftovers-cooking-history-v1";
 const SHELF_COUNTS_STORAGE_KEY = "fridge-leftovers-shelf-counts-v1";
-const APP_VERSION = "0.6.0";
+const RECENT_INGREDIENTS_STORAGE_KEY = "fridge-leftovers-recent-ingredients-v1";
+const APP_VERSION = "0.6.1";
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
@@ -1549,6 +1550,8 @@ const state = {
   ingredientTargetShelf: null,
   ingredientPreferredLocation: null,
   ingredientPickerCategory: null,
+  selectedIngredientCatalogId: null,
+  recentIngredientIds: [],
   pendingCookRecipeId: null,
   pendingCookServings: 1
 };
@@ -1659,6 +1662,37 @@ function persistInventory() {
   if (!state.storageEnabled) return;
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state.inventory));
+  } catch {
+    markStorageUnavailable();
+  }
+}
+
+function loadRecentIngredients() {
+  try {
+    const saved = localStorage.getItem(RECENT_INGREDIENTS_STORAGE_KEY);
+    const parsed = saved ? JSON.parse(saved) : [];
+    state.recentIngredientIds = Array.isArray(parsed)
+      ? [...new Set(parsed)]
+        .filter((id) => Boolean(INGREDIENT_ILLUSTRATIONS[id]))
+        .slice(0, 24)
+      : [];
+  } catch {
+    state.recentIngredientIds = [];
+  }
+}
+
+function rememberRecentIngredient(id) {
+  if (!INGREDIENT_ILLUSTRATIONS[id]) return;
+  state.recentIngredientIds = [
+    id,
+    ...state.recentIngredientIds.filter((candidate) => candidate !== id)
+  ].slice(0, 24);
+  if (!state.storageEnabled) return;
+  try {
+    localStorage.setItem(
+      RECENT_INGREDIENTS_STORAGE_KEY,
+      JSON.stringify(state.recentIngredientIds)
+    );
   } catch {
     markStorageUnavailable();
   }
@@ -1894,6 +1928,7 @@ function renderIngredientCategoryPicker() {
 
 function showIngredientCategoryLayer({ focus = false } = {}) {
   state.ingredientPickerCategory = null;
+  state.selectedIngredientCatalogId = null;
   elements.ingredientCategoryLayer.hidden = false;
   elements.ingredientItemLayer.hidden = true;
   elements.ingredientPicker.hidden = false;
@@ -1911,10 +1946,19 @@ function showIngredientItemLayer(categoryId) {
   if (!category) return;
 
   state.ingredientPickerCategory = category.id;
+  state.selectedIngredientCatalogId = null;
   elements.ingredientPicker.hidden = false;
   elements.ingredientDetails.hidden = true;
   elements.ingredientPickerCategoryTitle.textContent = category.name;
-  elements.ingredientItemGrid.innerHTML = category.items.map((id) => {
+  const recentOrder = new Map(
+    state.recentIngredientIds.map((id, index) => [id, index])
+  );
+  const orderedItems = [...category.items].sort((left, right) => {
+    const leftOrder = recentOrder.get(left) ?? Number.POSITIVE_INFINITY;
+    const rightOrder = recentOrder.get(right) ?? Number.POSITIVE_INFINITY;
+    return leftOrder - rightOrder;
+  });
+  elements.ingredientItemGrid.innerHTML = orderedItems.map((id) => {
     const item = illustratedIngredientItem(id);
     if (!item) return "";
     return `
@@ -1943,6 +1987,7 @@ function showIngredientDetails({ catalogItem = null, manual = false, editing = f
   elements.nameSuggestion.hidden = true;
 
   if (catalogItem) {
+    state.selectedIngredientCatalogId = catalogItem.id;
     elements.ingredientName.value = catalogItem.name;
     elements.ingredientQuantity.value = catalogItem.quantity;
     elements.ingredientUnit.value = catalogItem.unit;
@@ -1957,6 +2002,7 @@ function showIngredientDetails({ catalogItem = null, manual = false, editing = f
       </span>
     `;
   } else {
+    state.selectedIngredientCatalogId = null;
     elements.ingredientNameField.hidden = false;
     elements.selectedIngredientPreview.hidden = true;
     elements.selectedIngredientPreview.innerHTML = "";
@@ -3120,6 +3166,7 @@ function openIngredientDialog(item = null, preferredLocation = null, preferredSh
   state.ingredientPreferredLocation = preferredLocation
     || (state.location === "すべて" ? null : state.location);
   state.ingredientPickerCategory = null;
+  state.selectedIngredientCatalogId = null;
   elements.nameSuggestion.hidden = true;
   elements.ingredientPicker.hidden = true;
   elements.ingredientDetails.hidden = true;
@@ -3181,6 +3228,7 @@ function closeIngredientDialog() {
   state.ingredientTargetShelf = null;
   state.ingredientPreferredLocation = null;
   state.ingredientPickerCategory = null;
+  state.selectedIngredientCatalogId = null;
   elements.nameSuggestion.hidden = true;
   elements.dialog.close();
 }
@@ -3219,6 +3267,7 @@ function saveIngredient(event) {
       showToast(`${name}を更新しました`);
     }
   } else {
+    const selectedCatalogId = state.selectedIngredientCatalogId;
     const targetShelf = state.ingredientTargetShelf?.location === location
       ? state.ingredientTargetShelf.shelf
       : null;
@@ -3230,6 +3279,7 @@ function saveIngredient(event) {
       priority: elements.ingredientPriority.checked,
       shelf: targetShelf
     });
+    if (selectedCatalogId) rememberRecentIngredient(selectedCatalogId);
     showToast(result === "merged" ? `${name}の残量に追加しました` : `${name}を追加しました`);
   }
 
@@ -4216,6 +4266,7 @@ elements.toastAction.addEventListener("click", () => {
 
 elements.appVersion.textContent = `v${APP_VERSION}`;
 loadShelfCounts();
+loadRecentIngredients();
 loadInventory();
 loadShoppingList();
 loadCookingHistory();
