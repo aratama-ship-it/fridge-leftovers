@@ -3,7 +3,7 @@ const SHOPPING_STORAGE_KEY = "fridge-leftovers-shopping-v1";
 const COOKING_HISTORY_STORAGE_KEY = "fridge-leftovers-cooking-history-v1";
 const SHELF_COUNTS_STORAGE_KEY = "fridge-leftovers-shelf-counts-v1";
 const RECENT_INGREDIENTS_STORAGE_KEY = "fridge-leftovers-recent-ingredients-v1";
-const APP_VERSION = "0.6.2";
+const APP_VERSION = "0.6.3";
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
