@@ -61,8 +61,21 @@ summary:focus-visible {
   border-inline: 1px solid var(--line);
 }
 
+.app-version {
+  margin: 0;
+  padding: max(4px, env(safe-area-inset-top)) 18px 2px;
+  background: var(--paper-raised);
+  color: var(--muted);
+  font-size: 0.58rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  text-align: right;
+}
+
 .app-header {
-  padding: max(22px, env(safe-area-inset-top)) 18px 18px;
+  padding: 7px 18px 18px;
   border-bottom: 1px solid var(--line-strong);
   background: var(--paper-raised);
 }
