@@ -431,24 +431,10 @@ body.is-fridge-dragging {
   font-size: 0.68rem;
 }
 
-.fridge-crisper {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  margin-top: 7px;
-  padding: 11px 13px;
-  border: 2px solid #8d9d94;
-  border-radius: 3px 3px 7px 7px;
-  background: #c5d4cb;
-  color: #43564b;
-  font-size: 0.68rem;
-  font-weight: 800;
-}
-
 .fridge-overflow {
   position: absolute;
   right: 14px;
-  bottom: 57px;
+  bottom: 14px;
   padding: 3px 6px;
   border: 1px solid #8d9d94;
   background: #f7f8f2;

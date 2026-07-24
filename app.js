@@ -1796,8 +1796,6 @@ function itemsOnShelf(active, location, shelf) {
 }
 
 function renderFridgeScene(active) {
-  const frozen = active.filter((item) => item.location === "冷凍");
-  const chilled = active.filter((item) => item.location === "冷蔵");
   const pantry = active.filter((item) => item.location === "常温");
   const frozenShelf = itemsOnShelf(active, "冷凍", 0);
   const chilledShelves = [0, 1, 2].map((shelf) => itemsOnShelf(active, "冷蔵", shelf));
@@ -1833,10 +1831,6 @@ function renderFridgeScene(active) {
         <div class="fridge-shelf" data-drop-location="冷蔵" data-drop-shelf="2">
           ${renderFridgeShelf(visibleChilledShelves[2], "この棚は空いています")}
         </div>
-      </div>
-      <div class="fridge-crisper">
-        <span>野菜室</span>
-        <span>${chilled.length ? `${chilled.length}品を冷蔵中` : "空いています"}</span>
       </div>
       ${hiddenFridgeCount ? `<span class="fridge-overflow">ほか ${hiddenFridgeCount}品</span>` : ""}
     </div>
