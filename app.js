@@ -3,7 +3,7 @@ const SHOPPING_STORAGE_KEY = "fridge-leftovers-shopping-v1";
 const COOKING_HISTORY_STORAGE_KEY = "fridge-leftovers-cooking-history-v1";
 const SHELF_COUNTS_STORAGE_KEY = "fridge-leftovers-shelf-counts-v1";
 const RECENT_INGREDIENTS_STORAGE_KEY = "fridge-leftovers-recent-ingredients-v1";
-const APP_VERSION = "0.8.1";
+const APP_VERSION = "0.9.0";
 const RECIPE_PAGE_SIZE = 3;
 const RECIPE_LIST_SERVINGS = 1;
 
@@ -29,7 +29,7 @@ const RECIPES = [
     pantry: "味噌・醤油・砂糖・油",
     optional: [
       { id: "mushroom", name: "しめじ", quantity: 0.25, unit: "株", benefit: "量と食感が増す" },
-      { id: "ginger", name: "しょうが", quantity: 10, unit: "g", benefit: "香りが締まる" },
+      { id: "ginger", name: "しょうが", quantity: 0.25, unit: "個", benefit: "香りが締まる" },
       { id: "sesame-oil", name: "ごま油", quantity: 1, unit: "小さじ", benefit: "仕上げが香ばしくなる" }
     ]
   },
@@ -119,7 +119,7 @@ const RECIPES = [
     pantry: "塩・こしょう・油",
     optional: [
       { id: "breadcrumbs", name: "パン粉", quantity: 20, unit: "g", benefit: "肉汁を抱えてふっくらする" },
-      { id: "radish", name: "大根", quantity: 100, unit: "g", benefit: "和風おろしでさっぱりする" },
+      { id: "radish", name: "大根", quantity: 0.25, unit: "本", benefit: "和風おろしでさっぱりする" },
       { id: "cheese", name: "チーズ", quantity: 20, unit: "g", benefit: "コクのある仕上がりになる" }
     ]
   },
@@ -133,9 +133,9 @@ const RECIPES = [
     ],
     pantry: "小麦粉・塩・こしょう・油",
     optional: [
-      { id: "spinach", name: "ほうれん草", quantity: 100, unit: "g", benefit: "定番の付け合わせになる" },
+      { id: "spinach", name: "ほうれん草", quantity: 0.5, unit: "袋", benefit: "定番の付け合わせになる" },
       { id: "potato", name: "じゃがいも", quantity: 1, unit: "個", benefit: "一皿の満足感が増す" },
-      { id: "garlic", name: "にんにく", quantity: 5, unit: "g", benefit: "ソースの香りが立つ" }
+      { id: "garlic", name: "にんにく", quantity: 0.25, unit: "個", benefit: "ソースの香りが立つ" }
     ]
   },
   {
@@ -148,7 +148,7 @@ const RECIPES = [
     ],
     pantry: "ケチャップ・塩・こしょう・油",
     optional: [
-      { id: "bell-pepper", name: "ピーマン", quantity: 1, unit: "個", benefit: "定番の香りと彩りが出る" },
+      { id: "bell-pepper", name: "ピーマン", quantity: 0.5, unit: "袋", benefit: "定番の香りと彩りが出る" },
       { id: "mushroom", name: "しめじ", quantity: 0.25, unit: "株", benefit: "うま味と食感を足せる" },
       { id: "cheese", name: "チーズ", quantity: 10, unit: "g", benefit: "仕上げのコクが増す" }
     ]
@@ -158,14 +158,14 @@ const RECIPES = [
     name: "豆腐とわかめの味噌汁",
     minutes: 10,
     required: [
-      { id: "tofu", name: "豆腐", quantity: 150, unit: "g" },
+      { id: "tofu", name: "豆腐", quantity: 0.5, unit: "個" },
       { id: "miso", name: "味噌", quantity: 20, unit: "g" }
     ],
     pantry: "水・だし",
     optional: [
-      { id: "wakame", name: "わかめ", quantity: 3, unit: "g", benefit: "定番の磯の風味が加わる" },
+      { id: "wakame", name: "わかめ", quantity: 0.1, unit: "袋", benefit: "定番の磯の風味が加わる" },
       { id: "green-onion", name: "ねぎ", quantity: 0.25, unit: "本", benefit: "仕上げの香りが出る" },
-      { id: "radish", name: "大根", quantity: 50, unit: "g", benefit: "野菜の食べ応えを足せる" }
+      { id: "radish", name: "大根", quantity: 0.25, unit: "本", benefit: "野菜の食べ応えを足せる" }
     ]
   },
   {
@@ -233,7 +233,7 @@ const RECIPES = [
     name: "なすとひき肉の甘辛炒め",
     minutes: 15,
     required: [
-      { id: "eggplant", name: "なす", quantity: 1, unit: "袋" },
+      { id: "eggplant", name: "なす", quantity: 2, unit: "本" },
       { id: "ground-meat", name: "ひき肉", quantity: 100, unit: "g" }
     ],
     pantry: "醤油・砂糖・みりん・油",
@@ -474,7 +474,7 @@ const RECIPES = [
     ],
     pantry: "片栗粉・だし・醤油・みりん・油",
     optional: [
-      { id: "radish", name: "大根", quantity: 50, unit: "g", benefit: "大根おろしでさっぱりする" },
+      { id: "radish", name: "大根", quantity: 0.25, unit: "本", benefit: "大根おろしでさっぱりする" },
       { id: "green-onion", name: "ねぎ", quantity: 0.25, unit: "本", benefit: "仕上げの香りが出る" },
       { id: "ginger", name: "しょうが", quantity: 0.25, unit: "個", benefit: "つゆの味が締まる" }
     ]
@@ -542,7 +542,7 @@ const RECIPES = [
     name: "なすの味噌炒め",
     minutes: 12,
     required: [
-      { id: "eggplant", name: "なす", quantity: 1, unit: "袋" },
+      { id: "eggplant", name: "なす", quantity: 2, unit: "本" },
       { id: "miso", name: "味噌", quantity: 20, unit: "g" }
     ],
     pantry: "砂糖・醤油・油",
@@ -564,7 +564,7 @@ const RECIPES = [
     optional: [
       { id: "ginger", name: "しょうが", quantity: 0.25, unit: "個", benefit: "さわやかな香りが加わる" },
       { id: "bonito", name: "かつお節", quantity: 1, unit: "袋", benefit: "うま味を足せる" },
-      { id: "radish", name: "大根", quantity: 50, unit: "g", benefit: "食感と野菜量が増す" }
+      { id: "radish", name: "大根", quantity: 0.25, unit: "本", benefit: "食感と野菜量が増す" }
     ]
   },
   {
@@ -619,7 +619,7 @@ const RECIPES = [
     minutes: 25,
     required: [
       { id: "pork", name: "豚こま", quantity: 80, unit: "g" },
-      { id: "radish", name: "大根", quantity: 100, unit: "g" },
+      { id: "radish", name: "大根", quantity: 0.25, unit: "本" },
       { id: "carrot", name: "にんじん", quantity: 0.5, unit: "本" },
       { id: "miso", name: "味噌", quantity: 20, unit: "g" }
     ],
@@ -732,7 +732,7 @@ const RECIPES = [
     optional: [
       { id: "ginger", name: "しょうが", quantity: 0.25, unit: "個", benefit: "魚の風味をさっぱり整える" },
       { id: "green-onion", name: "ねぎ", quantity: 0.5, unit: "本", benefit: "煮汁に甘みと香りが出る" },
-      { id: "radish", name: "大根", quantity: 50, unit: "g", benefit: "煮汁を含む付け合わせになる" }
+      { id: "radish", name: "大根", quantity: 0.25, unit: "本", benefit: "煮汁を含む付け合わせになる" }
     ]
   },
   {
@@ -744,7 +744,7 @@ const RECIPES = [
     ],
     pantry: "塩・油",
     optional: [
-      { id: "radish", name: "大根", quantity: 100, unit: "g", benefit: "大根おろしでさっぱり食べられる" },
+      { id: "radish", name: "大根", quantity: 0.25, unit: "本", benefit: "大根おろしでさっぱり食べられる" },
       { id: "spinach", name: "ほうれん草", quantity: 0.25, unit: "袋", benefit: "青菜の副菜を添えられる" },
       { id: "ginger", name: "しょうが", quantity: 0.25, unit: "個", benefit: "魚の風味を整える" }
     ]
@@ -758,7 +758,7 @@ const RECIPES = [
     ],
     pantry: "醤油・みりん・砂糖・油",
     optional: [
-      { id: "radish", name: "大根", quantity: 100, unit: "g", benefit: "大根おろしで後味が軽くなる" },
+      { id: "radish", name: "大根", quantity: 0.25, unit: "本", benefit: "大根おろしで後味が軽くなる" },
       { id: "ginger", name: "しょうが", quantity: 0.25, unit: "個", benefit: "甘辛味が締まる" },
       { id: "green-onion", name: "ねぎ", quantity: 0.5, unit: "本", benefit: "焼きねぎを添えられる" }
     ]
@@ -769,7 +769,7 @@ const RECIPES = [
     minutes: 35,
     required: [
       { id: "yellowtail", name: "ぶり", quantity: 1, unit: "切れ" },
-      { id: "radish", name: "大根", quantity: 150, unit: "g" }
+      { id: "radish", name: "大根", quantity: 0.5, unit: "本" }
     ],
     pantry: "醤油・砂糖・みりん・酒・水",
     optional: [
@@ -942,6 +942,162 @@ const RECIPES = [
       { id: "onion", name: "玉ねぎ", quantity: 0.25, unit: "個", benefit: "甘みと食感が加わる" },
       { id: "eggs", name: "卵", quantity: 1, unit: "個", benefit: "衣が均一につきやすくなる" },
       { id: "cheese", name: "チーズ", quantity: 20, unit: "g", benefit: "中にコクを足せる" }
+    ]
+  },
+  {
+    id: "rolled-cabbage",
+    name: "ロールキャベツ",
+    minutes: 35,
+    required: [
+      { id: "cabbage", name: "キャベツ", quantity: 150, unit: "g" },
+      { id: "ground-meat", name: "ひき肉", quantity: 100, unit: "g" },
+      { id: "onion", name: "玉ねぎ", quantity: 0.25, unit: "個" }
+    ],
+    pantry: "コンソメ・塩・こしょう・水",
+    optional: [
+      { id: "tomato", name: "トマト", quantity: 1, unit: "個", benefit: "スープに酸味とうま味が出る" },
+      { id: "mushroom", name: "しめじ", quantity: 0.25, unit: "株", benefit: "スープのうま味が増す" },
+      { id: "cheese", name: "チーズ", quantity: 20, unit: "g", benefit: "中にコクを足せる" }
+    ]
+  },
+  {
+    id: "menchi-katsu",
+    name: "メンチカツ",
+    minutes: 30,
+    required: [
+      { id: "ground-meat", name: "ひき肉", quantity: 120, unit: "g" },
+      { id: "onion", name: "玉ねぎ", quantity: 0.25, unit: "個" },
+      { id: "breadcrumbs", name: "パン粉", quantity: 30, unit: "g" }
+    ],
+    pantry: "小麦粉・卵・塩・こしょう・油",
+    optional: [
+      { id: "cabbage", name: "キャベツ", quantity: 100, unit: "g", benefit: "付け合わせを一緒に用意できる" },
+      { id: "cheese", name: "チーズ", quantity: 20, unit: "g", benefit: "中に濃厚なコクを足せる" }
+    ]
+  },
+  {
+    id: "yaki-udon",
+    name: "焼きうどん",
+    minutes: 15,
+    required: [
+      { id: "udon", name: "うどん", quantity: 1, unit: "袋" },
+      { id: "pork", name: "豚こま", quantity: 80, unit: "g" },
+      { id: "cabbage", name: "キャベツ", quantity: 100, unit: "g" }
+    ],
+    pantry: "醤油・ソース・油・こしょう",
+    optional: [
+      { id: "carrot", name: "にんじん", quantity: 0.25, unit: "本", benefit: "彩りと甘みが増す" },
+      { id: "mushroom", name: "しめじ", quantity: 0.25, unit: "株", benefit: "うま味と食感を足せる" },
+      { id: "bonito", name: "かつお節", quantity: 1, unit: "袋", benefit: "仕上げの香りが増す" }
+    ]
+  },
+  {
+    id: "tuna-tomato-pasta",
+    name: "ツナとトマトのパスタ",
+    minutes: 18,
+    required: [
+      { id: "pasta", name: "スパゲッティ", quantity: 100, unit: "g" },
+      { id: "tuna", name: "ツナ", quantity: 1, unit: "缶" },
+      { id: "tomato", name: "トマト", quantity: 1, unit: "個" }
+    ],
+    pantry: "塩・こしょう・油",
+    optional: [
+      { id: "onion", name: "玉ねぎ", quantity: 0.25, unit: "個", benefit: "ソースに甘みが出る" },
+      { id: "garlic", name: "にんにく", quantity: 0.25, unit: "個", benefit: "香りが立つ" },
+      { id: "cheese", name: "チーズ", quantity: 20, unit: "g", benefit: "仕上げにコクが出る" }
+    ]
+  },
+  {
+    id: "chicken-cream-pasta",
+    name: "鶏としめじのクリームパスタ",
+    minutes: 22,
+    required: [
+      { id: "pasta", name: "スパゲッティ", quantity: 100, unit: "g" },
+      { id: "chicken", name: "鶏むね肉", quantity: 80, unit: "g" },
+      { id: "mushroom", name: "しめじ", quantity: 0.25, unit: "株" },
+      { id: "milk", name: "牛乳", quantity: 0.5, unit: "本" }
+    ],
+    pantry: "小麦粉・バター・塩・こしょう",
+    optional: [
+      { id: "spinach", name: "ほうれん草", quantity: 0.5, unit: "袋", benefit: "彩りと野菜量が増す" },
+      { id: "cheese", name: "チーズ", quantity: 20, unit: "g", benefit: "ソースが濃厚になる" },
+      { id: "onion", name: "玉ねぎ", quantity: 0.25, unit: "個", benefit: "自然な甘みが出る" }
+    ]
+  },
+  {
+    id: "tofu-champuru",
+    name: "豆腐チャンプルー",
+    minutes: 15,
+    required: [
+      { id: "tofu", name: "豆腐", quantity: 1, unit: "個" },
+      { id: "eggs", name: "卵", quantity: 1, unit: "個" }
+    ],
+    pantry: "醤油・塩・こしょう・油",
+    optional: [
+      { id: "pork", name: "豚こま", quantity: 80, unit: "g", benefit: "主菜としての満足感が増す" },
+      { id: "cabbage", name: "キャベツ", quantity: 80, unit: "g", benefit: "野菜量と食感が増す" },
+      { id: "bonito", name: "かつお節", quantity: 1, unit: "袋", benefit: "仕上げのうま味が増す" }
+    ]
+  },
+  {
+    id: "salmon-fried-rice",
+    name: "鮭チャーハン",
+    minutes: 15,
+    required: [
+      { id: "rice", name: "ごはん", quantity: 1, unit: "膳" },
+      { id: "salmon", name: "鮭", quantity: 1, unit: "切れ" },
+      { id: "eggs", name: "卵", quantity: 1, unit: "個" }
+    ],
+    pantry: "醤油・塩・こしょう・油",
+    optional: [
+      { id: "green-onion", name: "ねぎ", quantity: 0.25, unit: "本", benefit: "香りと彩りが増す" },
+      { id: "mushroom", name: "しめじ", quantity: 0.25, unit: "株", benefit: "うま味と食感が増す" },
+      { id: "sesame-oil", name: "ごま油", quantity: 1, unit: "小さじ", benefit: "仕上げが香ばしくなる" }
+    ]
+  },
+  {
+    id: "cabbage-tuna-simmer",
+    name: "キャベツとツナのさっと煮",
+    minutes: 12,
+    required: [
+      { id: "cabbage", name: "キャベツ", quantity: 150, unit: "g" },
+      { id: "tuna", name: "ツナ", quantity: 1, unit: "缶" }
+    ],
+    pantry: "醤油・みりん・水",
+    optional: [
+      { id: "mushroom", name: "しめじ", quantity: 0.25, unit: "株", benefit: "煮汁のうま味が増す" },
+      { id: "ginger", name: "しょうが", quantity: 0.25, unit: "個", benefit: "後味が締まる" },
+      { id: "eggs", name: "卵", quantity: 1, unit: "個", benefit: "卵とじにして食べ応えを足せる" }
+    ]
+  },
+  {
+    id: "potato-cheese-bake",
+    name: "じゃがいものチーズ焼き",
+    minutes: 20,
+    required: [
+      { id: "potato", name: "じゃがいも", quantity: 2, unit: "個" },
+      { id: "cheese", name: "チーズ", quantity: 40, unit: "g" }
+    ],
+    pantry: "塩・こしょう",
+    optional: [
+      { id: "milk", name: "牛乳", quantity: 0.25, unit: "本", benefit: "中がしっとり仕上がる" },
+      { id: "broccoli", name: "ブロッコリー", quantity: 0.25, unit: "個", benefit: "彩りと野菜量が増す" },
+      { id: "butter", name: "バター", quantity: 10, unit: "g", benefit: "香りとコクが増す" }
+    ]
+  },
+  {
+    id: "tomato-cheese-bake",
+    name: "トマトのチーズ焼き",
+    minutes: 12,
+    required: [
+      { id: "tomato", name: "トマト", quantity: 2, unit: "個" },
+      { id: "cheese", name: "チーズ", quantity: 40, unit: "g" }
+    ],
+    pantry: "塩・こしょう・油",
+    optional: [
+      { id: "eggs", name: "卵", quantity: 1, unit: "個", benefit: "主菜らしい食べ応えが増す" },
+      { id: "onion", name: "玉ねぎ", quantity: 0.25, unit: "個", benefit: "甘みと香りが増す" },
+      { id: "bread", name: "食パン", quantity: 0.25, unit: "袋", benefit: "一緒に焼いて主食にできる" }
     ]
   }
 ];
@@ -1256,7 +1412,110 @@ const RECIPE_STEPS = {
     "じゃがいもをやわらかくしてつぶし、炒めたひき肉と混ぜて形を作る。",
     "小麦粉、卵、パン粉の順に衣をつける。",
     "熱した油で表面がきつね色になるまで揚げる。"
+  ],
+  "rolled-cabbage": [
+    "キャベツをやわらかくし、ひき肉とみじん切りの玉ねぎを包む。",
+    "鍋へ並べ、コンソメと水を加えてふたをする。",
+    "弱めの火で煮込み、肉の中心まで十分に火を通す。"
+  ],
+  "menchi-katsu": [
+    "ひき肉、みじん切りの玉ねぎ、塩・こしょうを混ぜて形を作る。",
+    "小麦粉、溶き卵、パン粉の順に衣をつける。",
+    "熱した油で揚げ、中心まで十分に火を通す。"
+  ],
+  "yaki-udon": [
+    "豚肉とキャベツを食べやすく切り、油で炒める。",
+    "豚肉に火が通ったら、うどんと少量の水を加えてほぐす。",
+    "醤油とソースを加え、水分を飛ばしながら炒め合わせる。"
+  ],
+  "tuna-tomato-pasta": [
+    "スパゲッティを表示時間どおりにゆでる。",
+    "フライパンでトマトとツナを炒め、塩・こしょうで整える。",
+    "ゆでた麺を加え、ソースを全体へからめる。"
+  ],
+  "chicken-cream-pasta": [
+    "鶏肉を小さく切り、しめじと一緒にバターで炒める。",
+    "鶏肉に火が通ったら小麦粉と牛乳を加え、とろみをつける。",
+    "ゆでたスパゲッティを加え、塩・こしょうで整える。"
+  ],
+  "tofu-champuru": [
+    "豆腐の水気を切り、大きめに崩して表面を焼く。",
+    "使う肉や野菜を加え、火が通るまで炒める。",
+    "溶き卵と醤油を加え、全体を大きく混ぜて仕上げる。"
+  ],
+  "salmon-fried-rice": [
+    "鮭を焼いて骨と皮を除き、身を粗くほぐす。",
+    "油を熱したフライパンで卵、ごはん、鮭の順に炒める。",
+    "塩・こしょうと醤油で味を整える。"
+  ],
+  "cabbage-tuna-simmer": [
+    "キャベツを食べやすく切り、ツナと一緒に鍋へ入れる。",
+    "醤油・みりん・少量の水を加えてふたをする。",
+    "キャベツがしんなりするまで短く煮る。"
+  ],
+  "potato-cheese-bake": [
+    "じゃがいもを薄く切り、やわらかくなるまで加熱する。",
+    "耐熱皿へ並べ、塩・こしょうとチーズをのせる。",
+    "トースターなどで、チーズに焼き色がつくまで焼く。"
+  ],
+  "tomato-cheese-bake": [
+    "トマトを厚めに切り、耐熱皿へ並べる。",
+    "塩・こしょうをふり、チーズを全体へ散らす。",
+    "トースターなどで、チーズに焼き色がつくまで焼く。"
   ]
+};
+
+// Prototype estimates per common household unit. These values are deliberately
+// rounded and are shown as a guide, not as medical or package-label data.
+const NUTRITION_REFERENCES = {
+  "bean-sprouts": { 袋: [1, 30, 3.6, 0.2, 5.2] },
+  beef: { g: [100, 259, 17.1, 19.4, 0.3] },
+  "bell-pepper": { 個: [1, 7, 0.3, 0.1, 1.8], 袋: [1, 30, 1.4, 0.3, 7.5] },
+  bonito: { 袋: [1, 9, 1.9, 0.1, 0.1] },
+  bread: { 袋: [1, 894, 31.2, 13.2, 168] },
+  breadcrumbs: { g: [100, 369, 14.6, 6.8, 63.4] },
+  broccoli: { 個: [1, 83, 10.8, 1.5, 16.3] },
+  butter: { g: [100, 700, 0.5, 81, 0.2] },
+  cabbage: { g: [100, 23, 1.3, 0.2, 5.2] },
+  carrot: { 本: [1, 53, 1, 0.3, 14] },
+  cheese: { g: [100, 313, 22.7, 26, 1.3] },
+  chicken: { g: [100, 133, 21.3, 5.9, 0] },
+  cucumber: { 本: [1, 13, 1, 0.1, 3] },
+  eggplant: { 本: [1, 14, 0.8, 0.1, 4], 袋: [1, 42, 2.4, 0.3, 12] },
+  eggs: { 個: [1, 76, 6.2, 5.2, 0.2] },
+  garlic: { g: [100, 129, 6.4, 0.9, 27.5], 個: [1, 65, 3.2, 0.5, 13.8] },
+  "garlic-chives": { 袋: [1, 18, 1.7, 0.3, 4] },
+  ginger: { g: [100, 28, 0.9, 0.3, 6.6], 個: [1, 11, 0.4, 0.1, 2.6] },
+  "green-onion": { 本: [1, 28, 1.4, 0.1, 7.2] },
+  "ground-meat": { g: [100, 221, 17.7, 17.2, 0.3] },
+  konnyaku: { 枚: [1, 18, 0.3, 0.3, 8.3] },
+  lettuce: { 個: [1, 33, 1.8, 0.3, 8.4] },
+  macaroni: { g: [100, 347, 12, 1.8, 72] },
+  mackerel: { 切れ: [1, 211, 20.6, 16.8, 0.3] },
+  milk: { 本: [1, 122, 6.6, 7.6, 9.6] },
+  miso: { g: [100, 182, 12.5, 6, 33] },
+  mushroom: { 株: [1, 26, 2.7, 0.6, 5.2] },
+  natto: { パック: [1, 83, 7.4, 4.5, 5.4] },
+  onion: { 個: [1, 66, 2, 0.2, 16.8] },
+  pasta: { g: [100, 347, 12.9, 1.8, 73.1] },
+  pork: { g: [100, 221, 18.5, 16, 0.2] },
+  potato: { 個: [1, 89, 2.7, 0.2, 25] },
+  pumpkin: { g: [100, 78, 1.9, 0.3, 20.6] },
+  radish: { g: [100, 15, 0.4, 0.1, 4.1], 本: [1, 135, 3.6, 0.9, 36.9] },
+  rice: { 膳: [1, 234, 3.8, 0.5, 55.7] },
+  salmon: { 切れ: [1, 106, 18, 3.6, 0.1] },
+  "sesame-oil": { 小さじ: [1, 37, 0, 4.1, 0] },
+  shrimp: { g: [100, 82, 18.4, 0.3, 0.3] },
+  soba: { g: [100, 344, 14, 2.3, 66.7] },
+  spinach: { g: [100, 18, 2.2, 0.4, 3.1], 袋: [1, 36, 4.4, 0.8, 6.2] },
+  tofu: { g: [100, 56, 4.9, 3, 1.5], 個: [1, 168, 14.7, 9, 4.5] },
+  tomato: { 個: [1, 40, 1.4, 0.2, 9.4] },
+  tuna: { 缶: [1, 188, 12.4, 15.2, 0.1] },
+  udon: { 袋: [1, 210, 5.2, 0.8, 43.2] },
+  wakame: { g: [10, 14, 1.4, 0.3, 4.1], 袋: [1, 28, 2.8, 0.6, 8.2] },
+  "yakisoba-noodles": { 袋: [1, 225, 6, 2.5, 45] },
+  yellowtail: { 切れ: [1, 222, 21.4, 17.6, 0.3] },
+  yogurt: { 個: [1, 56, 3.6, 3, 4.9] }
 };
 
 const ALIASES = new Map([
@@ -1440,7 +1699,7 @@ const RECEIPT_RULES = [
   { id: "bonito", name: "かつお節", pattern: /(?:かつお節|カツオ節|鰹節)/, quantity: 1, unit: "袋", location: "常温" },
   { id: "ground-meat", name: "ひき肉", pattern: /(?:ひき肉|挽き肉|挽肉|ミンチ)/, quantity: 100, unit: "g", location: "冷蔵" },
   { id: "spinach", name: "ほうれん草", pattern: /(?:ほうれん草|ホウレン草|菠菜)/, quantity: 1, unit: "袋", location: "冷蔵" },
-  { id: "eggplant", name: "なす", pattern: /(?:なす|ナス|茄子)/, quantity: 1, unit: "袋", location: "冷蔵" },
+  { id: "eggplant", name: "なす", pattern: /(?:なす|ナス|茄子)/, quantity: 1, unit: "本", location: "冷蔵" },
   { id: "bell-pepper", name: "ピーマン", pattern: /(?:ピーマン|ぴーまん)/, quantity: 1, unit: "袋", location: "冷蔵" },
   { id: "broccoli", name: "ブロッコリー", pattern: /(?:ブロッコリー|ぶろっこりー)/, quantity: 1, unit: "個", location: "冷蔵" },
   { id: "garlic", name: "にんにく", pattern: /(?:にんにく|ニンニク|大蒜)/, quantity: 1, unit: "個", location: "冷蔵" },
@@ -1590,6 +1849,7 @@ const elements = {
   shoppingForm: document.querySelector("#shopping-form"),
   shoppingName: document.querySelector("#shopping-name"),
   shoppingQuantity: document.querySelector("#shopping-quantity"),
+  shoppingQuantityRange: document.querySelector("#shopping-quantity-range"),
   shoppingUnit: document.querySelector("#shopping-unit"),
   shoppingCategoryLayer: document.querySelector("#shopping-category-layer"),
   shoppingCategoryGrid: document.querySelector("#shopping-category-grid"),
@@ -1624,6 +1884,7 @@ const elements = {
   keepIngredientName: document.querySelector("#keep-ingredient-name"),
   acceptIngredientName: document.querySelector("#accept-ingredient-name"),
   ingredientQuantity: document.querySelector("#ingredient-quantity"),
+  ingredientQuantityRange: document.querySelector("#ingredient-quantity-range"),
   ingredientUnit: document.querySelector("#ingredient-unit"),
   ingredientLocation: document.querySelector("#ingredient-location"),
   ingredientPriority: document.querySelector("#ingredient-priority"),
@@ -1647,6 +1908,8 @@ const elements = {
   cookConfirmForm: document.querySelector("#cook-confirm-form"),
   cookConfirmRecipe: document.querySelector("#cook-confirm-recipe"),
   cookServingOptions: document.querySelector("#cook-serving-options"),
+  cookConfirmIngredients: document.querySelector("#cook-confirm-ingredients"),
+  cookConfirmNutrition: document.querySelector("#cook-confirm-nutrition"),
   cookConfirmMessage: document.querySelector("#cook-confirm-message"),
   confirmCook: document.querySelector("#confirm-cook"),
   toast: document.querySelector("#toast"),
@@ -2031,6 +2294,11 @@ function showIngredientDetails({ catalogItem = null, manual = false, editing = f
     if (manual) elements.ingredientName.value = "";
   }
 
+  syncQuantityControl(
+    elements.ingredientQuantity,
+    elements.ingredientQuantityRange,
+    elements.ingredientUnit.value
+  );
   requestAnimationFrame(() => {
     if (manual) {
       elements.ingredientName.focus();
@@ -2047,6 +2315,48 @@ function stepForUnit(unit) {
   return 1;
 }
 
+function rangeStepForUnit(unit) {
+  if (unit === "g" || unit === "ml") return 10;
+  if (unit === "株" || unit === "個" || unit === "本") return 0.25;
+  if (unit === "袋") return 0.1;
+  return 1;
+}
+
+function quantityRangeMax(unit, currentValue = 1) {
+  const current = Number(currentValue) || rangeStepForUnit(unit);
+  if (unit === "g" || unit === "ml") return Math.max(1000, Math.ceil((current * 2) / 50) * 50);
+  if (unit === "株") return Math.max(5, Math.ceil(current * 2 * 4) / 4);
+  return Math.max(10, Math.ceil(current * 2));
+}
+
+function syncQuantityControl(input, range, unit, source = "input") {
+  if (!input || !range) return;
+  const step = rangeStepForUnit(unit);
+  const sourceElement = source === "range" ? range : input;
+  const rawValue = Number(sourceElement.value);
+  if (!Number.isFinite(rawValue)) return;
+  const value = Math.max(0.01, rawValue);
+  const max = quantityRangeMax(unit, value);
+
+  input.min = "0.01";
+  input.step = "any";
+  input.removeAttribute("max");
+  range.min = String(step);
+  range.step = String(step);
+  range.max = String(max);
+  range.value = String(Math.max(step, value));
+  if (source !== "input-live") input.value = String(Number(value.toFixed(2)));
+}
+
+function adjustQuantityControl(input, range, unit, direction) {
+  const step = stepForUnit(unit);
+  const minimum = rangeStepForUnit(unit);
+  const current = Number(input.value) || minimum;
+  input.value = String(Number(Math.max(minimum, current + step * direction).toFixed(2)));
+  syncQuantityControl(input, range, unit);
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
 function formatQuantity(quantity, unit) {
   if (unit === "株" && quantity === 0.25) return "1/4株";
   if (unit === "株" && quantity === 0.5) return "1/2株";
@@ -2058,6 +2368,53 @@ function formatQuantity(quantity, unit) {
   if (unit === "小さじ" || unit === "大さじ") return `${unit}${quantity}`;
   const number = Number.isInteger(quantity) ? quantity : Number(quantity.toFixed(2));
   return `${number}${unit}`;
+}
+
+function addNutrition(target, source, factor = 1) {
+  target.kcal += source.kcal * factor;
+  target.p += source.p * factor;
+  target.f += source.f * factor;
+  target.c += source.c * factor;
+}
+
+function ingredientNutrition(ingredient) {
+  const reference = NUTRITION_REFERENCES[ingredient.id]?.[ingredient.unit];
+  if (!reference) return { kcal: 0, p: 0, f: 0, c: 0 };
+  const [baseAmount, kcal, p, f, c] = reference;
+  const factor = ingredient.quantity / baseAmount;
+  return {
+    kcal: kcal * factor,
+    p: p * factor,
+    f: f * factor,
+    c: c * factor
+  };
+}
+
+function pantryNutrition(recipe) {
+  const text = recipe.pantry || "";
+  const result = { kcal: 15, p: 0.3, f: 0.2, c: 3 };
+  if (/(?:油|ごま油|バター|マヨネーズ)/.test(text)) {
+    addNutrition(result, { kcal: 45, p: 0, f: 5, c: 0 });
+  }
+  if (/(?:小麦粉|餃子の皮|カレールウ)/.test(text)) {
+    addNutrition(result, { kcal: 55, p: 1, f: 1.5, c: 10 });
+  }
+  if (/(?:砂糖|みりん|ケチャップ|ソース)/.test(text)) {
+    addNutrition(result, { kcal: 25, p: 0, f: 0, c: 6 });
+  }
+  return result;
+}
+
+function estimateRecipeNutrition(recipe, servings = 1, ingredients = recipe.required) {
+  const total = { kcal: 0, p: 0, f: 0, c: 0 };
+  ingredients.forEach((ingredient) => addNutrition(total, ingredientNutrition(ingredient), servings));
+  addNutrition(total, pantryNutrition(recipe), servings);
+  return {
+    kcal: Math.max(0, Math.round(total.kcal / 10) * 10),
+    p: Math.max(0, Number(total.p.toFixed(1))),
+    f: Math.max(0, Number(total.f.toFixed(1))),
+    c: Math.max(0, Number(total.c.toFixed(1)))
+  };
 }
 
 function daysSince(dateString) {
@@ -2613,8 +2970,8 @@ function renderShoppingPicker() {
         class="shopping-food-button${added ? " is-added" : ""}"
         type="button"
         data-shopping-food="${item.id}"
-        aria-label="${escapeHtml(item.name)}${added ? "は追加済み" : "を買うものに追加"}"
-        ${added ? "disabled" : ""}
+        aria-pressed="${added ? "true" : "false"}"
+        aria-label="${escapeHtml(item.name)}${added ? "を買うものから外す" : "を買うものに追加"}"
       >
         ${renderIngredientIllustration(item.id, item.name)}
         <strong>${escapeHtml(item.name)}</strong>
@@ -2768,6 +3125,7 @@ function renderRecipe(recipe, index) {
     </span>
   `).join("");
   const quickSteps = (RECIPE_STEPS[recipe.id] || []).map((step) => `<li>${escapeHtml(step)}</li>`).join("");
+  const nutrition = estimateRecipeNutrition(recipe);
 
   const requiredLines = recipe.required.map((requirement) => {
     const item = itemForRequirement(requirement);
@@ -2820,6 +3178,12 @@ function renderRecipe(recipe, index) {
         </nav>
       </div>
       <p class="recipe-meta">調理時間の目安 約${recipe.minutes}分</p>
+      <p class="recipe-nutrition" aria-label="1人分の栄養目安">
+        <span>約${nutrition.kcal} kcal</span>
+        <span>P ${nutrition.p}g</span>
+        <span>F ${nutrition.f}g</span>
+        <span>C ${nutrition.c}g</span>
+      </p>
       <div class="recipe-ingredient-summary" aria-label="主に使う食材">${ingredientSummary}</div>
       <p class="recipe-status${shortages.length ? " is-missing" : ""}">${status}</p>
 
@@ -3381,6 +3745,11 @@ function openIngredientDialog(item = null, preferredLocation = null, preferredSh
     elements.deleteIngredient.hidden = true;
     showIngredientCategoryLayer();
   }
+  syncQuantityControl(
+    elements.ingredientQuantity,
+    elements.ingredientQuantityRange,
+    elements.ingredientUnit.value
+  );
   elements.dialog.showModal();
   requestAnimationFrame(() => {
     if (item) {
@@ -3581,6 +3950,57 @@ function updateCookConfirmation() {
     button.classList.toggle("is-active", active);
     button.setAttribute("aria-pressed", String(active));
   });
+
+  const selectedIngredients = [...recipe.required];
+  const requiredRows = recipe.required.map((requirement) => {
+    const item = itemForRequirement(requirement);
+    const amount = requiredAmount(requirement, servings);
+    const enough = Boolean(item && item.quantity >= amount);
+    return `
+      <li class="cook-ingredient-row">
+        <span class="cook-ingredient-main">
+          ${renderIngredientIllustration(requirement.id, requirement.name, true)}
+          <span><strong>${escapeHtml(requirement.name)}</strong><small>${formatQuantity(amount, requirement.unit)}</small></span>
+        </span>
+        <span class="cook-ingredient-state${enough ? " is-ready" : " is-missing"}">${enough ? "あります" : "不足"}</span>
+      </li>
+    `;
+  }).join("");
+
+  const optionalRows = recipe.optional.map((option) => {
+    const ready = optionalReady(option, servings);
+    const key = `${recipe.id}:${option.id}`;
+    const checked = ready && state.selectedOptionals[key] !== false;
+    if (checked) selectedIngredients.push(option);
+    return `
+      <li class="cook-ingredient-row is-optional">
+        <label class="cook-optional-choice">
+          <input
+            type="checkbox"
+            data-cook-optional="${escapeHtml(key)}"
+            ${checked ? "checked" : ""}
+            ${ready ? "" : "disabled"}
+          >
+          <span class="cook-ingredient-main">
+            ${renderIngredientIllustration(option.id, option.name, true)}
+            <span>
+              <strong>${escapeHtml(option.name)}</strong>
+              <small>${formatQuantity(option.quantity * servings, option.unit)}・${escapeHtml(option.benefit)}</small>
+            </span>
+          </span>
+          <span class="cook-optional-state">${ready ? (checked ? "使う" : "使わない") : "在庫なし"}</span>
+        </label>
+      </li>
+    `;
+  }).join("");
+
+  elements.cookConfirmIngredients.innerHTML = `
+    <h4>最低限必要</h4>
+    <ul>${requiredRows}</ul>
+    ${optionalRows ? `<h4>あるとより良い <small>使うものを選択</small></h4><ul>${optionalRows}</ul>` : ""}
+  `;
+  const nutrition = estimateRecipeNutrition(recipe, servings, selectedIngredients);
+  elements.cookConfirmNutrition.textContent = `合計目安 ${nutrition.kcal} kcal・P ${nutrition.p}g・F ${nutrition.f}g・C ${nutrition.c}g`;
 
   const shortages = shortageFor(recipe, servings);
   elements.cookConfirmMessage.classList.toggle("is-missing", shortages.length > 0);
@@ -4124,12 +4544,82 @@ elements.keepIngredientName.addEventListener("click", () => {
   elements.nameSuggestion.hidden = true;
   elements.form.requestSubmit();
 });
+elements.ingredientUnit.addEventListener("change", () => {
+  syncQuantityControl(
+    elements.ingredientQuantity,
+    elements.ingredientQuantityRange,
+    elements.ingredientUnit.value
+  );
+});
+elements.ingredientQuantity.addEventListener("input", () => {
+  syncQuantityControl(
+    elements.ingredientQuantity,
+    elements.ingredientQuantityRange,
+    elements.ingredientUnit.value,
+    "input-live"
+  );
+});
+elements.ingredientQuantityRange.addEventListener("input", () => {
+  syncQuantityControl(
+    elements.ingredientQuantity,
+    elements.ingredientQuantityRange,
+    elements.ingredientUnit.value,
+    "range"
+  );
+});
 elements.shoppingName.addEventListener("input", () => {
   const ingredientId = ALIASES.get(elements.shoppingName.value.trim());
   const known = RECEIPT_RULES.find((rule) => rule.id === ingredientId);
   if (known && INVENTORY_UNITS.includes(known.unit)) {
     elements.shoppingUnit.value = known.unit;
+    syncQuantityControl(
+      elements.shoppingQuantity,
+      elements.shoppingQuantityRange,
+      elements.shoppingUnit.value
+    );
   }
+});
+elements.shoppingUnit.addEventListener("change", () => {
+  syncQuantityControl(
+    elements.shoppingQuantity,
+    elements.shoppingQuantityRange,
+    elements.shoppingUnit.value
+  );
+});
+elements.shoppingQuantity.addEventListener("input", () => {
+  syncQuantityControl(
+    elements.shoppingQuantity,
+    elements.shoppingQuantityRange,
+    elements.shoppingUnit.value,
+    "input-live"
+  );
+});
+elements.shoppingQuantityRange.addEventListener("input", () => {
+  syncQuantityControl(
+    elements.shoppingQuantity,
+    elements.shoppingQuantityRange,
+    elements.shoppingUnit.value,
+    "range"
+  );
+});
+document.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-quantity-adjust]");
+  if (!button) return;
+  const controls = button.dataset.quantityAdjust === "ingredient-quantity"
+    ? {
+      input: elements.ingredientQuantity,
+      range: elements.ingredientQuantityRange,
+      unit: elements.ingredientUnit.value
+    }
+    : button.dataset.quantityAdjust === "shopping-quantity"
+      ? {
+        input: elements.shoppingQuantity,
+        range: elements.shoppingQuantityRange,
+        unit: elements.shoppingUnit.value
+      }
+      : null;
+  if (!controls) return;
+  adjustQuantityControl(controls.input, controls.range, controls.unit, Number(button.dataset.delta));
 });
 elements.shoppingCategoryGrid.addEventListener("click", (event) => {
   const button = event.target.closest("[data-shopping-category]");
@@ -4149,17 +4639,26 @@ elements.shoppingPickerBack.addEventListener("click", () => {
 });
 elements.shoppingFoodGrid.addEventListener("click", (event) => {
   const button = event.target.closest("[data-shopping-food]");
-  if (!button || button.disabled) return;
+  if (!button) return;
   const item = illustratedIngredientItem(button.dataset.shoppingFood);
   if (!item) return;
-  addShoppingItem({
-    ingredientId: item.id,
-    name: item.name,
-    quantity: item.quantity,
-    unit: item.unit,
-    source: "illustration",
-    location: item.location
-  });
+  const existing = state.shopping.find((shoppingItem) =>
+    !shoppingItem.checked
+    && shoppingItem.ingredientId === item.id
+    && shoppingItem.unit === item.unit
+  );
+  if (existing) {
+    state.shopping = state.shopping.filter((shoppingItem) => shoppingItem.id !== existing.id);
+  } else {
+    addShoppingItem({
+      ingredientId: item.id,
+      name: item.name,
+      quantity: item.quantity,
+      unit: item.unit,
+      source: "illustration",
+      location: item.location
+    });
+  }
   persistShoppingList();
   renderShopping();
 });
@@ -4181,6 +4680,11 @@ elements.shoppingForm.addEventListener("submit", (event) => {
   elements.shoppingForm.reset();
   elements.shoppingQuantity.value = 1;
   elements.shoppingUnit.value = "個";
+  syncQuantityControl(
+    elements.shoppingQuantity,
+    elements.shoppingQuantityRange,
+    elements.shoppingUnit.value
+  );
   elements.shoppingName.focus();
   showToast(result === "merged" ? `${name}の買う量に追加しました` : `${name}を買い物リストに追加しました`);
 });
@@ -4220,6 +4724,12 @@ elements.cookServingOptions.addEventListener("click", (event) => {
   const button = event.target.closest("[data-cook-servings]");
   if (!button) return;
   state.pendingCookServings = Number(button.dataset.cookServings);
+  updateCookConfirmation();
+});
+elements.cookConfirmIngredients.addEventListener("change", (event) => {
+  const checkbox = event.target.closest("[data-cook-optional]");
+  if (!checkbox) return;
+  state.selectedOptionals[checkbox.dataset.cookOptional] = checkbox.checked;
   updateCookConfirmation();
 });
 elements.cookConfirmForm.addEventListener("submit", confirmCookRecipe);
@@ -4488,4 +4998,14 @@ loadRecentIngredients();
 loadInventory();
 loadShoppingList();
 loadCookingHistory();
+syncQuantityControl(
+  elements.ingredientQuantity,
+  elements.ingredientQuantityRange,
+  elements.ingredientUnit.value
+);
+syncQuantityControl(
+  elements.shoppingQuantity,
+  elements.shoppingQuantityRange,
+  elements.shoppingUnit.value
+);
 renderAll();
