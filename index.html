@@ -6,9 +6,9 @@
   <meta name="theme-color" content="#f3f0e6">
   <meta name="description" content="冷蔵庫の在庫を管理し、残っている食材から今日作れる料理を提案するスマホ向けプロトタイプ">
   <title>冷蔵庫の現在地</title>
-  <link rel="stylesheet" href="styles.css?v=38">
+  <link rel="stylesheet" href="styles.css?v=39">
   <script src="vendor/tesseract/tesseract.min.js?v=7.0.0" defer></script>
-  <script src="app.js?v=43" defer></script>
+  <script src="app.js?v=44" defer></script>
 </head>
 <body>
   <div class="app-shell">
@@ -76,18 +76,20 @@
 
       <section class="view" id="suggestions-view" aria-labelledby="suggestions-title" hidden>
         <section class="today-ingredient-control" aria-labelledby="today-ingredient-title">
-          <div class="today-ingredient-heading">
-            <div>
-              <p class="eyebrow">使い切り優先</p>
-              <h3 id="today-ingredient-title">今日使いたい食材</h3>
-            </div>
-            <span aria-hidden="true">◎</span>
-          </div>
-          <label for="today-ingredient-select">
-            在庫から選ぶ
-            <select id="today-ingredient-select"></select>
-          </label>
-          <p id="today-ingredient-hint" aria-live="polite"></p>
+          <button
+            class="today-ingredient-trigger"
+            type="button"
+            id="today-ingredient-trigger"
+            aria-haspopup="dialog"
+            aria-controls="today-ingredient-dialog"
+          >
+            <span class="today-ingredient-copy">
+              <small>使い切り優先</small>
+              <strong id="today-ingredient-title">今日使いたい食材</strong>
+              <em id="today-ingredient-name">タップして選ぶ</em>
+            </span>
+            <span class="today-ingredient-art" id="today-ingredient-art" aria-hidden="true"></span>
+          </button>
           <label class="recipe-sort-control" for="priority-select">
             候補の並べ方
             <select id="priority-select">
@@ -217,6 +219,22 @@
       </button>
     </nav>
   </div>
+
+  <dialog class="today-ingredient-dialog" id="today-ingredient-dialog" aria-labelledby="today-ingredient-dialog-title">
+    <section class="today-ingredient-dialog-shell">
+      <div class="dialog-head">
+        <div>
+          <p class="eyebrow">使い切り優先</p>
+          <h2 id="today-ingredient-dialog-title">今日使いたい食材</h2>
+        </div>
+        <button class="icon-button" type="button" id="close-today-ingredient-dialog" aria-label="閉じる">×</button>
+      </div>
+
+      <p class="today-ingredient-dialog-intro">棚の食材を1つタップすると、候補をすぐ並べ直します。</p>
+      <div class="priority-fridge-mock" id="today-ingredient-options"></div>
+      <button class="today-ingredient-clear" type="button" id="clear-today-ingredient">指定しない</button>
+    </section>
+  </dialog>
 
   <dialog class="ingredient-dialog" id="ingredient-dialog">
     <form id="ingredient-form">

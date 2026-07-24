@@ -3,7 +3,7 @@ const SHOPPING_STORAGE_KEY = "fridge-leftovers-shopping-v1";
 const COOKING_HISTORY_STORAGE_KEY = "fridge-leftovers-cooking-history-v1";
 const SHELF_COUNTS_STORAGE_KEY = "fridge-leftovers-shelf-counts-v1";
 const RECENT_INGREDIENTS_STORAGE_KEY = "fridge-leftovers-recent-ingredients-v1";
-const APP_VERSION = "0.7.0";
+const APP_VERSION = "0.7.1";
 const RECIPE_PAGE_SIZE = 3;
 const RECIPE_LIST_SERVINGS = 1;
 
@@ -1571,8 +1571,13 @@ const elements = {
   recipeMore: document.querySelector("#recipe-more"),
   showMoreRecipes: document.querySelector("#show-more-recipes"),
   recipeVisibleCount: document.querySelector("#recipe-visible-count"),
-  todayIngredientSelect: document.querySelector("#today-ingredient-select"),
-  todayIngredientHint: document.querySelector("#today-ingredient-hint"),
+  todayIngredientTrigger: document.querySelector("#today-ingredient-trigger"),
+  todayIngredientName: document.querySelector("#today-ingredient-name"),
+  todayIngredientArt: document.querySelector("#today-ingredient-art"),
+  todayIngredientDialog: document.querySelector("#today-ingredient-dialog"),
+  todayIngredientOptions: document.querySelector("#today-ingredient-options"),
+  closeTodayIngredientDialog: document.querySelector("#close-today-ingredient-dialog"),
+  clearTodayIngredient: document.querySelector("#clear-today-ingredient"),
   inventoryView: document.querySelector("#inventory-view"),
   managementView: document.querySelector("#management-view"),
   suggestionsView: document.querySelector("#suggestions-view"),
@@ -2583,29 +2588,90 @@ function renderShopping() {
 function renderTodayIngredientControl() {
   const inventory = activeInventory();
   const priorityItems = inventory.filter((item) => item.priority);
-  const multiplePriorities = priorityItems.length > 1;
-  const selectedId = priorityItems.length === 1 ? priorityItems[0].id : "";
-  const multipleOption = multiplePriorities
-    ? `<option value="__multiple__">複数指定中（${priorityItems.length}品）</option>`
-    : "";
-
-  elements.todayIngredientSelect.innerHTML = `
-    <option value="">指定しない</option>
-    ${multipleOption}
-    ${inventory.map((item) => `
-      <option value="${escapeHtml(item.id)}">${escapeHtml(item.name)}</option>
-    `).join("")}
-  `;
-  elements.todayIngredientSelect.disabled = inventory.length === 0;
-  elements.todayIngredientSelect.value = multiplePriorities ? "__multiple__" : selectedId;
-  elements.todayIngredientHint.textContent = multiplePriorities
-    ? `${priorityItems.map((item) => item.name).join("、")}を使う料理を優先しています。選び直すと1品に絞ります。`
+  elements.todayIngredientName.textContent = priorityItems.length > 1
+    ? `${priorityItems.length}品を優先中`
     : priorityItems.length === 1
-      ? `${priorityItems[0].name}を使う料理を先に表示します。`
+      ? `${priorityItems[0].name}を優先中`
       : inventory.length
-        ? "指定しない場合は、今作りやすい料理を優先します。"
-        : "在庫へ食材を追加すると、ここから選べます。";
+        ? "イラストから選ぶ"
+        : "在庫を追加すると選べます";
+  elements.todayIngredientArt.innerHTML = priorityItems.length
+    ? priorityItems.slice(0, 3).map((item, index) => `
+      <span class="today-ingredient-art-piece" style="--priority-art-index:${index};">
+        ${renderIngredientIllustration(item.id, item.name)}
+      </span>
+    `).join("")
+    : '<span class="today-ingredient-empty-art"><span>＋</span></span>';
+  elements.todayIngredientTrigger.setAttribute(
+    "aria-label",
+    priorityItems.length
+      ? `今日使いたい食材は${priorityItems.map((item) => item.name).join("、")}です。タップして選び直す`
+      : "今日使いたい食材を冷蔵庫から選ぶ"
+  );
   elements.prioritySelect.value = state.priority === "quick" ? "quick" : "no-shop";
+  renderTodayIngredientOptions();
+}
+
+function renderTodayIngredientOptions() {
+  const inventory = activeInventory();
+  const groups = [
+    { location: "冷凍", label: "冷凍室", className: "is-freezer" },
+    { location: "冷蔵", label: "冷蔵室", className: "is-fridge" },
+    { location: "常温", label: "パントリー", className: "is-pantry" }
+  ];
+
+  elements.todayIngredientOptions.innerHTML = groups.map((group) => {
+    const items = inventory.filter((item) => item.location === group.location);
+    const foods = items.length
+      ? items.map((item) => `
+        <button
+          class="priority-food-option${item.priority ? " is-selected" : ""}"
+          type="button"
+          data-today-ingredient="${escapeHtml(item.id)}"
+          aria-pressed="${item.priority ? "true" : "false"}"
+          aria-label="${escapeHtml(item.name)}を今日使いたい食材にする"
+        >
+          ${renderIngredientIllustration(item.id, item.name)}
+          <span>${escapeHtml(item.name)}</span>
+        </button>
+      `).join("")
+      : '<small class="priority-fridge-empty">食材はまだありません</small>';
+
+    return `
+      <section class="priority-fridge-compartment ${group.className}">
+        <h3>${group.label}</h3>
+        <div class="priority-fridge-foods">${foods}</div>
+      </section>
+    `;
+  }).join("");
+  elements.clearTodayIngredient.classList.toggle(
+    "is-active",
+    inventory.every((item) => !item.priority)
+  );
+}
+
+function setTodayIngredientPriority(selectedId) {
+  state.inventory.forEach((item) => {
+    item.priority = item.active !== false && item.id === selectedId;
+  });
+  state.visibleRecipeCount = RECIPE_PAGE_SIZE;
+  persistInventory();
+  renderAll();
+  const selected = activeInventory().find((item) => item.id === selectedId);
+  showToast(selected ? `${selected.name}を使う料理を優先します` : "食材の指定を解除しました");
+}
+
+function openTodayIngredientDialog() {
+  renderTodayIngredientOptions();
+  elements.todayIngredientDialog.showModal();
+  requestAnimationFrame(() => {
+    const selected = elements.todayIngredientOptions.querySelector(".priority-food-option.is-selected");
+    (selected || elements.todayIngredientOptions.querySelector(".priority-food-option") || elements.clearTodayIngredient).focus();
+  });
+}
+
+function closeTodayIngredientDialog() {
+  if (elements.todayIngredientDialog.open) elements.todayIngredientDialog.close();
 }
 
 function recipeScore(recipe) {
@@ -4150,17 +4216,20 @@ document.querySelectorAll(".nav-button").forEach((button) => {
   button.addEventListener("click", () => showView(button.dataset.view));
 });
 
-elements.todayIngredientSelect.addEventListener("change", () => {
-  const selectedId = elements.todayIngredientSelect.value;
-  if (selectedId === "__multiple__") return;
-  state.inventory.forEach((item) => {
-    item.priority = item.active !== false && item.id === selectedId;
-  });
-  state.visibleRecipeCount = RECIPE_PAGE_SIZE;
-  persistInventory();
-  renderAll();
-  const selected = activeInventory().find((item) => item.id === selectedId);
-  showToast(selected ? `${selected.name}を使う料理を優先します` : "食材の指定を解除しました");
+elements.todayIngredientTrigger.addEventListener("click", openTodayIngredientDialog);
+elements.closeTodayIngredientDialog.addEventListener("click", closeTodayIngredientDialog);
+elements.todayIngredientDialog.addEventListener("click", (event) => {
+  if (event.target === elements.todayIngredientDialog) closeTodayIngredientDialog();
+});
+elements.todayIngredientOptions.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-today-ingredient]");
+  if (!button) return;
+  setTodayIngredientPriority(button.dataset.todayIngredient);
+  closeTodayIngredientDialog();
+});
+elements.clearTodayIngredient.addEventListener("click", () => {
+  setTodayIngredientPriority("");
+  closeTodayIngredientDialog();
 });
 
 elements.prioritySelect.addEventListener("change", () => {
