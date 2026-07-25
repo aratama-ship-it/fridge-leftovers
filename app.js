@@ -1097,12 +1097,108 @@ const RECIPES = [
     optional: [
       { id: "eggs", name: "卵", quantity: 1, unit: "個", benefit: "主菜らしい食べ応えが増す" },
       { id: "onion", name: "玉ねぎ", quantity: 0.25, unit: "個", benefit: "甘みと香りが増す" },
-      { id: "bread", name: "食パン", quantity: 0.25, unit: "袋", benefit: "一緒に焼いて主食にできる" }
+      { id: "bread", name: "食パン", quantity: 1, unit: "枚", benefit: "一緒に焼いて主食にできる" }
+    ]
+  },
+  {
+    id: "cheese-toast",
+    name: "チーズトースト",
+    minutes: 5,
+    required: [
+      { id: "bread", name: "食パン", quantity: 1, unit: "枚" },
+      { id: "cheese", name: "チーズ", quantity: 30, unit: "g" }
+    ],
+    pantry: "こしょう",
+    optional: [
+      { id: "butter", name: "バター", quantity: 10, unit: "g", benefit: "香りとコクが増す" },
+      { id: "tomato", name: "トマト", quantity: 0.5, unit: "個", benefit: "後味が軽くなる" }
+    ]
+  },
+  {
+    id: "pizza-toast",
+    name: "ピザトースト",
+    minutes: 10,
+    required: [
+      { id: "bread", name: "食パン", quantity: 2, unit: "枚" },
+      { id: "tomato", name: "トマト", quantity: 1, unit: "個" },
+      { id: "cheese", name: "チーズ", quantity: 30, unit: "g" }
+    ],
+    pantry: "ケチャップ・塩・こしょう・油",
+    optional: [
+      { id: "onion", name: "玉ねぎ", quantity: 0.25, unit: "個", benefit: "甘みと食感が増す" },
+      { id: "bell-pepper", name: "ピーマン", quantity: 0.25, unit: "袋", benefit: "彩りと苦みが加わる" }
+    ]
+  },
+  {
+    id: "tuna-toast",
+    name: "ツナトースト",
+    minutes: 8,
+    required: [
+      { id: "bread", name: "食パン", quantity: 2, unit: "枚" },
+      { id: "tuna", name: "ツナ", quantity: 1, unit: "缶" }
+    ],
+    pantry: "マヨネーズ・こしょう",
+    optional: [
+      { id: "cheese", name: "チーズ", quantity: 20, unit: "g", benefit: "コクと満足感が増す" },
+      { id: "onion", name: "玉ねぎ", quantity: 0.25, unit: "個", benefit: "食感が軽くなる" }
+    ]
+  },
+  {
+    id: "french-toast",
+    name: "フレンチトースト",
+    minutes: 10,
+    required: [
+      { id: "bread", name: "食パン", quantity: 2, unit: "枚" },
+      { id: "eggs", name: "卵", quantity: 1, unit: "個" }
+    ],
+    pantry: "砂糖・油",
+    optional: [
+      { id: "milk", name: "牛乳", quantity: 0.25, unit: "本", benefit: "中がしっとり仕上がる" },
+      { id: "butter", name: "バター", quantity: 10, unit: "g", benefit: "焼き色と香りが良くなる" }
+    ]
+  },
+  {
+    id: "egg-sandwich",
+    name: "たまごサンド",
+    minutes: 12,
+    required: [
+      { id: "bread", name: "食パン", quantity: 2, unit: "枚" },
+      { id: "eggs", name: "卵", quantity: 2, unit: "個" }
+    ],
+    pantry: "マヨネーズ・塩・こしょう",
+    optional: [
+      { id: "cucumber", name: "きゅうり", quantity: 0.5, unit: "本", benefit: "食感がさっぱりする" },
+      { id: "lettuce", name: "レタス", quantity: 0.25, unit: "個", benefit: "見た目と歯ざわりが良くなる" }
     ]
   }
 ];
 
 const RECIPE_STEPS = {
+  "cheese-toast": [
+    "食パンにチーズをのせ、はみ出さないよう軽く広げる。",
+    "トースターか魚焼きグリルで、チーズが溶けて色づくまで焼く。",
+    "こしょうを振り、食べやすく切って完成。"
+  ],
+  "pizza-toast": [
+    "食パンにケチャップを薄く塗り、薄切りにしたトマトを並べる。",
+    "チーズをのせ、塩・こしょうを軽く振る。",
+    "トースターでチーズが溶けるまで焼いて完成。"
+  ],
+  "tuna-toast": [
+    "ツナの汁気を切り、マヨネーズとこしょうで和える。",
+    "食パンに広げてのせる。",
+    "トースターで表面が色づくまで焼いて完成。"
+  ],
+  "french-toast": [
+    "卵を溶き、砂糖を加えて混ぜる（牛乳があれば一緒に混ぜる）。",
+    "食パンの両面へしっかり浸す。",
+    "油をひいたフライパンで両面をこんがり焼いて完成。"
+  ],
+  "egg-sandwich": [
+    "卵を固ゆでにして殻をむき、フォークで粗くつぶす。",
+    "マヨネーズ・塩・こしょうで和える。",
+    "食パンにはさみ、半分に切って完成。"
+  ],
   "miso-stir-fry": [
     "キャベツを食べやすく切り、豚こまと一緒に油で炒める。",
     "肉の色が変わったら、味噌・醤油・砂糖を加える。",
@@ -1472,7 +1568,7 @@ const NUTRITION_REFERENCES = {
   beef: { g: [100, 259, 17.1, 19.4, 0.3] },
   "bell-pepper": { 個: [1, 7, 0.3, 0.1, 1.8], 袋: [1, 30, 1.4, 0.3, 7.5] },
   bonito: { 袋: [1, 9, 1.9, 0.1, 0.1] },
-  bread: { 袋: [1, 894, 31.2, 13.2, 168] },
+  bread: { 枚: [1, 149, 5.2, 2.2, 28], 袋: [1, 894, 31.2, 13.2, 168] },
   breadcrumbs: { g: [100, 369, 14.6, 6.8, 63.4] },
   broccoli: { 個: [1, 83, 10.8, 1.5, 16.3] },
   butter: { g: [100, 700, 0.5, 81, 0.2] },
@@ -1687,7 +1783,7 @@ const RECEIPT_RULES = [
   { id: "milk", name: "牛乳", pattern: /(?:牛乳|ミルク)/, quantity: 1, unit: "本", location: "冷蔵" },
   { id: "yogurt", name: "ヨーグルト", pattern: /(?:ヨーグルト|ヨ-グルト)/, quantity: 1, unit: "個", location: "冷蔵" },
   { id: "natto", name: "納豆", pattern: /(?:納豆|なっとう)/, quantity: 1, unit: "パック", location: "冷蔵" },
-  { id: "bread", name: "食パン", pattern: /(?:食パン|しょくぱん)/, quantity: 1, unit: "袋", location: "常温" },
+  { id: "bread", name: "食パン", pattern: /(?:食パン|しょくぱん)/, quantity: 6, unit: "枚", location: "常温" },
   { id: "banana", name: "バナナ", pattern: /(?:バナナ|ばなな)/, quantity: 1, unit: "袋", location: "常温" },
   { id: "apple", name: "りんご", pattern: /(?:りんご|リンゴ|林檎)/, quantity: 1, unit: "個", location: "常温" },
   { id: "radish", name: "大根", pattern: /(?:大根|だいこん|ダイコン)/, quantity: 1, unit: "本", location: "冷蔵" },
