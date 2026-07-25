@@ -3411,6 +3411,35 @@ function normalizedReceiptLine(value) {
     .trim();
 }
 
+// 端末内OCRは濁点・半濁点を取り違えやすい。実機のレシートでは「バターロール」が
+// 「パターロール」と読まれ、候補を1件も作れなかった。照合前に濁点・半濁点を落として
+// 同じ形へ寄せるための変換。
+function withoutKanaMarks(value) {
+  return String(value).normalize("NFD").replace(/[゙゚]/g, "").normalize("NFC");
+}
+
+// 各ルールの濁点なし版は、必要になった時だけ作って覚えておく。
+const looseRulePatterns = new WeakMap();
+
+function looseRulePattern(rule) {
+  let pattern = looseRulePatterns.get(rule);
+  if (!pattern) {
+    pattern = new RegExp(withoutKanaMarks(rule.pattern.source), rule.pattern.flags);
+    looseRulePatterns.set(rule, pattern);
+  }
+  return pattern;
+}
+
+function receiptRuleForLine(compactLine) {
+  const strict = RECEIPT_RULES.find((candidate) => candidate.pattern.test(compactLine));
+  if (strict) return strict;
+
+  // 濁点・半濁点を無視すると当たる範囲が広がり誤検出も増えるので、
+  // 通常の照合で決まらなかった行だけを対象にする。
+  const looseLine = withoutKanaMarks(compactLine);
+  return RECEIPT_RULES.find((candidate) => looseRulePattern(candidate).test(looseLine));
+}
+
 function receiptQuantity(line, rule) {
   let match = line.match(/(\d+(?:\.\d+)?)\s*(?:kg|KG|キロ)/);
   if (match) return { quantity: Number(match[1]) * 1000, unit: "g", needsReview: false };
@@ -3458,7 +3487,7 @@ function parseReceiptText(rawText) {
     const compactLine = line.replace(/\s+/g, "");
     if (compactLine.length < 2 || ignoredLine.test(compactLine)) return;
 
-    const rule = RECEIPT_RULES.find((candidate) => candidate.pattern.test(compactLine));
+    const rule = receiptRuleForLine(compactLine);
     if (!rule) return;
 
     const amount = receiptQuantity(compactLine, rule);
