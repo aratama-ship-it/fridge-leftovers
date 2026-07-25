@@ -1857,6 +1857,22 @@ input[type="number"] {
 }
 
 .shopping-food-grid {
+  display: block;
+}
+
+.shopping-food-group + .shopping-food-group {
+  margin-top: 12px;
+}
+
+.shopping-food-group-title {
+  margin: 0 0 5px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #5d6b5f;
+}
+
+.shopping-food-group-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 6px;
@@ -2857,7 +2873,24 @@ input[type="number"] {
   color: var(--muted);
 }
 
+/* 小分類ごとに見出し＋グリッドを積む。見出しは数が増えたときだけ出る。 */
 .ingredient-item-grid {
+  display: block;
+}
+
+.ingredient-item-group + .ingredient-item-group {
+  margin-top: 14px;
+}
+
+.ingredient-item-group-title {
+  margin: 0 0 6px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #5d6b5f;
+}
+
+.ingredient-item-group-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 7px;

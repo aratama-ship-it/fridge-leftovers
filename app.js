@@ -1866,58 +1866,220 @@ const ILLUSTRATED_INGREDIENT_CATEGORIES = [
   {
     id: "vegetables",
     name: "野菜・きのこ",
-    note: "葉物・根菜・薬味",
+    note: "葉物・根菜・果菜・きのこ・薬味",
     representatives: ["cabbage", "carrot", "tomato"],
-    items: [
-      "cabbage", "mushroom", "onion", "carrot", "tomato", "potato", "green-onion",
-      "radish", "lettuce", "cucumber", "spinach", "eggplant", "bell-pepper",
-      "broccoli", "garlic", "ginger", "bean-sprouts", "garlic-chives", "pumpkin"
+    groups: [
+      {
+        name: "葉物・茎",
+        items: ["cabbage", "chinese-cabbage", "lettuce", "sunny-lettuce", "salad-greens", "baby-leaf", "spinach", "komatsuna", "bok-choy", "mizuna", "shungiku", "moroheiya", "water-spinach", "nanohana", "rucola", "watercress", "celery", "asparagus", "broccoli", "cauliflower", "brussels-sprouts", "green-onion", "green-onion-small", "garlic-chives", "bean-sprouts", "pea-sprouts", "kaiware", "broccoli-sprout", "fuki", "cut-vegetables"]
+      },
+      {
+        name: "根菜・いも",
+        items: ["carrot", "onion", "red-onion", "potato", "sweet-potato", "taro", "yam", "radish", "turnip", "radish-red", "burdock", "lotus-root", "boiled-bamboo"]
+      },
+      {
+        name: "果菜・豆",
+        items: ["tomato", "cherry-tomato", "cucumber", "eggplant", "bell-pepper", "paprika", "shishito", "pumpkin", "zucchini", "winter-melon", "bitter-melon", "okra", "corn", "young-corn", "green-beans", "snow-peas", "snap-peas", "edamame", "broad-beans", "green-peas", "avocado"]
+      },
+      {
+        name: "きのこ",
+        items: ["mushroom", "shiitake", "enoki", "maitake", "shimeji-white", "eringi", "mushroom-button", "nameko"]
+      },
+      {
+        name: "香味・薬味",
+        items: ["garlic", "ginger", "new-ginger", "shiso", "myoga", "mitsuba", "parsley", "basil", "coriander", "yuzu"]
+      }
+    ]
+  },
+  {
+    id: "fruit",
+    name: "果物",
+    note: "定番・柑橘・ベリー",
+    representatives: ["banana", "apple"],
+    groups: [
+      {
+        name: "定番",
+        items: ["banana", "apple", "mandarin", "strawberry", "grape", "pear", "western-pear", "peach", "persimmon", "kiwi", "melon", "watermelon", "pineapple", "mango", "loquat", "plum", "cherry", "fig", "chestnut", "ume"]
+      },
+      {
+        name: "柑橘",
+        items: ["orange", "grapefruit", "lemon", "lime", "hassaku"]
+      },
+      {
+        name: "ベリー・ドライ",
+        items: ["blueberry", "raspberry", "raisin", "prune"]
+      }
+    ]
+  },
+  {
+    id: "meat",
+    name: "肉",
+    note: "豚・鶏・牛・ひき肉・加工肉",
+    representatives: ["pork", "chicken", "beef"],
+    groups: [
+      {
+        name: "豚",
+        items: ["pork", "pork-belly", "pork-loin", "pork-shoulder", "spare-ribs"]
+      },
+      {
+        name: "鶏",
+        items: ["chicken", "chicken-thigh", "chicken-tender", "chicken-wing", "chicken-wing-tip", "chicken-skin", "chicken-liver", "gizzard"]
+      },
+      {
+        name: "牛",
+        items: ["beef", "beef-steak", "beef-tongue", "beef-tendon", "horumon"]
+      },
+      {
+        name: "ひき肉",
+        items: ["ground-meat", "pork-mince", "chicken-mince"]
+      },
+      {
+        name: "加工肉",
+        items: ["bacon", "bacon-block", "ham", "sausage", "prosciutto", "salami", "char-siu", "roast-beef"]
+      },
+      {
+        name: "その他",
+        items: ["duck", "lamb"]
+      }
     ]
   },
   {
     id: "seafood",
     name: "魚介",
-    note: "魚・えび・缶詰",
+    note: "魚・貝・練り物・魚卵",
     representatives: ["salmon", "mackerel", "shrimp"],
-    items: ["salmon", "mackerel", "yellowtail", "shrimp", "tuna"]
-  },
-  {
-    id: "meat",
-    name: "肉",
-    note: "豚・鶏・牛・ひき肉",
-    representatives: ["pork", "chicken", "beef"],
-    items: ["pork", "chicken", "beef", "ground-meat"]
+    groups: [
+      {
+        name: "魚",
+        items: ["salmon", "mackerel", "yellowtail", "cod", "saury", "horse-mackerel", "sardine", "tuna-sashimi", "bonito-fresh", "swordfish", "flatfish", "sea-bream", "spanish-mackerel", "atka-mackerel", "shishamo", "eel", "conger-eel", "dried-aji", "shime-saba"]
+      },
+      {
+        name: "貝・えび・いか・たこ",
+        items: ["shrimp", "sweet-shrimp", "squid", "octopus", "clam", "freshwater-clam", "hamaguri", "scallop", "oyster", "crab"]
+      },
+      {
+        name: "練り物",
+        items: ["chikuwa", "kamaboko", "hanpen", "satsumaage", "kanikama", "fish-sausage"]
+      },
+      {
+        name: "魚卵・魚加工",
+        items: ["tuna", "cod-roe", "mentaiko", "ikura", "kazunoko", "shirako", "uni", "salmon-flake", "whitebait", "chirimen", "ika-shiokara"]
+      }
+    ]
   },
   {
     id: "protein",
-    name: "卵・乳・豆",
-    note: "卵・乳製品・大豆",
+    name: "卵・乳・大豆",
+    note: "卵・乳製品・豆腐",
     representatives: ["eggs", "milk", "tofu"],
-    items: ["eggs", "milk", "yogurt", "tofu", "natto", "cheese", "butter", "miso"]
+    groups: [
+      {
+        name: "卵",
+        items: ["eggs", "quail-egg", "onsen-egg", "tamago-tofu"]
+      },
+      {
+        name: "乳製品",
+        items: ["milk", "yogurt", "cheese", "sliced-cheese", "pizza-cheese", "cream-cheese", "mozzarella", "powdered-cheese", "camembert", "blue-cheese", "cottage-cheese", "butter", "margarine", "fresh-cream", "sour-cream", "condensed-milk"]
+      },
+      {
+        name: "豆腐・大豆製品",
+        items: ["tofu", "grilled-tofu", "thick-fried-tofu", "fried-tofu", "ganmodoki", "koya-tofu", "yuba", "okara", "natto", "soy-milk", "miso"]
+      }
+    ]
   },
   {
     id: "staples",
-    name: "主食・麺",
-    note: "ごはん・パン・麺",
+    name: "主食・粉",
+    note: "米・パン・麺・皮・粉",
     representatives: ["rice", "bread", "udon"],
-    items: ["rice", "bread", "pasta", "udon", "soba", "yakisoba-noodles", "macaroni", "breadcrumbs"]
+    groups: [
+      {
+        name: "米・パン",
+        items: ["rice", "rice-raw", "mochi-rice", "brown-rice", "mochi", "bread", "butter-roll", "french-bread", "croissant", "bagel", "english-muffin", "rye-bread", "naan", "tortilla"]
+      },
+      {
+        name: "麺",
+        items: ["pasta", "fresh-pasta", "penne", "macaroni", "udon", "soba", "somen", "kishimen", "yakisoba-noodles", "chinese-noodles", "bifun", "pho-noodles"]
+      },
+      {
+        name: "皮",
+        items: ["gyoza-wrapper", "wonton-wrapper", "spring-roll-wrapper", "pie-sheet"]
+      },
+      {
+        name: "粉",
+        items: ["flour", "bread-flour", "potato-starch", "corn-starch", "tempura-flour", "okonomiyaki-flour", "pancake-mix", "shiratamako", "buckwheat-flour", "breadcrumbs", "tenkasu"]
+      },
+      {
+        name: "シリアル・雑穀",
+        items: ["oatmeal", "granola", "corn-flakes", "barley", "couscous"]
+      }
+    ]
   },
   {
-    id: "fruit",
-    name: "果物",
-    note: "いつもの果物",
-    representatives: ["banana", "apple"],
-    items: ["banana", "apple"]
+    id: "dry",
+    name: "乾物・海藻・豆",
+    note: "海藻・乾物・豆・ナッツ",
+    representatives: ["wakame", "sesame"],
+    groups: [
+      {
+        name: "海藻",
+        items: ["wakame", "kombu", "tororo-kombu", "nori", "aonori", "hijiki", "mozuku", "mekabu", "shio-kombu"]
+      },
+      {
+        name: "乾物",
+        items: ["bonito", "dried-sardine", "dried-shiitake", "dried-radish", "kikurage", "sakura-shrimp", "dried-shrimp", "dried-tomato", "kanten", "gelatin", "fu", "glass-noodles", "sesame"]
+      },
+      {
+        name: "豆",
+        items: ["dried-soybeans", "azuki", "chickpeas", "lentils"]
+      },
+      {
+        name: "ナッツ",
+        items: ["almond", "walnut", "cashew"]
+      }
+    ]
   },
   {
-    id: "other",
-    name: "乾物・その他",
-    note: "海藻・こんにゃく",
-    representatives: ["wakame", "konnyaku"],
-    items: ["wakame", "konnyaku"]
+    id: "processed",
+    name: "缶詰・加工",
+    note: "缶詰・瓶詰・こんにゃく",
+    representatives: ["canned-tomato", "konnyaku"],
+    groups: [
+      {
+        name: "缶詰",
+        items: ["canned-tomato", "canned-corn", "canned-mackerel", "canned-sardine", "canned-peach", "coconut-milk", "corned-beef", "spam"]
+      },
+      {
+        name: "瓶詰・その他",
+        items: ["tomato-puree", "nametake", "nori-tsukudani", "peanut-butter", "anko", "mixed-beans", "boiled-soybeans", "menma", "zasai", "konnyaku", "shirataki", "furikake"]
+      }
+    ]
+  },
+  {
+    id: "pickles",
+    name: "漬物",
+    note: "キムチ・梅干し",
+    representatives: ["kimchi", "umeboshi"],
+    groups: [
+      {
+        name: "漬物",
+        items: ["kimchi", "takuan", "umeboshi", "nozawana", "beni-shoga", "rakkyo", "fukujinzuke"]
+      }
+    ]
+  },
+  {
+    id: "frozen",
+    name: "冷凍",
+    note: "冷凍野菜・シーフード",
+    representatives: ["mixed-vegetables", "frozen-potato"],
+    groups: [
+      {
+        name: "冷凍",
+        items: ["mixed-vegetables", "frozen-seafood-mix", "frozen-potato"]
+      }
+    ]
   }
 ];
-
 const INVENTORY_UNITS = ["個", "g", "ml", "本", "株", "袋", "パック", "膳", "切れ", "缶", "枚"];
 const INVENTORY_LOCATIONS = ["冷蔵", "冷凍", "常温"];
 const DEFAULT_STORAGE_SHELF_COUNTS = { 冷蔵: 3, 冷凍: 1, 常温: 2 };
@@ -2306,6 +2468,38 @@ function renderIngredientIllustration(id, name, small = false) {
   return `<span class="ingredient-illustration${atlasClass}${sizeClass}" style="--atlas-x:${x}%;--atlas-y:${y}%;" aria-hidden="true"></span>`;
 }
 
+// 小分類の見出しで区切るのは、これ以上並ぶときだけ。数が少ないうちに
+// 見出しを出すと、1件だけの見出しが並んで逆に読みにくくなる。
+const CATEGORY_HEADING_THRESHOLD = 8;
+
+function hasIngredientIllustration(id) {
+  return id === "rice" || Boolean(INGREDIENT_ILLUSTRATIONS[id]);
+}
+
+// イラストが無い食材は一覧に出さない（頭文字だけのカードが混ざると
+// イラストで選ぶという中心の作りが崩れるため）。空になった小分類も落とす。
+function categoryDisplayGroups(category) {
+  return category.groups
+    .map((group) => ({ name: group.name, items: group.items.filter(hasIngredientIllustration) }))
+    .filter((group) => group.items.length > 0);
+}
+
+function categoryDisplayItems(category) {
+  return categoryDisplayGroups(category).flatMap((group) => group.items);
+}
+
+function displayedIngredientCategories() {
+  return ILLUSTRATED_INGREDIENT_CATEGORIES.filter(
+    (category) => categoryDisplayItems(category).length > 0
+  );
+}
+
+function categoryRepresentatives(category) {
+  const shown = categoryDisplayItems(category);
+  const preferred = category.representatives.filter((id) => shown.includes(id));
+  return (preferred.length ? preferred : shown).slice(0, 3);
+}
+
 function illustratedIngredientItem(id) {
   if (id === "rice") {
     return {
@@ -2329,7 +2523,7 @@ function illustratedIngredientItem(id) {
 }
 
 function renderIngredientCategoryPicker() {
-  elements.ingredientCategoryGrid.innerHTML = ILLUSTRATED_INGREDIENT_CATEGORIES.map((category) => `
+  elements.ingredientCategoryGrid.innerHTML = displayedIngredientCategories().map((category) => `
     <button
       class="ingredient-category-card"
       type="button"
@@ -2337,7 +2531,7 @@ function renderIngredientCategoryPicker() {
       aria-label="${escapeHtml(category.name)}から選ぶ"
     >
       <span class="ingredient-category-pictures" aria-hidden="true">
-        ${category.representatives.map((id) => {
+        ${categoryRepresentatives(category).map((id) => {
           const item = illustratedIngredientItem(id);
           return item ? renderIngredientIllustration(item.id, item.name) : "";
         }).join("")}
@@ -2375,29 +2569,50 @@ function showIngredientItemLayer(categoryId) {
   elements.ingredientPicker.hidden = false;
   elements.ingredientDetails.hidden = true;
   elements.ingredientPickerCategoryTitle.textContent = category.name;
-  const recentOrder = new Map(
-    state.recentIngredientIds.map((id, index) => [id, index])
-  );
-  const orderedItems = [...category.items].sort((left, right) => {
-    const leftOrder = recentOrder.get(left) ?? Number.POSITIVE_INFINITY;
-    const rightOrder = recentOrder.get(right) ?? Number.POSITIVE_INFINITY;
-    return leftOrder - rightOrder;
-  });
-  elements.ingredientItemGrid.innerHTML = orderedItems.map((id) => {
-    const item = illustratedIngredientItem(id);
-    if (!item) return "";
-    return `
-      <button
-        class="ingredient-item-card"
-        type="button"
-        data-ingredient-item="${item.id}"
-        aria-label="${escapeHtml(item.name)}を追加"
-      >
-        ${renderIngredientIllustration(item.id, item.name)}
-        <strong>${escapeHtml(item.name)}</strong>
-      </button>
-    `;
-  }).join("");
+  const groups = categoryDisplayGroups(category);
+  const shown = groups.flatMap((group) => group.items);
+  // 小分類はタップして潜る階層にせず、見出しで区切るだけにする。
+  // 手数を今の2回に保ったまま、探しやすさだけ上げるため。
+  const useHeadings = shown.length >= CATEGORY_HEADING_THRESHOLD && groups.length >= 2;
+
+  const sections = [];
+  if (useHeadings) {
+    const recent = state.recentIngredientIds.filter((id) => shown.includes(id)).slice(0, 4);
+    if (recent.length) sections.push({ name: "最近使ったもの", items: recent });
+    sections.push(...groups);
+  } else {
+    // 数が少ないときは見出しを付けず、最近使ったものを先頭へ寄せるだけにする
+    const recentOrder = new Map(state.recentIngredientIds.map((id, index) => [id, index]));
+    sections.push({
+      name: "",
+      items: [...shown].sort((left, right) =>
+        (recentOrder.get(left) ?? Number.POSITIVE_INFINITY) - (recentOrder.get(right) ?? Number.POSITIVE_INFINITY)
+      )
+    });
+  }
+
+  elements.ingredientItemGrid.innerHTML = sections.map((section) => `
+    <section class="ingredient-item-group">
+      ${section.name ? `<h4 class="ingredient-item-group-title">${escapeHtml(section.name)}</h4>` : ""}
+      <div class="ingredient-item-group-grid">
+        ${section.items.map((id) => {
+          const item = illustratedIngredientItem(id);
+          if (!item) return "";
+          return `
+            <button
+              class="ingredient-item-card"
+              type="button"
+              data-ingredient-item="${escapeHtml(item.id)}"
+              aria-label="${escapeHtml(item.name)}を追加"
+            >
+              ${renderIngredientIllustration(item.id, item.name)}
+              <strong>${escapeHtml(item.name)}</strong>
+            </button>
+          `;
+        }).join("")}
+      </div>
+    </section>
+  `).join("");
   elements.ingredientCategoryLayer.hidden = true;
   elements.ingredientItemLayer.hidden = false;
   requestAnimationFrame(() => {
@@ -3092,7 +3307,7 @@ function renderShoppingPicker() {
   elements.shoppingItemLayer.hidden = !category;
 
   if (!category) {
-    elements.shoppingCategoryGrid.innerHTML = ILLUSTRATED_INGREDIENT_CATEGORIES.map((candidate) => `
+    elements.shoppingCategoryGrid.innerHTML = displayedIngredientCategories().map((candidate) => `
       <button
         class="shopping-category-button"
         type="button"
@@ -3100,7 +3315,7 @@ function renderShoppingPicker() {
         aria-label="${escapeHtml(candidate.name)}から買うものを選ぶ"
       >
         <span class="shopping-category-art" aria-hidden="true">
-          ${candidate.representatives.slice(0, 2).map((id) => {
+          ${categoryRepresentatives(candidate).slice(0, 2).map((id) => {
             const item = illustratedIngredientItem(id);
             return item ? renderIngredientIllustration(item.id, item.name) : "";
           }).join("")}
@@ -3112,28 +3327,39 @@ function renderShoppingPicker() {
   }
 
   elements.shoppingPickerCategoryTitle.textContent = category.name;
-  elements.shoppingFoodGrid.innerHTML = category.items.map((id) => {
-    const item = illustratedIngredientItem(id);
-    if (!item) return "";
-    const added = state.shopping.some((shoppingItem) =>
-      !shoppingItem.checked
-      && shoppingItem.ingredientId === item.id
-      && shoppingItem.unit === item.unit
-    );
-    return `
-      <button
-        class="shopping-food-button${added ? " is-added" : ""}"
-        type="button"
-        data-shopping-food="${item.id}"
-        aria-pressed="${added ? "true" : "false"}"
-        aria-label="${escapeHtml(item.name)}${added ? "を買うものから外す" : "を買うものに追加"}"
-      >
-        ${renderIngredientIllustration(item.id, item.name)}
-        <strong>${escapeHtml(item.name)}</strong>
-        <small>${added ? "✓ 追加済み" : formatQuantity(item.quantity, item.unit)}</small>
-      </button>
-    `;
-  }).join("");
+  const groups = categoryDisplayGroups(category);
+  const total = groups.reduce((count, group) => count + group.items.length, 0);
+  const useHeadings = total >= CATEGORY_HEADING_THRESHOLD && groups.length >= 2;
+
+  elements.shoppingFoodGrid.innerHTML = groups.map((group) => `
+    <section class="shopping-food-group">
+      ${useHeadings ? `<h4 class="shopping-food-group-title">${escapeHtml(group.name)}</h4>` : ""}
+      <div class="shopping-food-group-grid">
+        ${group.items.map((id) => {
+          const item = illustratedIngredientItem(id);
+          if (!item) return "";
+          const added = state.shopping.some((shoppingItem) =>
+            !shoppingItem.checked
+            && shoppingItem.ingredientId === item.id
+            && shoppingItem.unit === item.unit
+          );
+          return `
+            <button
+              class="shopping-food-button${added ? " is-added" : ""}"
+              type="button"
+              data-shopping-food="${escapeHtml(item.id)}"
+              aria-pressed="${added ? "true" : "false"}"
+              aria-label="${escapeHtml(item.name)}${added ? "を買うものから外す" : "を買うものに追加"}"
+            >
+              ${renderIngredientIllustration(item.id, item.name)}
+              <strong>${escapeHtml(item.name)}</strong>
+              <small>${added ? "✓ 追加済み" : formatQuantity(item.quantity, item.unit)}</small>
+            </button>
+          `;
+        }).join("")}
+      </div>
+    </section>
+  `).join("");
 }
 
 function renderShopping() {
