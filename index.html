@@ -6,9 +6,9 @@
   <meta name="theme-color" content="#f3f0e6">
   <meta name="description" content="冷蔵庫の在庫を管理し、残っている食材から今日作れる料理を提案するスマホ向けプロトタイプ">
   <title>冷蔵庫の現在地</title>
-  <link rel="stylesheet" href="styles.css?v=43">
+  <link rel="stylesheet" href="styles.css?v=44">
   <script src="vendor/tesseract/tesseract.min.js?v=7.0.0" defer></script>
-  <script src="app.js?v=48" defer></script>
+  <script src="app.js?v=49" defer></script>
 </head>
 <body>
   <div class="app-shell">
@@ -147,11 +147,16 @@
               買うもの
               <input id="shopping-name" name="name" type="text" autocomplete="off" required placeholder="例：牛乳">
             </label>
-            <label for="shopping-quantity">
+            <label class="shopping-quantity-field" for="shopping-quantity">
               数量
-              <input id="shopping-quantity" name="quantity" type="number" inputmode="decimal" min="0.25" step="0.25" required value="1">
+              <span class="quantity-editor">
+                <button class="quantity-adjust" type="button" data-quantity-adjust="shopping-quantity" data-delta="-1" aria-label="買う数量を減らす">−</button>
+                <input id="shopping-quantity" name="quantity" type="number" inputmode="decimal" min="1" step="1" required value="1">
+                <button class="quantity-adjust" type="button" data-quantity-adjust="shopping-quantity" data-delta="1" aria-label="買う数量を増やす">＋</button>
+              </span>
+              <input class="quantity-range" id="shopping-quantity-range" type="range" min="1" max="10" step="1" value="1" aria-label="買う数量をスライドして変更">
             </label>
-            <label for="shopping-unit">
+            <label class="shopping-unit-field" for="shopping-unit">
               単位
               <select id="shopping-unit" name="unit">
                 <option value="個">個</option>
@@ -317,7 +322,12 @@
         <div class="form-grid">
           <label for="ingredient-quantity">
             残量
-            <input id="ingredient-quantity" name="quantity" type="number" inputmode="decimal" min="0.25" step="0.25" required value="1">
+            <span class="quantity-editor">
+              <button class="quantity-adjust" type="button" data-quantity-adjust="ingredient-quantity" data-delta="-1" aria-label="残量を減らす">−</button>
+              <input id="ingredient-quantity" name="quantity" type="number" inputmode="decimal" min="1" step="1" required value="1">
+              <button class="quantity-adjust" type="button" data-quantity-adjust="ingredient-quantity" data-delta="1" aria-label="残量を増やす">＋</button>
+            </span>
+            <input class="quantity-range" id="ingredient-quantity-range" type="range" min="1" max="10" step="1" value="1" aria-label="残量をスライドして変更">
           </label>
 
           <label for="ingredient-unit">
@@ -440,6 +450,14 @@
           <button class="cook-serving-button" type="button" data-cook-servings="4" aria-pressed="false"><strong>4</strong><span>人分</span></button>
         </div>
       </fieldset>
+
+      <section class="cook-confirm-ingredients" aria-labelledby="cook-confirm-ingredients-title">
+        <div class="cook-confirm-ingredients-head">
+          <h3 id="cook-confirm-ingredients-title">実際に使う材料</h3>
+          <small id="cook-confirm-nutrition"></small>
+        </div>
+        <div id="cook-confirm-ingredients"></div>
+      </section>
 
       <p class="cook-confirm-message" id="cook-confirm-message" aria-live="polite"></p>
 

@@ -1445,6 +1445,22 @@ input[type="number"] {
   font-size: 0.78rem;
 }
 
+.recipe-nutrition {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 9px;
+  margin: 5px 0 0;
+  color: #5c685f;
+  font-family: sans-serif;
+  font-size: 0.62rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+}
+
+.recipe-nutrition span:first-child {
+  color: var(--leaf-dark);
+}
+
 .recipe-ingredient-summary {
   display: flex;
   flex-wrap: wrap;
@@ -1933,11 +1949,54 @@ input[type="number"] {
   font-size: 16px;
 }
 
+.quantity-editor {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) 38px;
+  align-items: stretch;
+  gap: 4px;
+}
+
+.quantity-editor .quantity-adjust {
+  min-height: 42px;
+  padding: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: 5px;
+  background: #eef2eb;
+  color: var(--leaf-dark);
+  font-family: sans-serif;
+  font-size: 1.15rem;
+  font-weight: 900;
+}
+
+.quantity-editor input {
+  min-width: 0;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.quantity-range,
+.shopping-add-form .quantity-range {
+  width: 100%;
+  min-height: 28px;
+  padding: 0;
+  accent-color: var(--leaf);
+  background: transparent;
+}
+
 .shopping-name-field {
   grid-column: 1 / -1;
 }
 
+.shopping-quantity-field {
+  grid-column: 1 / 3;
+}
+
+.shopping-unit-field {
+  grid-column: 3;
+}
+
 .shopping-add-button {
+  grid-column: 1 / -1;
   align-self: end;
   min-width: 0;
   padding-inline: 8px;
@@ -2938,6 +2997,154 @@ input[type="number"] {
 
 .cook-serving-button.is-active span {
   color: #fff;
+}
+
+.cook-confirm-ingredients {
+  display: grid;
+  gap: 8px;
+  padding: 11px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f3f4ed;
+}
+
+.cook-confirm-ingredients-head {
+  display: grid;
+  gap: 2px;
+}
+
+.cook-confirm-ingredients-head h3,
+.cook-confirm-ingredients h4 {
+  margin: 0;
+}
+
+.cook-confirm-ingredients-head h3 {
+  font-size: 0.88rem;
+}
+
+.cook-confirm-ingredients-head > small {
+  color: var(--leaf-dark);
+  font-family: sans-serif;
+  font-size: 0.61rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.cook-confirm-ingredients h4 {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 0.66rem;
+}
+
+.cook-confirm-ingredients h4 small {
+  margin-left: 5px;
+  font-weight: 500;
+}
+
+.cook-confirm-ingredients ul {
+  display: grid;
+  gap: 3px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cook-ingredient-row {
+  min-width: 0;
+  border-top: 1px solid rgb(157 168 157 / 45%);
+}
+
+.cook-ingredient-row:first-child {
+  border-top: 0;
+}
+
+.cook-ingredient-row:not(.is-optional),
+.cook-optional-choice {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+  min-height: 45px;
+  padding: 3px 1px;
+}
+
+.cook-ingredient-main {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.cook-ingredient-main .ingredient-illustration,
+.cook-ingredient-main .ingredient-initial {
+  width: 36px;
+  height: 36px;
+}
+
+.cook-ingredient-main strong,
+.cook-ingredient-main small {
+  display: block;
+}
+
+.cook-ingredient-main strong {
+  color: var(--ink);
+  font-size: 0.72rem;
+}
+
+.cook-ingredient-main small {
+  margin-top: 1px;
+  color: var(--muted);
+  font-size: 0.6rem;
+  line-height: 1.3;
+}
+
+.cook-ingredient-state,
+.cook-optional-state {
+  color: var(--muted);
+  font-size: 0.6rem;
+  font-weight: 800;
+}
+
+.cook-ingredient-state.is-ready {
+  color: var(--leaf);
+}
+
+.cook-ingredient-state.is-missing {
+  color: var(--warm);
+}
+
+.cook-optional-choice {
+  position: relative;
+  grid-template-columns: minmax(0, 1fr) auto;
+  cursor: pointer;
+}
+
+.cook-optional-choice > input {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  opacity: 0;
+}
+
+.cook-optional-choice:has(input:checked) {
+  padding-inline: 4px;
+  border-radius: 5px;
+  background: var(--leaf-soft);
+}
+
+.cook-optional-choice:has(input:focus-visible) {
+  outline: 3px solid rgb(47 100 75 / 35%);
+  outline-offset: 1px;
+}
+
+.cook-optional-choice:has(input:disabled) {
+  cursor: default;
+  opacity: 0.48;
+}
+
+.cook-optional-choice:has(input:checked) .cook-optional-state {
+  color: var(--leaf-dark);
 }
 
 .cook-confirm-message {
