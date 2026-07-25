@@ -1001,30 +1001,6 @@ body.is-fridge-dragging .food-consume-station {
   background-image: url("assets/ingredient-atlas-expanded.png?v=20260724-2");
 }
 
-/* 5枚目以降の受け口。画像を assets/ へ置き、app.js の INGREDIENT_ILLUSTRATIONS へ
-   `id: [列, 行, "s05"]` の形で登録すると有効になる。
-   新しいシートは 1254 × 940 px で作る（1254×1254 だと縦へ約33%潰れる）。
-   寸法と品目は assets/ATLAS_SPEC.md と assets/ATLAS_GENERATION_BRIEF.md を参照。 */
-.ingredient-illustration-s05 { background-image: url("assets/ingredient-atlas-05.png?v=20260725-1"); }
-.ingredient-illustration-s06 { background-image: url("assets/ingredient-atlas-06.png?v=20260725-1"); }
-.ingredient-illustration-s07 { background-image: url("assets/ingredient-atlas-07.png?v=20260725-1"); }
-.ingredient-illustration-s08 { background-image: url("assets/ingredient-atlas-08.png?v=20260725-1"); }
-.ingredient-illustration-s09 { background-image: url("assets/ingredient-atlas-09.png?v=20260725-1"); }
-.ingredient-illustration-s10 { background-image: url("assets/ingredient-atlas-10.png?v=20260725-1"); }
-.ingredient-illustration-s11 { background-image: url("assets/ingredient-atlas-11.png?v=20260725-1"); }
-.ingredient-illustration-s12 { background-image: url("assets/ingredient-atlas-12.png?v=20260725-1"); }
-.ingredient-illustration-s13 { background-image: url("assets/ingredient-atlas-13.png?v=20260725-1"); }
-.ingredient-illustration-s14 { background-image: url("assets/ingredient-atlas-14.png?v=20260725-1"); }
-.ingredient-illustration-s15 { background-image: url("assets/ingredient-atlas-15.png?v=20260725-1"); }
-.ingredient-illustration-s16 { background-image: url("assets/ingredient-atlas-16.png?v=20260725-1"); }
-.ingredient-illustration-s17 { background-image: url("assets/ingredient-atlas-17.png?v=20260725-1"); }
-.ingredient-illustration-s18 { background-image: url("assets/ingredient-atlas-18.png?v=20260725-1"); }
-.ingredient-illustration-s19 { background-image: url("assets/ingredient-atlas-19.png?v=20260725-1"); }
-.ingredient-illustration-s20 { background-image: url("assets/ingredient-atlas-20.png?v=20260725-1"); }
-.ingredient-illustration-s21 { background-image: url("assets/ingredient-atlas-21.png?v=20260725-1"); }
-.ingredient-illustration-s22 { background-image: url("assets/ingredient-atlas-22.png?v=20260725-1"); }
-.ingredient-illustration-s23 { background-image: url("assets/ingredient-atlas-23.png?v=20260725-1"); }
-
 .ingredient-initial {
   display: grid;
   place-items: center;
