@@ -1,5 +1,17 @@
 # リリース前チェック
 
+自動で確認できる分は、`.github/workflows/checks.yml` が push と PR のたびに実行する。
+手元で先に確かめる場合は、下記2つを直接動かす。
+
+## キャッシュ回避クエリ
+
+`app.js` や `styles.css` を変更したら、`index.html` の `?v=` を内容ハッシュへ揃える。
+
+- `node scripts/cache-version.mjs` を実行し、変更後の `index.html` を一緒にコミットする
+- `node scripts/cache-version.mjs --check` が成功すること（ずれていれば終了コード1）
+- 番号を手で上げる運用は廃止した。上げ忘れると更新が既存ユーザーへ届かないため
+- `vendor/` 配下は同梱ライブラリのバージョン表記なので、このスクリプトの対象外
+
 ## 食材の初期単位
 
 - `node scripts/check-initial-units.mjs` が成功すること

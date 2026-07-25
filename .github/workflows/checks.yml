@@ -1,0 +1,23 @@
+name: checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      # 食材の初期数量と単位が、一般的な買い方から外れていないか
+      - name: 初期単位チェック
+        run: node scripts/check-initial-units.mjs
+
+      # index.html の ?v= が中身と合っているか（上げ忘れの検出）
+      - name: キャッシュ回避クエリの整合
+        run: node scripts/cache-version.mjs --check
