@@ -8,7 +8,7 @@
   <title>冷蔵庫の現在地</title>
   <link rel="stylesheet" href="styles.css?v=989256f4">
   <script src="vendor/tesseract/tesseract.min.js?v=7.0.0" defer></script>
-  <script src="app.js?v=6f5117e8" defer></script>
+  <script src="app.js?v=ffad1aff" defer></script>
 </head>
 <body>
   <div class="app-shell">
@@ -410,10 +410,6 @@
         </div>
         <p class="receipt-review-note">商品名・数量・保存場所を確認してから追加してください。</p>
         <div class="receipt-candidates" id="receipt-candidates"></div>
-        <details class="receipt-raw">
-          <summary>読み取った元の文字を見る</summary>
-          <pre id="receipt-raw-text"></pre>
-        </details>
       </section>
 
       <section class="receipt-error" id="receipt-error" hidden>
@@ -421,6 +417,12 @@
         <p id="receipt-error-message">写真を明るい場所で撮り直すか、通常の食材追加をお試しください。</p>
         <button class="button button-secondary" type="button" id="receipt-manual-add">通常の追加を使う</button>
       </section>
+
+      <!-- 候補が0件のときこそ中身を見たいので、結果・エラーのどちらにも属さない位置に置く -->
+      <details class="receipt-raw" id="receipt-raw" hidden>
+        <summary>読み取った元の文字を見る</summary>
+        <pre id="receipt-raw-text"></pre>
+      </details>
 
       <div class="dialog-actions receipt-dialog-actions">
         <button class="button button-secondary" type="button" id="cancel-receipt-dialog">キャンセル</button>

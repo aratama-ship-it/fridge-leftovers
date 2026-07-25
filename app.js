@@ -1564,6 +1564,8 @@ const RECIPE_STEPS = {
 // Prototype estimates per common household unit. These values are deliberately
 // rounded and are shown as a guide, not as medical or package-label data.
 const NUTRITION_REFERENCES = {
+  asparagus: { 袋: [1, 21, 2.6, 0.2, 3.9] },
+  bacon: { g: [100, 400, 12.9, 39.1, 0.3] },
   "bean-sprouts": { 袋: [1, 30, 3.6, 0.2, 5.2] },
   beef: { g: [100, 259, 17.1, 19.4, 0.3] },
   "bell-pepper": { 個: [1, 7, 0.3, 0.1, 1.8], 袋: [1, 30, 1.4, 0.3, 7.5] },
@@ -1572,9 +1574,11 @@ const NUTRITION_REFERENCES = {
   breadcrumbs: { g: [100, 369, 14.6, 6.8, 63.4] },
   broccoli: { 個: [1, 83, 10.8, 1.5, 16.3] },
   butter: { g: [100, 700, 0.5, 81, 0.2] },
+  "butter-roll": { 個: [1, 95, 3, 2.7, 14.6] },
   cabbage: { g: [100, 23, 1.3, 0.2, 5.2] },
   carrot: { 本: [1, 53, 1, 0.3, 14] },
   cheese: { g: [100, 313, 22.7, 26, 1.3] },
+  "chicken-thigh": { g: [100, 190, 16.6, 14.2, 0] },
   chicken: { g: [100, 133, 21.3, 5.9, 0] },
   cucumber: { 本: [1, 13, 1, 0.1, 3] },
   eggplant: { 本: [1, 14, 0.8, 0.1, 4], 袋: [1, 42, 2.4, 0.3, 12] },
@@ -1713,6 +1717,13 @@ const ALIASES = new Map([
   ["カボチャ", "pumpkin"],
   ["南瓜", "pumpkin"],
   ["こんにゃく", "konnyaku"],
+  ["鶏もも肉", "chicken-thigh"],
+  ["とりもも", "chicken-thigh"],
+  ["アスパラ", "asparagus"],
+  ["アスパラガス", "asparagus"],
+  ["ベーコン", "bacon"],
+  ["バターロール", "butter-roll"],
+  ["ロールパン", "butter-roll"],
   ["コンニャク", "konnyaku"],
   ["蒟蒻", "konnyaku"]
 ]);
@@ -1773,11 +1784,14 @@ const RECEIPT_RULES = [
   { id: "cabbage", name: "キャベツ", pattern: /(?:キャベツ|きゃべつ)/, quantity: 100, unit: "g", fractionUnit: "個", location: "冷蔵" },
   { id: "mushroom", name: "しめじ", pattern: /(?:しめじ|シメジ)/, quantity: 1, unit: "株", location: "冷蔵" },
   { id: "pork", name: "豚こま", pattern: /(?:豚.*(?:こま|コマ|小間|切落|切り落)|(?:こま|コマ|小間).*豚)/, quantity: 100, unit: "g", location: "冷蔵" },
-  { id: "tofu", name: "豆腐", pattern: /(?:豆腐|とうふ|トウフ)/, quantity: 1, unit: "個", location: "冷蔵" },
+  // レシートは「ツインパックキヌ」のように商品名だけで「豆腐」の字を含まないことがある。
+  // 絹・木綿の表記も豆腐として拾う。絹さや／キヌアを誤って拾わないよう除外する。
+  { id: "tofu", name: "豆腐", pattern: /(?:豆腐|とうふ|トウフ|絹ごし|きぬごし|木綿|もめん|モメン|絹(?!さや|サヤ)|キヌ(?!さや|サヤ|ア))/, quantity: 1, unit: "個", location: "冷蔵" },
   { id: "onion", name: "玉ねぎ", pattern: /(?:玉ねぎ|たまねぎ|タマネギ|玉葱)/, quantity: 1, unit: "個", location: "冷蔵" },
   { id: "carrot", name: "にんじん", pattern: /(?:にんじん|ニンジン|人参)/, quantity: 1, unit: "本", location: "冷蔵" },
   { id: "tomato", name: "トマト", pattern: /(?:トマト|とまと)/, quantity: 1, unit: "個", location: "冷蔵" },
   { id: "chicken", name: "鶏むね肉", pattern: /(?:鶏|若鶏).*(?:むね|ムネ|胸)/, quantity: 100, unit: "g", location: "冷蔵" },
+  { id: "chicken-thigh", name: "鶏もも肉", pattern: /(?:鶏|若鶏|とり).*(?:もも|モモ|腿)/, quantity: 100, unit: "g", location: "冷蔵" },
   { id: "potato", name: "じゃがいも", pattern: /(?:じゃがいも|ジャガイモ|馬鈴薯)/, quantity: 1, unit: "個", location: "冷蔵" },
   { id: "green-onion", name: "ねぎ", pattern: /(?:長ねぎ|長ネギ|青ねぎ|青ネギ|ねぎ|ネギ|葱)/, quantity: 1, unit: "本", location: "冷蔵" },
   { id: "milk", name: "牛乳", pattern: /(?:牛乳|ミルク)/, quantity: 1, unit: "本", location: "冷蔵" },
@@ -1801,7 +1815,10 @@ const RECEIPT_RULES = [
   { id: "garlic", name: "にんにく", pattern: /(?:にんにく|ニンニク|大蒜)/, quantity: 1, unit: "個", location: "冷蔵" },
   { id: "ginger", name: "しょうが", pattern: /(?:しょうが|ショウガ|生姜)/, quantity: 1, unit: "個", location: "冷蔵" },
   { id: "pasta", name: "スパゲッティ", pattern: /(?:スパゲッティ|スパゲティ|パスタ)/, quantity: 100, unit: "g", location: "常温" },
-  { id: "butter", name: "バター", pattern: /(?:バター|ばたー)/, quantity: 100, unit: "g", location: "冷蔵" },
+  // バターより前に置く。「バターロール」はパンであってバターではないため、
+  // 先に当てて誤登録を防ぐ（バター側にも除外を入れて二重に守る）。
+  { id: "butter-roll", name: "バターロール", pattern: /(?:バターロール|ばたーろーる|ロールパン|ろーるぱん)/, quantity: 6, unit: "個", location: "常温" },
+  { id: "butter", name: "バター", pattern: /(?:バター|ばたー)(?!ロール|ろーる)/, quantity: 100, unit: "g", location: "冷蔵" },
   { id: "breadcrumbs", name: "パン粉", pattern: /(?:パン粉|ぱん粉)/, quantity: 100, unit: "g", location: "常温" },
   { id: "miso", name: "味噌", pattern: /(?:味噌|みそ|ミソ)/, quantity: 300, unit: "g", location: "冷蔵" },
   { id: "wakame", name: "わかめ", pattern: /(?:わかめ|ワカメ|若布)/, quantity: 1, unit: "袋", location: "常温" },
@@ -1816,7 +1833,9 @@ const RECEIPT_RULES = [
   { id: "bean-sprouts", name: "もやし", pattern: /(?:もやし|モヤシ|萌やし)/, quantity: 1, unit: "袋", location: "冷蔵" },
   { id: "garlic-chives", name: "にら", pattern: /(?:にら|ニラ|韮)/, quantity: 1, unit: "袋", location: "冷蔵" },
   { id: "pumpkin", name: "かぼちゃ", pattern: /(?:かぼちゃ|カボチャ|南瓜)/, quantity: 400, unit: "g", location: "冷蔵" },
-  { id: "konnyaku", name: "こんにゃく", pattern: /(?:こんにゃく|コンニャク|蒟蒻)/, quantity: 1, unit: "枚", location: "冷蔵" }
+  { id: "konnyaku", name: "こんにゃく", pattern: /(?:こんにゃく|コンニャク|蒟蒻)/, quantity: 1, unit: "枚", location: "冷蔵" },
+  { id: "asparagus", name: "アスパラガス", pattern: /(?:アスパラ|あすぱら)/, quantity: 1, unit: "袋", location: "冷蔵" },
+  { id: "bacon", name: "ベーコン", pattern: /(?:ベーコン|べーこん)/, quantity: 100, unit: "g", location: "冷蔵" }
 ];
 
 const ILLUSTRATED_INGREDIENT_CATEGORIES = [
@@ -1996,6 +2015,7 @@ const elements = {
   receiptResults: document.querySelector("#receipt-results"),
   receiptSummary: document.querySelector("#receipt-summary"),
   receiptCandidates: document.querySelector("#receipt-candidates"),
+  receiptRaw: document.querySelector("#receipt-raw"),
   receiptRawText: document.querySelector("#receipt-raw-text"),
   receiptError: document.querySelector("#receipt-error"),
   receiptErrorMessage: document.querySelector("#receipt-error-message"),
@@ -3602,9 +3622,12 @@ function renderReceiptResults(rawText, candidates) {
   elements.receiptProcessing.hidden = true;
   elements.receiptError.hidden = true;
   elements.receiptRawText.textContent = rawText.trim() || "文字を読み取れませんでした。";
+  // 候補が作れなかった原因を追えるよう、成功・失敗のどちらでも読み取り結果を残す
+  elements.receiptRaw.hidden = false;
 
   if (!state.receiptCandidates.length) {
-    showReceiptError("文字は読み取れましたが、登録できる一般的な食材を見つけられませんでした。写真を撮り直すか、通常の食材追加をお試しください。");
+    elements.receiptRaw.open = true;
+    showReceiptError("文字は読み取れましたが、登録できる一般的な食材を見つけられませんでした。下の「読み取った元の文字」を確認してください。");
     return;
   }
 
@@ -3670,6 +3693,8 @@ function openReceiptDialog(file) {
   elements.receiptResults.hidden = true;
   elements.receiptError.hidden = true;
   elements.receiptCandidates.innerHTML = "";
+  elements.receiptRaw.hidden = true;
+  elements.receiptRaw.open = false;
   elements.receiptRawText.textContent = "";
   elements.receiptStatus.textContent = "写真を準備しています…";
   elements.receiptProgress.value = 0;
