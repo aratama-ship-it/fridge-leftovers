@@ -28,9 +28,11 @@
 | everyday | `ingredient-atlas-everyday.png` | 12/12 | 1254×1254（潰れあり） |
 | recipe | `ingredient-atlas-recipe.png` | 12/12 | 1254×1254（潰れあり） |
 | expanded | `ingredient-atlas-expanded.png` | 12/12 | 1254×1254（潰れあり） |
-| extra | `ingredient-atlas-extra.png` | **未作成** | 1254×940 で作る |
+| s05〜s13 | `ingredient-atlas-05.png` 〜 `-13.png` | **未作成（9枚・108品）** | 1254×940 で作る |
 
-4枚とも12枠が満杯のため、食材を足すには新しいシートが必要。CSSの受け口 `.ingredient-illustration-extra` は用意済み。
+4枚とも12枠が満杯のため、食材を足すには新しいシートが必要。
+**CSSの受け口 `.ingredient-illustration-s05` 〜 `-s13` は用意済み。**
+どの品目をどのマスに描くかは[ATLAS_GENERATION_BRIEF.md](ATLAS_GENERATION_BRIEF.md)にある。
 
 ## 画像の仕様（新規シート）
 
@@ -66,7 +68,7 @@
 ## 画像ができたら行う作業
 
 1. `assets/ingredient-atlas-<名前>.png` として保存する
-2. `styles.css` に `.ingredient-illustration-<名前>` を足す（extra は既に用意済み）
+2. `styles.css` の `.ingredient-illustration-s05` 〜 `-s13` を使う（用意済み）
 3. `app.js` の `INGREDIENT_ILLUSTRATIONS` へ `id: [列, 行, "<名前>"]` を追記する
 4. `app.js` の `ILLUSTRATED_INGREDIENT_CATEGORIES` の `items` へ id を足す（イラストの一覧に出す）
 5. `app.js` の `RECEIPT_RULES` / `ALIASES` / `NUTRITION_REFERENCES` を整える（新規食材の場合）
@@ -76,6 +78,6 @@
 ## 登録済みなのにイラストが無い食材
 
 イラストが無い食材は、冷蔵庫では**頭文字**で表示され、イラストの一覧には出ない。
-現在5件（アスパラガス・ベーコン・バターロール・鶏もも肉・かつお節）。
+現在5件（アスパラガス・ベーコン・バターロール・鶏もも肉・かつお節）。拡張後は103件が加わる。
 
-拡張する品目と描き方は[ATLAS_GENERATION_BRIEF.md](ATLAS_GENERATION_BRIEF.md)にまとめている。
+拡張する108品目の割り当てと描き方は[ATLAS_GENERATION_BRIEF.md](ATLAS_GENERATION_BRIEF.md)にまとめている。
