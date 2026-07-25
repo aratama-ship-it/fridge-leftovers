@@ -47,6 +47,12 @@ receiptRules.forEach((rule) => {
   }
 });
 
+// ごはんはレシート認識の対象外だが、レシピが使う食材として存在する
+// （app.js の illustratedIngredientItem も同じ特別扱いをしている）
+if (!rulesById.has("rice")) {
+  rulesById.set("rice", { id: "rice", name: "ごはん", quantity: 1, unit: "膳", location: "冷凍" });
+}
+
 expectedInitialUnits.forEach((expectedUnit, id) => {
   const rule = rulesById.get(id);
   if (!rule) {
@@ -68,8 +74,30 @@ recipes.forEach((recipe) => {
 });
 
 // 代替関係の検証。単位が違うものを代用に入れると、照合されず黙って無視される。
-const substitutes = readConstant("INGREDIENT_SUBSTITUTES", "SUBSTITUTE_GENERICS");
+const substitutes = readConstant("INGREDIENT_SUBSTITUTES", "UNIT_CONVERSIONS");
+const conversions = readConstant("UNIT_CONVERSIONS", "SUBSTITUTE_GENERICS");
 const pendingSubstitutes = [];
+
+// 単位換算の検証。標準と同じ単位を書いても意味がなく、
+// 選べない単位や不正な倍率は黙って無視されるだけになる。
+Object.entries(conversions).forEach(([id, table]) => {
+  const rule = rulesById.get(id);
+  if (!rule) {
+    errors.push(`単位換算の食材「${id}」が登録されていません`);
+    return;
+  }
+  Object.entries(table).forEach(([unit, ratio]) => {
+    if (unit === rule.unit) {
+      errors.push(`単位換算: ${rule.name} の「${unit}」は標準の単位と同じです`);
+    }
+    if (!allowedUnits.has(unit)) {
+      errors.push(`単位換算: ${rule.name} の「${unit}」は在庫の単位の選択肢にありません`);
+    }
+    if (!Number.isFinite(ratio) || ratio <= 0) {
+      errors.push(`単位換算: ${rule.name} の「${unit}」の倍率が不正です（${ratio}）`);
+    }
+  });
+});
 
 Object.entries(substitutes).forEach(([genericId, list]) => {
   const generic = rulesById.get(genericId);
@@ -77,7 +105,12 @@ Object.entries(substitutes).forEach(([genericId, list]) => {
     errors.push(`代替関係の総称「${genericId}」が食材として登録されていません`);
     return;
   }
-  list.forEach((substituteId) => {
+  list.forEach((entry) => {
+    const substituteId = typeof entry === "string" ? entry : entry.id;
+    const ratio = typeof entry === "string" ? null : entry.ratio;
+    if (ratio !== null && (!Number.isFinite(ratio) || ratio <= 0)) {
+      errors.push(`代替関係: ${generic.name} ← ${substituteId} の倍率が不正です（${ratio}）`);
+    }
     if (substituteId === genericId) {
       errors.push(`代替関係: ${generic.name} が自分自身を代用に含んでいます`);
       return;
@@ -91,9 +124,14 @@ Object.entries(substitutes).forEach(([genericId, list]) => {
       pendingSubstitutes.push(`${generic.name} ← ${substituteId}`);
       return;
     }
-    if (rule.unit !== generic.unit) {
+    if (rule.unit !== generic.unit && ratio === null) {
       errors.push(
-        `代替関係: ${rule.name}「${rule.unit}」は ${generic.name}「${generic.unit}」と単位が違うため代用になりません`
+        `代替関係: ${rule.name}「${rule.unit}」は ${generic.name}「${generic.unit}」と単位が違います。ratio を書いてください`
+      );
+    }
+    if (rule.unit === generic.unit && ratio !== null && ratio !== 1) {
+      errors.push(
+        `代替関係: ${rule.name} は ${generic.name} と単位が同じなのに倍率 ${ratio} が指定されています`
       );
     }
   });
@@ -104,10 +142,15 @@ if (errors.length) {
   errors.forEach((error) => console.error(`- ${error}`));
   process.exitCode = 1;
 } else {
-  const activeSubstitutes = Object.values(substitutes).flat().filter((id) => rulesById.has(id)).length;
+  const activeSubstitutes = Object.values(substitutes)
+    .flat()
+    .map((entry) => (typeof entry === "string" ? entry : entry.id))
+    .filter((id) => rulesById.has(id)).length;
   console.log(`初期単位チェック: OK（${receiptRules.length}食材・${recipes.length}レシピ）`);
   console.log("なすの初期単位: 1本");
   console.log(`代替関係: ${Object.keys(substitutes).length}総称・${activeSubstitutes}件が有効`);
+  const conversionCount = Object.values(conversions).reduce((n, t) => n + Object.keys(t).length, 0);
+  console.log(`単位換算: ${Object.keys(conversions).length}食材・${conversionCount}通り`);
   if (pendingSubstitutes.length) {
     console.log(`代替関係: ${pendingSubstitutes.length}件は食材の追加待ち（${pendingSubstitutes.join("、")}）`);
   }

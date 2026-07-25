@@ -1735,21 +1735,50 @@ const ALIASES = new Map([
 // ここに書けるのは、総称と単位が一致するものだけ。単位が違う組み合わせ
 // （トマト「個」とミニトマト「パック」、チーズ「g」とピザ用チーズ「袋」、
 // ごはん「膳」と米「g」など）は、量の換算を決めてからでないと扱えない。
+// 単位が同じものは id だけ。単位が違うものは ratio を書く。
+// ratio は「代用を標準の単位で1つ持っているとき、総称の単位でいくつ分か」。
 const INGREDIENT_SUBSTITUTES = {
   chicken: ["chicken-thigh", "chicken-tender", "chicken-wing", "chicken-wing-tip"],
   pork: ["pork-belly", "pork-loin", "pork-shoulder"],
-  beef: ["beef-tongue", "beef-tendon"],
+  beef: ["beef-tongue", "beef-tendon", { id: "beef-steak", ratio: 150 }],
   "ground-meat": ["pork-mince", "chicken-mince"],
   onion: ["red-onion"],
   lettuce: ["sunny-lettuce", "salad-greens"],
   ginger: ["new-ginger"],
-  tofu: ["grilled-tofu"]
+  tofu: ["grilled-tofu"],
+  tomato: [{ id: "cherry-tomato", ratio: 1 }],
+  cheese: [{ id: "sliced-cheese", ratio: 100 }, { id: "pizza-cheese", ratio: 150 }],
+  "green-onion": [{ id: "green-onion-small", ratio: 1 }],
+  cabbage: [{ id: "cut-vegetables", ratio: 200 }],
+  rice: [{ id: "rice-raw", ratio: 0.015 }]
+};
+
+// 同じ食材を、標準と違う単位で登録したときの換算。
+// 値は「その単位1つ分が、標準の単位でいくつ分か」。
+//
+// ★数字は家庭でのおおよその目安であり、商品や産地で幅がある。
+// 足りるかどうかの判定が変わるので、迷ったら少なめに見積もる。
+// 実際と合わない場合は、在庫の数量を手で直せる。
+const UNIT_CONVERSIONS = {
+  cabbage: { 個: 1000, 袋: 250 },
+  radish: { g: 1 / 800 },
+  carrot: { g: 1 / 150 },
+  potato: { g: 1 / 120 },
+  onion: { g: 1 / 200 },
+  tomato: { g: 1 / 150 },
+  eggs: { パック: 10 },
+  bread: { 袋: 6 },
+  milk: { ml: 1 / 1000 },
+  tofu: { g: 1 / 300 },
+  rice: { g: 1 / 150 }
 };
 
 // 代用の逆引き（例 chicken-thigh → chicken）。部位を持っていることを、
 // 総称への要求と結び付けるのに使う。
 const SUBSTITUTE_GENERICS = new Map(
-  Object.entries(INGREDIENT_SUBSTITUTES).flatMap(([generic, list]) => list.map((id) => [id, generic]))
+  Object.entries(INGREDIENT_SUBSTITUTES).flatMap(([generic, list]) =>
+    list.map((entry) => [normalizedSubstitute(entry).id, generic])
+  )
 );
 
 const INGREDIENT_ILLUSTRATIONS = {
@@ -3069,19 +3098,60 @@ function renderInventoryRow(item) {
   `;
 }
 
-function itemForRequirement(requirement) {
+// 代用の指定を { id, ratio } の形へそろえる。文字列だけのものは、
+// 総称と同じ単位で持っている場合にだけ使える（ratio 1）。
+function normalizedSubstitute(entry) {
+  return typeof entry === "string" ? { id: entry, ratio: null } : entry;
+}
+
+// 在庫1つ分が、要求の単位でいくつ分に相当するか。換算できなければ null。
+function conversionRatio(item, requirement) {
+  if (item.id === requirement.id) {
+    if (item.unit === requirement.unit) return 1;
+    // 同じ食材を別の単位で登録した場合（キャベツを「1個」で入れた等）
+    return UNIT_CONVERSIONS[requirement.id]?.[item.unit] ?? null;
+  }
+
+  const entry = (INGREDIENT_SUBSTITUTES[requirement.id] || [])
+    .map(normalizedSubstitute)
+    .find((candidate) => candidate.id === item.id);
+  if (!entry) return null;
+  if (entry.ratio === null) return item.unit === requirement.unit ? 1 : null;
+
+  // 換算つきの代用は、その食材の標準の単位で持っているときだけ扱う。
+  // 代用と単位変更が二重にかかると、量の推定が当てにならなくなるため。
+  // 標準の単位が分からない食材（まだ登録していないもの）も扱わない。
+  const rule = RECEIPT_RULES.find((candidate) => candidate.id === item.id);
+  if (!rule || item.unit !== rule.unit) return null;
+  return entry.ratio;
+}
+
+// 要求に対して使える在庫を、要求の単位へ直した数量つきで返す。
+// available = 要求の単位での数量、ratio = 在庫1つ分が要求の単位でいくつ分か。
+function stockForRequirement(requirement) {
   const inventory = inventoryMap();
-  const exact = inventory.get(requirement.id);
-  if (exact && exact.unit === requirement.unit) return exact;
+
+  const usable = (item) => {
+    if (!item) return null;
+    const ratio = conversionRatio(item, requirement);
+    return ratio ? { item, ratio, available: item.quantity * ratio } : null;
+  };
+
+  const exact = usable(inventory.get(requirement.id));
+  if (exact) return exact;
 
   // 総称そのものが無ければ、代用できる部位・商品を探す（→ INGREDIENT_SUBSTITUTES）
   const substitutes = (INGREDIENT_SUBSTITUTES[requirement.id] || [])
-    .map((id) => inventory.get(id))
-    .filter((item) => item && item.unit === requirement.unit);
+    .map((entry) => usable(inventory.get(normalizedSubstitute(entry).id)))
+    .filter(Boolean);
   if (!substitutes.length) return null;
 
   // 使い切り優先を指定してあるものから先に使う
-  return substitutes.find((item) => item.priority) || substitutes[0];
+  return substitutes.find((stock) => stock.item.priority) || substitutes[0];
+}
+
+function availableForRequirement(requirement) {
+  return stockForRequirement(requirement)?.available ?? 0;
 }
 
 // 代用で埋めた材料は、レシピの総称に加えて実際に使う食材の名前も見せる。
@@ -3096,15 +3166,13 @@ function requiredAmount(requirement, servings = state.servings) {
 }
 
 function shortageFor(recipe, servings = state.servings) {
-  return recipe.required.filter((requirement) => {
-    const item = itemForRequirement(requirement);
-    return !item || item.quantity < requiredAmount(requirement, servings);
-  });
+  return recipe.required.filter(
+    (requirement) => availableForRequirement(requirement) < requiredAmount(requirement, servings)
+  );
 }
 
 function optionalReady(option, servings = state.servings) {
-  const item = itemForRequirement(option);
-  return Boolean(item && item.quantity >= option.quantity * servings);
+  return availableForRequirement(option) >= option.quantity * servings;
 }
 
 function makeShoppingItemId() {
@@ -3167,8 +3235,7 @@ function shoppingRecommendations() {
 
   const addRecommendation = (ingredient, recipe, score, reason, unlocksRecipe) => {
     if (!INVENTORY_UNITS.includes(ingredient.unit)) return;
-    const current = itemForRequirement(ingredient);
-    const currentAmount = current ? current.quantity : 0;
+    const currentAmount = availableForRequirement(ingredient);
     const quantity = Number(Math.max(ingredient.quantity - currentAmount, 0).toFixed(2));
     const key = `${ingredient.id}:${ingredient.unit}`;
     const entry = recommendations.get(key) || {
@@ -3197,19 +3264,16 @@ function shoppingRecommendations() {
 
   RECIPES.forEach((recipe) => {
     const heldRequired = recipe.required.filter((ingredient) => {
-      const item = itemForRequirement(ingredient);
-      return Boolean(item && item.quantity > 0);
+      return availableForRequirement(ingredient) > 0;
     });
     const heldOptional = recipe.optional.filter((ingredient) => {
-      const item = itemForRequirement(ingredient);
-      return Boolean(item && item.quantity > 0);
+      return availableForRequirement(ingredient) > 0;
     });
     const connectionCount = heldRequired.length + heldOptional.length;
     if (!connectionCount) return;
 
     const missingRequired = recipe.required.filter((ingredient) => {
-      const item = itemForRequirement(ingredient);
-      return !item || item.quantity < ingredient.quantity;
+      return availableForRequirement(ingredient) < ingredient.quantity;
     });
 
     if (missingRequired.length) {
@@ -3230,8 +3294,7 @@ function shoppingRecommendations() {
 
     recipe.optional
       .filter((ingredient) => {
-        const item = itemForRequirement(ingredient);
-        return !item || item.quantity < ingredient.quantity;
+        return availableForRequirement(ingredient) < ingredient.quantity;
       })
       .slice(0, 2)
       .forEach((ingredient) => {
@@ -3515,8 +3578,9 @@ function renderRecipe(recipe, index) {
   const nutrition = estimateRecipeNutrition(recipe);
 
   const requiredLines = recipe.required.map((requirement) => {
-    const item = itemForRequirement(requirement);
-    const enough = Boolean(item && item.quantity >= requiredAmount(requirement, RECIPE_LIST_SERVINGS));
+    const stock = stockForRequirement(requirement);
+    const item = stock?.item || null;
+    const enough = (stock?.available ?? 0) >= requiredAmount(requirement, RECIPE_LIST_SERVINGS);
     return `
       <li class="ingredient-line">
         <span class="ingredient-with-icon">
@@ -4374,9 +4438,10 @@ function updateCookConfirmation() {
 
   const selectedIngredients = [...recipe.required];
   const requiredRows = recipe.required.map((requirement) => {
-    const item = itemForRequirement(requirement);
+    const stock = stockForRequirement(requirement);
+    const item = stock?.item || null;
     const amount = requiredAmount(requirement, servings);
-    const enough = Boolean(item && item.quantity >= amount);
+    const enough = (stock?.available ?? 0) >= amount;
     return `
       <li class="cook-ingredient-row">
         <span class="cook-ingredient-main">
@@ -4427,10 +4492,9 @@ function updateCookConfirmation() {
   elements.cookConfirmMessage.classList.toggle("is-missing", shortages.length > 0);
   if (shortages.length) {
     const missingText = shortages.map((requirement) => {
-      const item = itemForRequirement(requirement);
       const missing = Math.max(
         0,
-        requiredAmount(requirement, servings) - (Number(item?.quantity) || 0)
+        requiredAmount(requirement, servings) - availableForRequirement(requirement)
       );
       return `${requirement.name} あと${formatQuantity(missing, requirement.unit)}`;
     }).join("、");
@@ -4491,9 +4555,11 @@ function cookRecipe(recipeId, servings = state.servings) {
 
   const changes = [];
   used.forEach((ingredient) => {
-    const item = itemForRequirement(ingredient);
-    if (!item) return;
-    const quantity = ingredient.quantity * servings;
+    const stock = stockForRequirement(ingredient);
+    if (!stock) return;
+    const { item, ratio } = stock;
+    // レシピの単位で必要な量を、在庫側の単位へ戻してから引く
+    const quantity = Number(((ingredient.quantity * servings) / ratio).toFixed(2));
     changes.push({
       itemId: item.id,
       name: item.name,
