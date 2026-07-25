@@ -1001,6 +1001,13 @@ body.is-fridge-dragging .food-consume-station {
   background-image: url("assets/ingredient-atlas-expanded.png?v=20260724-2");
 }
 
+/* 5枚目。アスパラガス・ベーコン・バターロール・鶏もも肉・かつお節用。
+   画像を assets/ へ置き、app.js の INGREDIENT_ILLUSTRATIONS へ登録すると有効になる。
+   仕様は assets/ATLAS_SPEC.md を参照。 */
+.ingredient-illustration-extra {
+  background-image: url("assets/ingredient-atlas-extra.png?v=20260725-1");
+}
+
 .ingredient-initial {
   display: grid;
   place-items: center;
