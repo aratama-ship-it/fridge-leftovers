@@ -45,3 +45,10 @@
 公開前の初期単位確認は[RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md)にまとめています。
 
 将来オプションとして、スーパーの特売と在庫を組み合わせて「いつもより得な料理」を提案する企画を[FUTURE_OPTION_SALE_VALUE_MEALS.md](FUTURE_OPTION_SALE_VALUE_MEALS.md)に保留状態で記録しています。現在のアプリには未実装です。
+
+## 開発環境メモ
+
+作業ツリーは iCloud Drive 上にありますが、`.git` は iCloud 同期による破損を避けるため `~/git-repos/fridge-leftovers` へ退避しています（`git init --separate-git-dir`）。リポジトリ直下の `.git` は、その場所を指す48バイトのテキストファイルです。
+
+- 2026-07-25 に実施。それまでは iCloud が `.git` の競合コピーを14個作り、`refs/remotes/origin/main 2` のような不正な ref 名で `git fsck` がエラーを出す状態だった
+- この構成は、この Mac 1台での作業を前提にしている。別の端末では `.git` の参照先が存在しないため git 操作ができない
