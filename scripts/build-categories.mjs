@@ -3,8 +3,10 @@
 // 品目を足し引きしたらこれを実行し、/tmp/categories.js を app.js へ差し替える。
 //   node scripts/build-categories.mjs
 import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 
-const ROOT = new URL("..", import.meta.url).pathname;
+// URL の pathname はスペースが %20 になるため fileURLToPath を通す
+const ROOT = fileURLToPath(new URL("..", import.meta.url));
 
 // --- 現在アプリに登録済みのid ---
 const app = readFileSync(`${ROOT}/app.js`, "utf8");
