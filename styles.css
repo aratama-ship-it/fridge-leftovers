@@ -1024,6 +1024,10 @@ body.is-fridge-dragging .food-consume-station {
 .ingredient-illustration-s21 { background-image: url("assets/ingredient-atlas-21.png?v=20260725-1"); }
 .ingredient-illustration-s22 { background-image: url("assets/ingredient-atlas-22.png?v=20260725-1"); }
 .ingredient-illustration-s23 { background-image: url("assets/ingredient-atlas-23.png?v=20260725-1"); }
+.ingredient-illustration-s24 { background-image: url("assets/ingredient-atlas-24.png?v=20260725-1"); }
+.ingredient-illustration-s25 { background-image: url("assets/ingredient-atlas-25.png?v=20260725-1"); }
+.ingredient-illustration-s26 { background-image: url("assets/ingredient-atlas-26.png?v=20260725-1"); }
+.ingredient-illustration-s27 { background-image: url("assets/ingredient-atlas-27.png?v=20260725-1"); }
 
 .ingredient-initial {
   display: grid;
