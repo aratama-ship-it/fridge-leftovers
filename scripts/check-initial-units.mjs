@@ -4,13 +4,19 @@ const source = fs.readFileSync(new URL("../app.js", import.meta.url), "utf8");
 
 function readConstant(name, nextName) {
   const declaration = source.indexOf(`const ${name} =`);
-  const nextDeclaration = source.indexOf(`\n\nconst ${nextName}`, declaration);
+  // 次の定数の直前までを取り出す。定数の手前に説明コメントがあると
+  // 空行2つでは当たらないので、行頭の const を目印にする。
+  const nextDeclaration = source.indexOf(`\nconst ${nextName}`, declaration);
   if (declaration < 0 || nextDeclaration < 0) {
     throw new Error(`${name} の定義を読み取れませんでした`);
   }
   const expressionStart = source.indexOf("=", declaration) + 1;
-  const expression = source.slice(expressionStart, nextDeclaration).trim().replace(/;$/, "");
-  return Function(`"use strict"; return (${expression});`)();
+  const segment = source.slice(expressionStart, nextDeclaration);
+  // 定義を閉じる最後の「;」で切る。次の定数へ付いた説明コメントを一緒に
+  // 拾わないようにするため。括弧の閉じ方（];・};・]);）に依存しない。
+  const end = segment.lastIndexOf(";");
+  if (end < 0) throw new Error(`${name} の終わりを見つけられませんでした`);
+  return Function(`"use strict"; return (${segment.slice(0, end)});`)();
 }
 
 const recipes = readConstant("RECIPES", "RECIPE_STEPS");
@@ -61,11 +67,48 @@ recipes.forEach((recipe) => {
   });
 });
 
+// 代替関係の検証。単位が違うものを代用に入れると、照合されず黙って無視される。
+const substitutes = readConstant("INGREDIENT_SUBSTITUTES", "SUBSTITUTE_GENERICS");
+const pendingSubstitutes = [];
+
+Object.entries(substitutes).forEach(([genericId, list]) => {
+  const generic = rulesById.get(genericId);
+  if (!generic) {
+    errors.push(`代替関係の総称「${genericId}」が食材として登録されていません`);
+    return;
+  }
+  list.forEach((substituteId) => {
+    if (substituteId === genericId) {
+      errors.push(`代替関係: ${generic.name} が自分自身を代用に含んでいます`);
+      return;
+    }
+    if (substitutes[substituteId]) {
+      errors.push(`代替関係: ${substituteId} は総称でもあります（連鎖は扱えません）`);
+      return;
+    }
+    const rule = rulesById.get(substituteId);
+    if (!rule) {
+      pendingSubstitutes.push(`${generic.name} ← ${substituteId}`);
+      return;
+    }
+    if (rule.unit !== generic.unit) {
+      errors.push(
+        `代替関係: ${rule.name}「${rule.unit}」は ${generic.name}「${generic.unit}」と単位が違うため代用になりません`
+      );
+    }
+  });
+});
+
 if (errors.length) {
   console.error(`初期単位チェック: ${errors.length}件の修正が必要です`);
   errors.forEach((error) => console.error(`- ${error}`));
   process.exitCode = 1;
 } else {
+  const activeSubstitutes = Object.values(substitutes).flat().filter((id) => rulesById.has(id)).length;
   console.log(`初期単位チェック: OK（${receiptRules.length}食材・${recipes.length}レシピ）`);
   console.log("なすの初期単位: 1本");
+  console.log(`代替関係: ${Object.keys(substitutes).length}総称・${activeSubstitutes}件が有効`);
+  if (pendingSubstitutes.length) {
+    console.log(`代替関係: ${pendingSubstitutes.length}件は食材の追加待ち（${pendingSubstitutes.join("、")}）`);
+  }
 }

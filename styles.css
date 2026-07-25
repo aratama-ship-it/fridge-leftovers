@@ -1605,6 +1605,14 @@ input[type="number"] {
   font-size: 0.86rem;
 }
 
+/* 総称の材料を別の部位・商品で埋めたときの注記（例「鶏もも肉で代用」） */
+.ingredient-substitute {
+  display: block;
+  font-size: 0.74em;
+  line-height: 1.3;
+  color: #6d7a6f;
+}
+
 .ingredient-with-icon {
   display: inline-grid;
   grid-template-columns: 30px minmax(0, 1fr);

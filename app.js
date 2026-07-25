@@ -1728,6 +1728,30 @@ const ALIASES = new Map([
   ["蒟蒻", "konnyaku"]
 ]);
 
+// レシピは総称（鶏むね肉・豚こま・ひき肉）で材料を持つが、店で買うのは部位や商品
+// （鶏もも肉・豚バラ・豚ひき肉）。総称ごとに代用できるidを持たせないと、
+// 持っているのに「不足」と出る。単位の完全一致依存と同じ種類の不具合。
+//
+// ここに書けるのは、総称と単位が一致するものだけ。単位が違う組み合わせ
+// （トマト「個」とミニトマト「パック」、チーズ「g」とピザ用チーズ「袋」、
+// ごはん「膳」と米「g」など）は、量の換算を決めてからでないと扱えない。
+const INGREDIENT_SUBSTITUTES = {
+  chicken: ["chicken-thigh", "chicken-tender", "chicken-wing", "chicken-wing-tip"],
+  pork: ["pork-belly", "pork-loin", "pork-shoulder"],
+  beef: ["beef-tongue", "beef-tendon"],
+  "ground-meat": ["pork-mince", "chicken-mince"],
+  onion: ["red-onion"],
+  lettuce: ["sunny-lettuce", "salad-greens"],
+  ginger: ["new-ginger"],
+  tofu: ["grilled-tofu"]
+};
+
+// 代用の逆引き（例 chicken-thigh → chicken）。部位を持っていることを、
+// 総称への要求と結び付けるのに使う。
+const SUBSTITUTE_GENERICS = new Map(
+  Object.entries(INGREDIENT_SUBSTITUTES).flatMap(([generic, list]) => list.map((id) => [id, generic]))
+);
+
 const INGREDIENT_ILLUSTRATIONS = {
   cabbage: [0, 0],
   eggs: [1, 0],
@@ -2831,9 +2855,25 @@ function renderInventoryRow(item) {
 }
 
 function itemForRequirement(requirement) {
-  const item = inventoryMap().get(requirement.id);
-  if (!item || item.unit !== requirement.unit) return null;
-  return item;
+  const inventory = inventoryMap();
+  const exact = inventory.get(requirement.id);
+  if (exact && exact.unit === requirement.unit) return exact;
+
+  // 総称そのものが無ければ、代用できる部位・商品を探す（→ INGREDIENT_SUBSTITUTES）
+  const substitutes = (INGREDIENT_SUBSTITUTES[requirement.id] || [])
+    .map((id) => inventory.get(id))
+    .filter((item) => item && item.unit === requirement.unit);
+  if (!substitutes.length) return null;
+
+  // 使い切り優先を指定してあるものから先に使う
+  return substitutes.find((item) => item.priority) || substitutes[0];
+}
+
+// 代用で埋めた材料は、レシピの総称に加えて実際に使う食材の名前も見せる。
+// item は呼び出し側が既に求めているものを渡す（inventoryMap の作り直しを避ける）。
+function requirementDisplayName(requirement, item) {
+  if (!item || item.id === requirement.id) return escapeHtml(requirement.name);
+  return `${escapeHtml(requirement.name)}<small class="ingredient-substitute">${escapeHtml(item.name)}で代用</small>`;
 }
 
 function requiredAmount(requirement, servings = state.servings) {
@@ -2909,12 +2949,11 @@ function addShoppingItem({
 
 function shoppingRecommendations() {
   const recommendations = new Map();
-  const inventory = inventoryMap();
 
   const addRecommendation = (ingredient, recipe, score, reason, unlocksRecipe) => {
     if (!INVENTORY_UNITS.includes(ingredient.unit)) return;
-    const current = inventory.get(ingredient.id);
-    const currentAmount = current?.unit === ingredient.unit ? current.quantity : 0;
+    const current = itemForRequirement(ingredient);
+    const currentAmount = current ? current.quantity : 0;
     const quantity = Number(Math.max(ingredient.quantity - currentAmount, 0).toFixed(2));
     const key = `${ingredient.id}:${ingredient.unit}`;
     const entry = recommendations.get(key) || {
@@ -2943,19 +2982,19 @@ function shoppingRecommendations() {
 
   RECIPES.forEach((recipe) => {
     const heldRequired = recipe.required.filter((ingredient) => {
-      const item = inventory.get(ingredient.id);
-      return Boolean(item && item.unit === ingredient.unit && item.quantity > 0);
+      const item = itemForRequirement(ingredient);
+      return Boolean(item && item.quantity > 0);
     });
     const heldOptional = recipe.optional.filter((ingredient) => {
-      const item = inventory.get(ingredient.id);
-      return Boolean(item && item.unit === ingredient.unit && item.quantity > 0);
+      const item = itemForRequirement(ingredient);
+      return Boolean(item && item.quantity > 0);
     });
     const connectionCount = heldRequired.length + heldOptional.length;
     if (!connectionCount) return;
 
     const missingRequired = recipe.required.filter((ingredient) => {
-      const item = inventory.get(ingredient.id);
-      return !item || item.unit !== ingredient.unit || item.quantity < ingredient.quantity;
+      const item = itemForRequirement(ingredient);
+      return !item || item.quantity < ingredient.quantity;
     });
 
     if (missingRequired.length) {
@@ -2976,8 +3015,8 @@ function shoppingRecommendations() {
 
     recipe.optional
       .filter((ingredient) => {
-        const item = inventory.get(ingredient.id);
-        return !item || item.unit !== ingredient.unit || item.quantity < ingredient.quantity;
+        const item = itemForRequirement(ingredient);
+        return !item || item.quantity < ingredient.quantity;
       })
       .slice(0, 2)
       .forEach((ingredient) => {
@@ -3208,7 +3247,13 @@ function closeTodayIngredientDialog() {
 
 function recipeScore(recipe) {
   const shortagePenalty = shortageFor(recipe, RECIPE_LIST_SERVINGS).length * 100;
-  const priorityIds = new Set(activeInventory().filter((item) => item.priority).map((item) => item.id));
+  // 「先に使う」を指定した食材が部位・商品のときは、総称の要求にも効かせる
+  const priorityIds = new Set();
+  activeInventory().filter((item) => item.priority).forEach((item) => {
+    priorityIds.add(item.id);
+    const generic = SUBSTITUTE_GENERICS.get(item.id);
+    if (generic) priorityIds.add(generic);
+  });
   const priorityUse = [...recipe.required, ...recipe.optional].filter((ingredient) => priorityIds.has(ingredient.id)).length;
   const priorityBoost = priorityUse * 40;
   if (state.priority === "quick") return priorityBoost + 30 - recipe.minutes - shortagePenalty;
@@ -3249,8 +3294,8 @@ function renderRecipe(recipe, index) {
     return `
       <li class="ingredient-line">
         <span class="ingredient-with-icon">
-          ${renderIngredientIllustration(requirement.id, requirement.name, true)}
-          <span>${escapeHtml(requirement.name)} ${formatQuantity(requiredAmount(requirement, RECIPE_LIST_SERVINGS), requirement.unit)}</span>
+          ${renderIngredientIllustration(item?.id || requirement.id, item?.name || requirement.name, true)}
+          <span>${requirementDisplayName(requirement, item)} ${formatQuantity(requiredAmount(requirement, RECIPE_LIST_SERVINGS), requirement.unit)}</span>
         </span>
         <span class="ingredient-state${enough ? " is-ready" : ""}">${enough ? "あります" : "足りません"}</span>
       </li>
@@ -4109,8 +4154,8 @@ function updateCookConfirmation() {
     return `
       <li class="cook-ingredient-row">
         <span class="cook-ingredient-main">
-          ${renderIngredientIllustration(requirement.id, requirement.name, true)}
-          <span><strong>${escapeHtml(requirement.name)}</strong><small>${formatQuantity(amount, requirement.unit)}</small></span>
+          ${renderIngredientIllustration(item?.id || requirement.id, item?.name || requirement.name, true)}
+          <span><strong>${requirementDisplayName(requirement, item)}</strong><small>${formatQuantity(amount, requirement.unit)}</small></span>
         </span>
         <span class="cook-ingredient-state${enough ? " is-ready" : " is-missing"}">${enough ? "あります" : "不足"}</span>
       </li>
