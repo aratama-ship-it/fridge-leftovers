@@ -12,9 +12,9 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="冷蔵庫の現在地">
-  <link rel="stylesheet" href="styles.css?v=a3d1c53a">
+  <link rel="stylesheet" href="styles.css?v=8d00c0e4">
   <script src="vendor/tesseract/tesseract.min.js?v=7.0.0" defer></script>
-  <script src="app.js?v=c92f3a8d" defer></script>
+  <script src="app.js?v=2761d1cc" defer></script>
 </head>
 <body>
   <div class="app-shell">
@@ -53,6 +53,15 @@
       </section>
 
       <section class="view" id="inventory-view" aria-label="冷蔵庫">
+        <!-- 昨日以前に作った分の在庫を、実物と突き合わせる -->
+        <section class="day-after-check" id="day-after-check" aria-labelledby="day-after-title" hidden>
+          <p class="eyebrow">昨日の料理のあと</p>
+          <h3 id="day-after-title">いま、冷蔵庫はどうなっていますか？</h3>
+          <p class="day-after-lead" id="day-after-lead"></p>
+          <ul class="day-after-list" id="day-after-list"></ul>
+          <button class="button button-secondary day-after-skip" type="button" id="day-after-skip">あとで</button>
+        </section>
+
         <!-- 保存済みデータにサンプルの5品が残っている人へ、一度だけ出す -->
         <section class="sample-notice" id="sample-notice" hidden>
           <p class="eyebrow">はじめに入っていた食材</p>

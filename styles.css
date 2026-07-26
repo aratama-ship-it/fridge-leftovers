@@ -3915,3 +3915,105 @@ input[type="number"] {
 .sample-notice-actions .button {
   flex: 1;
 }
+
+/* ---- 翌日の在庫確認 ------------------------------------------------------ */
+/* グラム数を思い出させず、3つのどれかを押すだけで実物へ寄せる。
+   境目は残量ゲージと同じなので、押した直後の見た目と食い違わない。 */
+.day-after-check {
+  margin-bottom: 18px;
+  padding: 14px 14px 13px;
+  border: 1px solid rgb(47 100 75 / 26%);
+  border-radius: 5px;
+  background: var(--leaf-soft);
+}
+
+.day-after-check[hidden] {
+  display: none;
+}
+
+.day-after-check h3 {
+  margin: 2px 0 6px;
+  font-size: 0.96rem;
+}
+
+.day-after-lead {
+  margin: 0;
+  color: #3d5748;
+  font-size: 0.78rem;
+  line-height: 1.65;
+}
+
+.day-after-list {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.day-after-row {
+  display: grid;
+  gap: 8px;
+  padding: 10px 0;
+  border-top: 1px solid rgb(47 100 75 / 18%);
+}
+
+.day-after-row:first-child {
+  border-top: 0;
+  padding-top: 2px;
+}
+
+.day-after-item {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+
+.day-after-item .ingredient-illustration,
+.day-after-item .ingredient-initial {
+  width: 30px;
+  height: 30px;
+}
+
+.day-after-item strong {
+  display: block;
+  font-size: 0.82rem;
+}
+
+.day-after-item small {
+  display: block;
+  margin-top: 1px;
+  color: #55705f;
+  font-size: 0.68rem;
+}
+
+/* 3つを等幅で並べる。どれかを選ぶまで既定はない */
+.day-after-choices {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.day-after-choices button {
+  min-height: 40px;
+  border: 1px solid rgb(47 100 75 / 32%);
+  border-radius: 3px;
+  background: #fff;
+  color: var(--leaf-dark);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.day-after-choices button:active {
+  background: var(--leaf);
+  color: #fff;
+}
+
+.day-after-choices button:focus-visible {
+  outline: 3px solid rgb(47 100 75 / 35%);
+  outline-offset: 1px;
+}
+
+.day-after-skip {
+  margin-top: 12px;
+  width: 100%;
+}

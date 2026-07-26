@@ -41,6 +41,7 @@ function takeFunction(name) {
 
 const CONSTANTS = [
   "QUANTITY_CONFIRMED", "QUANTITY_ESTIMATED", "QUANTITY_UNKNOWN",
+  "DAY_AFTER_LEVELS", "DAY_AFTER_LIMIT",
   "CONFIDENCE_ORDER", "quantityConfidence", "quantityUnknown", "lessCertain",
   "RECIPES", "RECEIPT_RULES", "INGREDIENT_SUBSTITUTES", "UNIT_CONVERSIONS",
   "SUBSTITUTE_GENERICS", "RECIPE_LIST_SERVINGS"
@@ -48,14 +49,15 @@ const CONSTANTS = [
 const FUNCTIONS = [
   "normalizedSubstitute", "conversionRatio", "stockForRequirement",
   "availableForRequirement", "requiredAmount", "shortageFor", "unconfirmedFor",
-  "cookBlockers", "confirmUnknownAmounts", "optionalReady"
+  "cookBlockers", "confirmUnknownAmounts", "optionalReady",
+  "inventoryLevel", "pendingDayAfterItems", "dayAfterCorrection"
 ];
 
 // stockForRequirement は inventoryMap() と state を使う。テスト側で差し替える。
 const harness = `
 "use strict";
 const todayIso = () => "2026-01-01";
-const state = { inventory: [], servings: 1 };
+const state = { inventory: [], servings: 1, cookingHistory: [], settings: { dayAfterSkippedOn: "" } };
 const inventoryMap = () => new Map(state.inventory.filter((item) => item.active !== false).map((item) => [item.id, item]));
 ${CONSTANTS.map(takeConst).join("\n")}
 ${FUNCTIONS.map(takeFunction).join("\n")}
@@ -64,7 +66,8 @@ return {
   QUANTITY_CONFIRMED, QUANTITY_ESTIMATED, QUANTITY_UNKNOWN,
   quantityConfidence, lessCertain, conversionRatio, stockForRequirement,
   availableForRequirement, shortageFor, unconfirmedFor, cookBlockers,
-  confirmUnknownAmounts, optionalReady, requiredAmount
+  confirmUnknownAmounts, optionalReady, requiredAmount,
+  pendingDayAfterItems, dayAfterCorrection, DAY_AFTER_LEVELS
 };
 `;
 
@@ -73,7 +76,8 @@ const {
   state, RECIPES, RECEIPT_RULES,
   QUANTITY_CONFIRMED, QUANTITY_ESTIMATED, QUANTITY_UNKNOWN,
   quantityConfidence, lessCertain, stockForRequirement,
-  shortageFor, unconfirmedFor, cookBlockers, confirmUnknownAmounts
+  shortageFor, unconfirmedFor, cookBlockers, confirmUnknownAmounts,
+  pendingDayAfterItems, dayAfterCorrection, DAY_AFTER_LEVELS
 } = app_;
 
 const ruleFor = (id) => RECEIPT_RULES.find((rule) => rule.id === id);
@@ -257,6 +261,75 @@ check("使い切り優先の代用を先に選ぶ", (() => {
   ];
   return stockForRequirement(need)?.item.id;
 })(), "pork-belly");
+
+// ---- 翌日の在庫確認 ------------------------------------------------------
+// 昨日以前に作った分だけを聞く。今日の分は聞かない
+const dayAfterSetup = (cookedAt, items) => {
+  state.settings.dayAfterSkippedOn = "";
+  state.inventory = items;
+  state.cookingHistory = [{
+    id: "h1", recipeId: "r", recipeName: "きのう作った料理", servings: 1,
+    cookedAt, undoneAt: null,
+    changes: items.map((item) => ({ itemId: item.id, name: item.name, unit: item.unit, quantity: 1 }))
+  }];
+  return pendingDayAfterItems();
+};
+const estimated = (id, quantity, extra = {}) =>
+  stock(id, quantity, { quantityConfidence: QUANTITY_ESTIMATED, maxQuantity: quantity * 3, ...extra });
+
+check("昨日作った推定の在庫を聞く",
+  dayAfterSetup("2025-12-31T19:00:00.000Z", [estimated("eggs", 1)]).items.map((item) => item.id),
+  ["eggs"]);
+check("今日作った分は聞かない",
+  dayAfterSetup("2026-01-01T19:00:00.000Z", [estimated("eggs", 1)]).items.length, 0);
+check("確認済みの在庫は聞かない",
+  dayAfterSetup("2025-12-31T19:00:00.000Z", [stock("eggs", 1)]).items.length, 0);
+check("取り消した調理は聞かない", (() => {
+  const result = dayAfterSetup("2025-12-31T19:00:00.000Z", [estimated("eggs", 1)]);
+  void result;
+  state.cookingHistory[0].undoneAt = "2026-01-01T00:00:00.000Z";
+  return pendingDayAfterItems().items.length;
+})(), 0);
+check("「あとで」を押した日は聞かない", (() => {
+  dayAfterSetup("2025-12-31T19:00:00.000Z", [estimated("eggs", 1)]);
+  state.settings.dayAfterSkippedOn = "2026-01-01";
+  return pendingDayAfterItems().items.length;
+})(), 0);
+check("使い切ったことになっているものを先に聞く", (() => {
+  const done = estimated("mushroom", 0, { active: false, maxQuantity: 1 });
+  return dayAfterSetup("2025-12-31T19:00:00.000Z", [estimated("eggs", 2), done]).items.map((item) => item.id);
+})(), ["mushroom", "eggs"]);
+check("一度に聞くのは4品まで", (() => {
+  const many = ["eggs", "pork", "tofu", "cabbage", "carrot", "onion"].map((id) => estimated(id, 1));
+  return dayAfterSetup("2025-12-31T19:00:00.000Z", many).items.length;
+})(), 4);
+
+// 3つの答えを数量へ落とす
+check("「ある」は残量の帯が「ある」に入るところまで上げる", (() => {
+  const item = estimated("eggs", 1, { maxQuantity: 10 });
+  dayAfterCorrection(item, "plenty");
+  return [item.quantity, item.quantityConfidence, item.active];
+})(), [10 * DAY_AFTER_LEVELS.plenty, QUANTITY_CONFIRMED, true]);
+check("「少ない」は少なめの帯に入れる", (() => {
+  const item = estimated("eggs", 1, { maxQuantity: 10 });
+  dayAfterCorrection(item, "little");
+  return item.quantity;
+})(), 10 * DAY_AFTER_LEVELS.little);
+check("「ある」でも今の量より下げない", (() => {
+  const item = estimated("eggs", 9, { maxQuantity: 10 });
+  dayAfterCorrection(item, "plenty");
+  return item.quantity;
+})(), 9);
+check("「ない」は使い切りにする", (() => {
+  const item = estimated("eggs", 3, { maxQuantity: 10 });
+  dayAfterCorrection(item, "none");
+  return [item.quantity, item.active, item.quantityConfidence];
+})(), [0, false, QUANTITY_CONFIRMED]);
+check("使い切ったものを「ある」で戻せる", (() => {
+  const item = estimated("mushroom", 0, { active: false, consumedAt: "2025-12-31", maxQuantity: 1 });
+  dayAfterCorrection(item, "plenty");
+  return [item.quantity, item.active, item.consumedAt ?? null];
+})(), [DAY_AFTER_LEVELS.plenty, true, null]);
 
 console.log(failures
   ? `\n★${failures}件が期待と違います`

@@ -9,7 +9,7 @@ const RECIPE_PAGE_SIZE = 3;
 const RECIPE_LIST_SERVINGS = 1;
 
 // 方針書の「初期状態では料理選びを複雑にしない」に合わせ、栄養表示は既定で出さない
-const DEFAULT_SETTINGS = { showNutrition: false, sampleNoticeDone: false };
+const DEFAULT_SETTINGS = { showNutrition: false, sampleNoticeDone: false, dayAfterSkippedOn: "" };
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
@@ -2873,6 +2873,10 @@ const elements = {
   onboardingExtraGrid: document.querySelector("#onboarding-extra-grid"),
   onboardingSkip: document.querySelector("#onboarding-skip"),
   onboardingNext: document.querySelector("#onboarding-next"),
+  dayAfterCheck: document.querySelector("#day-after-check"),
+  dayAfterLead: document.querySelector("#day-after-lead"),
+  dayAfterList: document.querySelector("#day-after-list"),
+  dayAfterSkip: document.querySelector("#day-after-skip"),
   sampleNotice: document.querySelector("#sample-notice"),
   sampleNoticeList: document.querySelector("#sample-notice-list"),
   sampleNoticeKeep: document.querySelector("#sample-notice-keep"),
@@ -2928,6 +2932,107 @@ function untouchedSampleItems() {
       && item.location === sample.location
       && item.active !== false;
   });
+}
+
+// ---- 翌日の在庫確認・補正 ------------------------------------------------
+// 「これを作る」で引くのはレシピ上の分量なので、実際に使った量とはズレる。
+// 放っておくと使うほど推定在庫が実物から離れていく（方針書「在庫更新の流れ」の3と4）。
+//
+// 聞き方は3状態にする。グラム数を思い出させるのは負担が大きく、
+// 「記憶と判断の負担を減らす」という核に反する。数量は内部で保ち、
+// 答えた状態に対応する代表値へ寄せる。境目は残量ゲージと同じ（0.5 / 0.25）
+// にしてあるので、答えた直後の見た目と食い違わない。
+const DAY_AFTER_LEVELS = {
+  plenty: 0.6,
+  little: 0.35
+};
+const DAY_AFTER_LIMIT = 4;
+
+// 昨日以前に作った分で、まだ実物と突き合わせていない食材。
+// 一度に全部聞くと重いので、使い切ったことになっているものと、
+// 残りが少ないものを先に、4品までにする。
+function pendingDayAfterItems() {
+  if (state.settings.dayAfterSkippedOn === todayIso()) return { recipeName: "", items: [] };
+
+  const today = todayIso();
+  const entries = state.cookingHistory.filter((entry) =>
+    !entry.undoneAt && String(entry.cookedAt).slice(0, 10) < today);
+  if (!entries.length) return { recipeName: "", items: [] };
+
+  const seen = new Set();
+  const items = [];
+  for (const entry of entries) {
+    for (const change of entry.changes || []) {
+      if (seen.has(change.itemId)) continue;
+      seen.add(change.itemId);
+      const item = state.inventory.find((candidate) => candidate.id === change.itemId);
+      if (!item || quantityConfidence(item) !== QUANTITY_ESTIMATED) continue;
+      items.push(item);
+    }
+  }
+
+  items.sort((a, b) => {
+    const consumed = Number(b.active === false) - Number(a.active === false);
+    return consumed || inventoryLevel(a) - inventoryLevel(b);
+  });
+
+  return { recipeName: entries[0].recipeName, items: items.slice(0, DAY_AFTER_LIMIT) };
+}
+
+function renderDayAfterCheck() {
+  const { recipeName, items } = pendingDayAfterItems();
+  elements.dayAfterCheck.hidden = items.length === 0;
+  if (!items.length) return;
+
+  elements.dayAfterLead.textContent = recipeName
+    ? `${recipeName}のあと、レシピ上の分量で在庫を減らしました。`
+    : "レシピ上の分量で在庫を減らしました。";
+  elements.dayAfterList.innerHTML = items.map((item) => `
+    <li class="day-after-row">
+      <span class="day-after-item">
+        ${renderIngredientIllustration(item.id, item.name, true)}
+        <span>
+          <strong>${escapeHtml(item.name)}</strong>
+          <small>${item.active === false ? "使い切ったことになっています" : `残り ${formatQuantity(item.quantity, item.unit)}のはず`}</small>
+        </span>
+      </span>
+      <span class="day-after-choices" role="group" aria-label="${escapeHtml(item.name)}の残り">
+        <button type="button" data-day-after="plenty" data-day-after-id="${escapeHtml(item.id)}">ある</button>
+        <button type="button" data-day-after="little" data-day-after-id="${escapeHtml(item.id)}">少ない</button>
+        <button type="button" data-day-after="none" data-day-after-id="${escapeHtml(item.id)}">ない</button>
+      </span>
+    </li>
+  `).join("");
+}
+
+// 3つの答えを数量へ落とす。答えた状態と、そのあと画面に出る残量の帯が
+// 食い違わないようにするのが目的。
+function dayAfterCorrection(item, answer) {
+  const maxQuantity = Number(item.maxQuantity) > 0 ? Number(item.maxQuantity) : item.quantity;
+  if (answer === "none") {
+    item.quantity = 0;
+    item.active = false;
+    item.consumedAt = todayIso();
+  } else {
+    const level = DAY_AFTER_LEVELS[answer] ?? DAY_AFTER_LEVELS.little;
+    // 下げはしない。減らすのは「これを作る」と残量の操作の役目
+    item.quantity = Number(Math.max(item.quantity, maxQuantity * level).toFixed(2));
+    item.active = true;
+    delete item.consumedAt;
+  }
+  // 実物を見て答えてもらったので、量は確認済みへ戻る
+  item.quantityConfidence = QUANTITY_CONFIRMED;
+  item.confirmedAt = todayIso();
+  return item;
+}
+
+function answerDayAfter(id, answer) {
+  const item = state.inventory.find((candidate) => candidate.id === id);
+  if (!item) return;
+  dayAfterCorrection(item, answer);
+  persistInventory();
+  renderAll();
+  renderDayAfterCheck();
 }
 
 function renderSampleNotice() {
@@ -3003,6 +3108,9 @@ function loadSettings() {
     }
     if (typeof parsed?.sampleNoticeDone === "boolean") {
       state.settings.sampleNoticeDone = parsed.sampleNoticeDone;
+    }
+    if (typeof parsed?.dayAfterSkippedOn === "string") {
+      state.settings.dayAfterSkippedOn = parsed.dayAfterSkippedOn;
     }
   } catch {
     markStorageUnavailable();
@@ -5354,6 +5462,9 @@ function undoCookingHistoryEntry(historyId) {
     item.quantity = Number(((Number(item.quantity) || 0) + change.quantity).toFixed(2));
     item.active = true;
     item.confirmedAt = todayIso();
+    // 調理を巻き戻すので、調理が下げた確信度も戻す。戻さないと、
+    // 作っていないのに翌日の確認へ出てくる
+    item.quantityConfidence = quantityConfidence(change.snapshot);
     delete item.consumedAt;
   });
 
@@ -5576,6 +5687,9 @@ function cookRecipe(recipeId, servings = state.servings) {
       snapshot: { ...item }
     });
     item.quantity = Number(Math.max(0, item.quantity - quantity).toFixed(2));
+    // 引いたのはレシピ上の分量。実際に使った量とは違うので、残りは推定になる。
+    // 翌日の確認でここを実物に合わせる（→ pendingDayAfterItems）
+    item.quantityConfidence = QUANTITY_ESTIMATED;
     if (item.quantity === 0) {
       item.active = false;
       item.consumedAt = todayIso();
@@ -6302,6 +6416,19 @@ elements.onboardingSkip.addEventListener("click", () => {
   showView("inventory");
 });
 
+elements.dayAfterList.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-day-after]");
+  if (!button) return;
+  answerDayAfter(button.dataset.dayAfterId, button.dataset.dayAfter);
+});
+
+elements.dayAfterSkip.addEventListener("click", () => {
+  // 今日はもう聞かない。明日また出す
+  state.settings.dayAfterSkippedOn = todayIso();
+  persistSettings();
+  renderDayAfterCheck();
+});
+
 elements.sampleNoticeClear.addEventListener("click", clearSampleItems);
 elements.sampleNoticeKeep.addEventListener("click", () => {
   state.settings.sampleNoticeDone = true;
@@ -6599,6 +6726,7 @@ syncQuantityControl(
   elements.shoppingUnit.value
 );
 renderAll();
+renderDayAfterCheck();
 renderSampleNotice();
 
 if (state.needsOnboarding) startOnboarding();
