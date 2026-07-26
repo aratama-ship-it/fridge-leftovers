@@ -49,6 +49,8 @@
 
 公開前の初期単位確認は[RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md)にまとめています。
 
+二人で1つの冷蔵庫を共有する同期の設計と、Supabaseの準備手順は[SUPABASE_SETUP.md](SUPABASE_SETUP.md)にまとめています。現在のアプリには未実装です。
+
 将来オプションとして、スーパーの特売と在庫を組み合わせて「いつもより得な料理」を提案する企画を[FUTURE_OPTION_SALE_VALUE_MEALS.md](FUTURE_OPTION_SALE_VALUE_MEALS.md)に保留状態で記録しています。現在のアプリには未実装です。
 
 ## ホーム画面に追加する
