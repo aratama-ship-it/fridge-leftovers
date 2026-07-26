@@ -48,12 +48,13 @@ const CONSTANTS = [
 const FUNCTIONS = [
   "normalizedSubstitute", "conversionRatio", "stockForRequirement",
   "availableForRequirement", "requiredAmount", "shortageFor", "unconfirmedFor",
-  "optionalReady"
+  "cookBlockers", "confirmUnknownAmounts", "optionalReady"
 ];
 
 // stockForRequirement は inventoryMap() と state を使う。テスト側で差し替える。
 const harness = `
 "use strict";
+const todayIso = () => "2026-01-01";
 const state = { inventory: [], servings: 1 };
 const inventoryMap = () => new Map(state.inventory.filter((item) => item.active !== false).map((item) => [item.id, item]));
 ${CONSTANTS.map(takeConst).join("\n")}
@@ -62,7 +63,8 @@ return {
   state, RECIPES, RECEIPT_RULES, INGREDIENT_SUBSTITUTES, UNIT_CONVERSIONS,
   QUANTITY_CONFIRMED, QUANTITY_ESTIMATED, QUANTITY_UNKNOWN,
   quantityConfidence, lessCertain, conversionRatio, stockForRequirement,
-  availableForRequirement, shortageFor, unconfirmedFor, optionalReady, requiredAmount
+  availableForRequirement, shortageFor, unconfirmedFor, cookBlockers,
+  confirmUnknownAmounts, optionalReady, requiredAmount
 };
 `;
 
@@ -71,7 +73,7 @@ const {
   state, RECIPES, RECEIPT_RULES,
   QUANTITY_CONFIRMED, QUANTITY_ESTIMATED, QUANTITY_UNKNOWN,
   quantityConfidence, lessCertain, stockForRequirement,
-  shortageFor, unconfirmedFor
+  shortageFor, unconfirmedFor, cookBlockers, confirmUnknownAmounts
 } = app_;
 
 const ruleFor = (id) => RECEIPT_RULES.find((rule) => rule.id === id);
@@ -146,6 +148,62 @@ check("4人分にすると足りなくなる", (() => {
   withEggs(eggNeed);
   return shortageFor(eggRecipe, 4).map((item) => item.id);
 })(), ["eggs"]);
+
+// ---- 作る前の量確認 ------------------------------------------------------
+// 未回答は「ある」として扱い、外したものだけ止める
+const unknownEggs = (quantity) => withEggs(quantity, { quantityConfidence: QUANTITY_UNKNOWN });
+
+check("未回答なら作れる", (() => {
+  unknownEggs(eggNeed - 0.5);
+  return cookBlockers(eggRecipe, 1, {}).canCook;
+})(), true);
+
+check("足りないと答えたら止まる", (() => {
+  unknownEggs(eggNeed - 0.5);
+  return cookBlockers(eggRecipe, 1, { eggs: false }).canCook;
+})(), false);
+
+check("足りないと答えた材料が denied に出る", (() => {
+  unknownEggs(eggNeed - 0.5);
+  return cookBlockers(eggRecipe, 1, { eggs: false }).denied.map((item) => item.id);
+})(), ["eggs"]);
+
+check("あると答えたら作れる", (() => {
+  unknownEggs(eggNeed - 0.5);
+  return cookBlockers(eggRecipe, 1, { eggs: true }).canCook;
+})(), true);
+
+check("数値で不足していれば、回答に関係なく止まる", (() => {
+  withEggs(eggNeed - 0.5);
+  return cookBlockers(eggRecipe, 1, { eggs: true }).canCook;
+})(), false);
+
+// あると答えた分は、必要量まで上げて確認済みにする
+check("あると答えた材料は必要量まで上がって確認済みになる", (() => {
+  unknownEggs(0.5);
+  confirmUnknownAmounts(eggRecipe, 2, { eggs: true });
+  const eggs = state.inventory.find((item) => item.id === "eggs");
+  return [eggs.quantity, eggs.quantityConfidence];
+})(), [eggNeed * 2, QUANTITY_CONFIRMED]);
+
+check("もともと足りていれば量は下げない", (() => {
+  unknownEggs(99);
+  confirmUnknownAmounts(eggRecipe, 1, { eggs: true });
+  return state.inventory.find((item) => item.id === "eggs").quantity;
+})(), 99);
+
+check("足りないと答えた材料は不明のまま残す", (() => {
+  unknownEggs(0.5);
+  confirmUnknownAmounts(eggRecipe, 1, { eggs: false });
+  const eggs = state.inventory.find((item) => item.id === "eggs");
+  return [eggs.quantity, eggs.quantityConfidence];
+})(), [0.5, QUANTITY_UNKNOWN]);
+
+check("確認済みの材料には触らない", (() => {
+  withEggs(0.5);
+  confirmUnknownAmounts(eggRecipe, 1, { eggs: true });
+  return state.inventory.find((item) => item.id === "eggs").quantity;
+})(), 0.5);
 
 // ---- 代用 ----------------------------------------------------------------
 const porkRecipe = RECIPES.find((recipe) => recipe.required.some((item) => item.id === "pork"));

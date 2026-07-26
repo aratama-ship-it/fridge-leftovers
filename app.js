@@ -2732,6 +2732,9 @@ const state = {
   recentIngredientIds: [],
   pendingCookRecipeId: null,
   pendingCookServings: 1,
+  // 作る前に量を確認した結果。{ 食材id: true（ある）/ false（足りない）}。
+  // ダイアログを開くたびに空へ戻す（前回の答えを持ち回らない）
+  cookAmountAnswers: {},
   settings: { ...DEFAULT_SETTINGS }
 };
 
@@ -2832,6 +2835,9 @@ const elements = {
   cookConfirmIngredients: document.querySelector("#cook-confirm-ingredients"),
   cookConfirmNutrition: document.querySelector("#cook-confirm-nutrition"),
   cookConfirmMessage: document.querySelector("#cook-confirm-message"),
+  cookFallback: document.querySelector("#cook-fallback"),
+  cookFallbackSingle: document.querySelector("#cook-fallback-single"),
+  cookFallbackAnyway: document.querySelector("#cook-fallback-anyway"),
   confirmCook: document.querySelector("#confirm-cook"),
   toast: document.querySelector("#toast"),
   toastMessage: document.querySelector("#toast-message"),
@@ -3799,6 +3805,32 @@ function unconfirmedFor(recipe) {
   });
 }
 
+// 作るのを止めているもの。answers は作る前の量確認への回答で、
+// 未回答は「ある」として扱う（実物を見て違うものだけ外してもらう形）。
+function cookBlockers(recipe, servings, answers = {}) {
+  const shortages = shortageFor(recipe, servings);
+  const unconfirmed = unconfirmedFor(recipe);
+  const denied = unconfirmed.filter((requirement) => answers[requirement.id] === false);
+  return { shortages, unconfirmed, denied, canCook: !shortages.length && !denied.length };
+}
+
+// 「ある」と答えてもらった食材の量を確定する。必要量に届いていなければ
+// 必要量まで上げる（本人が実物を見て足りると言っているため）。
+// 「足りない」と答えたものは不明のまま残し、次に作るときまた確認する。
+function confirmUnknownAmounts(recipe, servings, answers = {}) {
+  unconfirmedFor(recipe).forEach((requirement) => {
+    if (answers[requirement.id] === false) return;
+    const stock = stockForRequirement(requirement);
+    if (!stock) return;
+    const { item, ratio } = stock;
+    const needed = Number(((requirement.quantity * servings) / ratio).toFixed(2));
+    item.quantity = Math.max(Number(item.quantity) || 0, needed);
+    item.maxQuantity = Math.max(Number(item.maxQuantity) || 0, item.quantity);
+    item.quantityConfidence = QUANTITY_CONFIRMED;
+    item.confirmedAt = todayIso();
+  });
+}
+
 function optionalReady(option, servings = state.servings) {
   return availableForRequirement(option) >= option.quantity * servings;
 }
@@ -4289,7 +4321,9 @@ function renderRecipe(recipe, index) {
       </details>
 
       <button class="button button-primary cook-button" type="button" data-cook="${escapeHtml(recipe.id)}"${shortages.length ? " disabled" : ""}>
-        ${shortages.length ? "材料が足りません" : "これを作る"}
+        ${shortages.length
+          ? "材料が足りません"
+          : (unconfirmedFor(recipe).length ? "量を見て作る" : "これを作る")}
       </button>
     </article>
   `;
@@ -5091,13 +5125,32 @@ function updateCookConfirmation() {
     const stock = stockForRequirement(requirement);
     const item = stock?.item || null;
     const amount = requiredAmount(requirement, servings);
+    const main = `
+      <span class="cook-ingredient-main">
+        ${renderIngredientIllustration(item?.id || requirement.id, item?.name || requirement.name, true)}
+        <span><strong>${requirementDisplayName(requirement, item)}</strong><small>${formatQuantity(amount, requirement.unit)}</small></span>
+      </span>
+    `;
+
+    // 量が未確認のものだけ、ここで聞く。既定は「ある」にして、実物を見て
+    // 違うものだけ外してもらう（毎回タップさせない）
+    if (item && quantityUnknown(item)) {
+      const answered = state.cookAmountAnswers[requirement.id] !== false;
+      return `
+        <li class="cook-ingredient-row is-unconfirmed">
+          <label class="cook-amount-choice">
+            <input type="checkbox" data-cook-amount="${escapeHtml(requirement.id)}"${answered ? " checked" : ""}>
+            ${main}
+            <span class="cook-ingredient-state${answered ? " is-ready" : " is-missing"}">${answered ? "ある" : "足りない"}</span>
+          </label>
+        </li>
+      `;
+    }
+
     const enough = (stock?.available ?? 0) >= amount;
     return `
       <li class="cook-ingredient-row">
-        <span class="cook-ingredient-main">
-          ${renderIngredientIllustration(item?.id || requirement.id, item?.name || requirement.name, true)}
-          <span><strong>${requirementDisplayName(requirement, item)}</strong><small>${formatQuantity(amount, requirement.unit)}</small></span>
-        </span>
+        ${main}
         <span class="cook-ingredient-state${enough ? " is-ready" : " is-missing"}">${enough ? "あります" : "不足"}</span>
       </li>
     `;
@@ -5141,8 +5194,10 @@ function updateCookConfirmation() {
     ? `合計目安 ${nutrition.kcal} kcal・P ${nutrition.p}g・F ${nutrition.f}g・C ${nutrition.c}g`
     : "";
 
-  const shortages = shortageFor(recipe, servings);
-  elements.cookConfirmMessage.classList.toggle("is-missing", shortages.length > 0);
+  const { shortages, unconfirmed, denied, canCook } =
+    cookBlockers(recipe, servings, state.cookAmountAnswers);
+
+  elements.cookConfirmMessage.classList.toggle("is-missing", !canCook);
   if (shortages.length) {
     const missingText = shortages.map((requirement) => {
       const missing = Math.max(
@@ -5152,11 +5207,34 @@ function updateCookConfirmation() {
       return `${requirement.name} あと${formatQuantity(missing, requirement.unit)}`;
     }).join("、");
     elements.cookConfirmMessage.textContent = `${servings}人分には、${missingText}が足りません。`;
+  } else if (denied.length) {
+    // 量が足りないことは失敗ではなく、人数を落とすか妥協するかの選択でしかない
+    elements.cookConfirmMessage.textContent =
+      `${denied.map((requirement) => requirement.name).join("、")}が${servings}人分に届かないようです。`;
+  } else if (unconfirmed.length) {
+    elements.cookConfirmMessage.textContent =
+      `${unconfirmed.map((requirement) => requirement.name).join("、")}の量はまだ確認していません。実物を見て、足りないものだけチェックを外してください。`;
   } else {
     elements.cookConfirmMessage.textContent = `${servings}人分として、使った食材を在庫から減らします。`;
   }
-  elements.confirmCook.disabled = shortages.length > 0;
+
+  // 逃げ道は、数量が未確認で「足りない」と答えたときだけ出す。
+  // 数値で不足しているものは買い足しの話なので、ここでは出さない。
+  const showFallback = Boolean(denied.length) && !shortages.length;
+  elements.cookFallback.hidden = !showFallback;
+  elements.cookFallbackSingle.hidden = servings <= 1;
+
+  elements.confirmCook.disabled = !canCook;
   elements.confirmCook.textContent = `${servings}人分で作る`;
+}
+
+// 量の答えは「2人分の卵」のように特定の量に対するもの。人数が変われば
+// 前の答えは意味を持たないので、聞き直す（2人分では足りなくても
+// 1人分なら足りることがある）。
+function setPendingCookServings(servings) {
+  state.pendingCookServings = servings;
+  state.cookAmountAnswers = {};
+  updateCookConfirmation();
 }
 
 function openCookConfirmation(recipeId) {
@@ -5165,6 +5243,7 @@ function openCookConfirmation(recipeId) {
 
   state.pendingCookRecipeId = recipe.id;
   state.pendingCookServings = state.servings;
+  state.cookAmountAnswers = {};
   elements.cookConfirmRecipe.textContent = recipe.name;
   updateCookConfirmation();
   elements.cookConfirmDialog.showModal();
@@ -5178,19 +5257,31 @@ function openCookConfirmation(recipeId) {
 function closeCookConfirmation() {
   state.pendingCookRecipeId = null;
   state.pendingCookServings = state.servings;
+  state.cookAmountAnswers = {};
   if (elements.cookConfirmDialog.open) elements.cookConfirmDialog.close();
 }
 
-function confirmCookRecipe(event) {
+// ignoreAmounts は「このまま作る」用。量が足りないと答えたものも、
+// 引けるところまで引いて作る（0で止まるので在庫が負にはならない）。
+function confirmCookRecipe(event, { ignoreAmounts = false } = {}) {
   event.preventDefault();
   const recipeId = state.pendingCookRecipeId;
   const servings = state.pendingCookServings;
   const recipe = RECIPES.find((candidate) => candidate.id === recipeId);
-  if (!recipe || shortageFor(recipe, servings).length) {
+  if (!recipe) return;
+
+  const { shortages, denied } = cookBlockers(recipe, servings, state.cookAmountAnswers);
+  // 「このまま作る」は足りないという答えを押し通す。数値で不足しているもの
+  // （持っていない・明らかに足りない）は押し通せない
+  if (shortages.length || (!ignoreAmounts && denied.length)) {
     updateCookConfirmation();
     return;
   }
 
+  // 在庫へ書き戻すのは cookRecipe が履歴用の控えを取る前。こうしないと
+  // 取り消したときに、確認前の不確かな量へ戻ってしまう。
+  // 「足りない」と答えたものは上げないので、不明のまま次回また確認する
+  confirmUnknownAmounts(recipe, servings, state.cookAmountAnswers);
   setServings(servings, { render: false });
   closeCookConfirmation();
   cookRecipe(recipeId, servings);
@@ -5876,16 +5967,29 @@ document.querySelector("#cancel-cook-confirm").addEventListener("click", closeCo
 elements.cookServingOptions.addEventListener("click", (event) => {
   const button = event.target.closest("[data-cook-servings]");
   if (!button) return;
-  state.pendingCookServings = Number(button.dataset.cookServings);
-  updateCookConfirmation();
+  setPendingCookServings(Number(button.dataset.cookServings));
 });
 elements.cookConfirmIngredients.addEventListener("change", (event) => {
-  const checkbox = event.target.closest("[data-cook-optional]");
-  if (!checkbox) return;
-  state.selectedOptionals[checkbox.dataset.cookOptional] = checkbox.checked;
+  const optional = event.target.closest("[data-cook-optional]");
+  if (optional) {
+    state.selectedOptionals[optional.dataset.cookOptional] = optional.checked;
+    updateCookConfirmation();
+    return;
+  }
+  const amount = event.target.closest("[data-cook-amount]");
+  if (!amount) return;
+  state.cookAmountAnswers[amount.dataset.cookAmount] = amount.checked;
   updateCookConfirmation();
 });
 elements.cookConfirmForm.addEventListener("submit", confirmCookRecipe);
+
+// 量が足りないと分かったときの逃げ道
+elements.cookFallbackSingle.addEventListener("click", () => {
+  setPendingCookServings(1);
+});
+elements.cookFallbackAnyway.addEventListener("click", (event) => {
+  confirmCookRecipe(event, { ignoreAmounts: true });
+});
 
 elements.fridgeScene.addEventListener("pointerdown", (event) => {
   const source = event.target.closest("[data-drag-item]");

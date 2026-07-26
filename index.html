@@ -12,9 +12,9 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="冷蔵庫の現在地">
-  <link rel="stylesheet" href="styles.css?v=920f79dc">
+  <link rel="stylesheet" href="styles.css?v=34b1804d">
   <script src="vendor/tesseract/tesseract.min.js?v=7.0.0" defer></script>
-  <script src="app.js?v=5fac068d" defer></script>
+  <script src="app.js?v=c1116a7f" defer></script>
 </head>
 <body>
   <div class="app-shell">
@@ -496,8 +496,14 @@
 
       <p class="cook-confirm-message" id="cook-confirm-message" aria-live="polite"></p>
 
+      <!-- 量が足りないと分かったときの逃げ道。「戻る」だけを出さない -->
+      <div class="cook-fallback" id="cook-fallback" hidden>
+        <button class="button button-secondary" type="button" id="cook-fallback-single">1人分にする</button>
+        <button class="button button-secondary" type="button" id="cook-fallback-anyway">このまま作る</button>
+      </div>
+
       <div class="dialog-actions">
-        <button class="button button-secondary" type="button" id="cancel-cook-confirm">キャンセル</button>
+        <button class="button button-secondary" type="button" id="cancel-cook-confirm">ほかの候補へ</button>
         <button class="button button-primary cook-confirm-button" type="submit" id="confirm-cook">この人数で作る</button>
       </div>
     </form>

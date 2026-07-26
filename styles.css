@@ -3203,8 +3203,9 @@ input[type="number"] {
   border-top: 0;
 }
 
-.cook-ingredient-row:not(.is-optional),
-.cook-optional-choice {
+.cook-ingredient-row:not(.is-optional):not(.is-unconfirmed),
+.cook-optional-choice,
+.cook-amount-choice {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
@@ -3286,6 +3287,58 @@ input[type="number"] {
 .cook-optional-choice:has(input:disabled) {
   cursor: default;
   opacity: 0.48;
+}
+
+/* 量がまだ確認できていない材料。ここだけは聞いている行なので、
+   状態表示を押せる見た目にしておく。既定は「ある」なので、
+   本人が外したものだけ色を変える（毎回タップさせない作りにしている）。 */
+.cook-amount-choice {
+  position: relative;
+  cursor: pointer;
+}
+
+.cook-amount-choice > input {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  opacity: 0;
+}
+
+.cook-amount-choice .cook-ingredient-state {
+  padding: 5px 9px;
+  border: 1px solid rgb(66 76 68 / 26%);
+  border-radius: 3px;
+  background: #fff;
+}
+
+.cook-amount-choice:has(input:not(:checked)) {
+  padding-inline: 4px;
+  border-radius: 5px;
+  background: var(--warm-soft);
+}
+
+.cook-amount-choice:has(input:not(:checked)) .cook-ingredient-state {
+  border-color: rgb(168 73 45 / 42%);
+}
+
+.cook-amount-choice:has(input:focus-visible) .cook-ingredient-state {
+  outline: 3px solid rgb(47 100 75 / 35%);
+  outline-offset: 1px;
+}
+
+/* 量が足りないと分かったときの逃げ道。行き止まりにしない */
+.cook-fallback {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.cook-fallback[hidden] {
+  display: none;
+}
+
+.cook-fallback .button {
+  flex: 1;
 }
 
 .cook-optional-choice:has(input:checked) .cook-optional-state {
