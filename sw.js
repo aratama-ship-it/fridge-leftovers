@@ -4,7 +4,7 @@
 // このファイル自身の内容から書き込む。中身が変わればこのファイルも変わるので、
 // ブラウザが新しい Service Worker と見なして入れ替え、古いキャッシュを捨てる。
 // 手で番号を上げる必要はない。
-const VERSION = "0feb1649";
+const VERSION = "05062f7f";
 const CACHE = `fridge-leftovers-${VERSION}`;
 
 // index.html が参照するファイル。?v= 付きの実物のパスでないとキャッシュに
@@ -15,7 +15,7 @@ const REFERENCED = [
   "./assets/icons/favicon-32.png?v=21a24972",
   "./assets/icons/apple-touch-icon.png?v=96e0531c",
   "./styles.css?v=920f79dc",
-  "./app.js?v=f1e07c51"
+  "./app.js?v=5fac068d"
 ];
 // ここまで自動更新
 
@@ -89,5 +89,8 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
 
-  event.respondWith(request.mode === "navigate" ? html(request) : asset(request));
+  // destination も見るのは、画面を JavaScript から取りに行った場合に
+  // 溜めた古い画面を返してしまわないようにするため
+  const wantsPage = request.mode === "navigate" || request.destination === "document";
+  event.respondWith(wantsPage ? html(request) : asset(request));
 });

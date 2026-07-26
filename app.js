@@ -13,6 +13,29 @@ const DEFAULT_SETTINGS = { showNutrition: false };
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
+// 在庫の数量をどれだけ信じてよいか（方針書「数量は捨てるのでも盛るのでもなく、
+// 確信度を持たせる」）。数量を持たない状態を作ると残量ゲージ・調理後の減算・
+// 使い切りの判定まで null が伝播するので、数値は入れたまま確信度で区別する。
+//
+// ★確信度は画面に出さない。3段階を一覧へ並べると比較が難しくなり、
+// 「記憶と判断の負担を減らす」という核に反する。使うのは次の2箇所だけ。
+//   ・不足判定：不明の食材を「足りない」として候補から落とさない
+//   ・作る直前：不明の食材の量だけ確認する
+const QUANTITY_CONFIRMED = "確認済み";
+const QUANTITY_ESTIMATED = "推定";
+const QUANTITY_UNKNOWN = "不明";
+
+// 保存済みデータには項目が無い。今まで手入力で登録してきた分なので確認済みとする
+const CONFIDENCE_ORDER = [QUANTITY_CONFIRMED, QUANTITY_ESTIMATED, QUANTITY_UNKNOWN];
+const quantityConfidence = (item) => {
+  const value = item?.quantityConfidence;
+  return CONFIDENCE_ORDER.includes(value) ? value : QUANTITY_CONFIRMED;
+};
+const quantityUnknown = (item) => quantityConfidence(item) === QUANTITY_UNKNOWN;
+// 2つのうち確かでないほう。数量を足し合わせたときに使う
+const lessCertain = (a, b) =>
+  CONFIDENCE_ORDER[Math.max(CONFIDENCE_ORDER.indexOf(a), CONFIDENCE_ORDER.indexOf(b))];
+
 const DEFAULT_INVENTORY = [
   { id: "cabbage", name: "キャベツ", quantity: 180, unit: "g", location: "冷蔵", priority: true, active: true, confirmedAt: todayIso(), step: 50 },
   { id: "eggs", name: "卵", quantity: 3, unit: "個", location: "冷蔵", priority: false, active: true, confirmedAt: todayIso(), step: 1 },
@@ -3755,10 +3778,25 @@ function requiredAmount(requirement, servings = state.servings) {
   return requirement.quantity * servings;
 }
 
+// 不足しているのは「持っていないもの」と「持っているが明らかに足りないもの」。
+// 量が未確認のものは、数値を信じて落とすと本当は作れる料理まで消えるため、
+// 不足として数えない（代わりに作る直前に量を確認する）。
 function shortageFor(recipe, servings = state.servings) {
-  return recipe.required.filter(
-    (requirement) => availableForRequirement(requirement) < requiredAmount(requirement, servings)
-  );
+  return recipe.required.filter((requirement) => {
+    const stock = stockForRequirement(requirement);
+    if (!stock) return true;
+    if (quantityUnknown(stock.item)) return false;
+    return stock.available < requiredAmount(requirement, servings);
+  });
+}
+
+// 作る直前に量を確認したい材料。持っているが数量が未確認のもの。
+// 人数には依らない（何人分でも「量を見る」ことは変わらない）。
+function unconfirmedFor(recipe) {
+  return recipe.required.filter((requirement) => {
+    const stock = stockForRequirement(requirement);
+    return Boolean(stock) && quantityUnknown(stock.item);
+  });
 }
 
 function optionalReady(option, servings = state.servings) {
@@ -4155,9 +4193,11 @@ function renderRecipe(recipe, index) {
   const searchQuery = encodeURIComponent(recipe.name);
   const googleSearchUrl = `https://www.google.com/search?q=${searchQuery}`;
   const youtubeSearchUrl = `https://www.youtube.com/results?search_query=${searchQuery}`;
+  // 文言は方針書「初回オンボーディングの設計」で確定したもの。
+  // 「作れそう」は判断をユーザーへ投げ返すため却下している。
   const status = shortages.length
-    ? `不足：${shortages.map((item) => `${item.name} ${formatQuantity(requiredAmount(item, RECIPE_LIST_SERVINGS), item.unit)}`).join("、")}`
-    : "最低限必要なものが揃っています";
+    ? `あと ${shortages.map((item) => `${item.name}${formatQuantity(requiredAmount(item, RECIPE_LIST_SERVINGS), item.unit)}`).join("、")}`
+    : "材料あり";
   const ingredientSummary = recipe.required.map((requirement) => `
     <span class="${shortages.some((item) => item.id === requirement.id) ? "is-missing" : ""}">
       ${renderIngredientIllustration(requirement.id, requirement.name, true)}
@@ -4678,7 +4718,15 @@ function closeReceiptDialog() {
   if (elements.receiptDialog.open) elements.receiptDialog.close();
 }
 
-function addOrMergeInventoryItem({ name, quantity, unit, location, priority = false, shelf = null }) {
+function addOrMergeInventoryItem({
+  name,
+  quantity,
+  unit,
+  location,
+  priority = false,
+  shelf = null,
+  confidence = QUANTITY_CONFIRMED
+}) {
   const canonicalId = ALIASES.get(name) || makeId(name);
   const existing = state.inventory.find((item) =>
     item.id === canonicalId || item.name === name
@@ -4700,6 +4748,11 @@ function addOrMergeInventoryItem({ name, quantity, unit, location, priority = fa
     existing.active = true;
     existing.confirmedAt = todayIso();
     existing.step = stepForUnit(unit);
+    // 数量を置き換えたなら新しい確信度。足し合わせたなら、
+    // 元が不確かなら合計も不確かなので低いほうへ寄せる
+    existing.quantityConfidence = wasInactive || !sameUnit
+      ? confidence
+      : lessCertain(quantityConfidence(existing), confidence);
     if (Number.isInteger(shelf)) existing.shelf = shelf;
     delete existing.consumedAt;
     return "merged";
@@ -4715,7 +4768,8 @@ function addOrMergeInventoryItem({ name, quantity, unit, location, priority = fa
     active: true,
     confirmedAt: todayIso(),
     step: stepForUnit(unit),
-    maxQuantity: quantity
+    maxQuantity: quantity,
+    quantityConfidence: confidence
   };
   if (Number.isInteger(shelf)) item.shelf = shelf;
   state.inventory.push(item);
@@ -4754,7 +4808,10 @@ function saveReceiptCandidates(event) {
       name,
       quantity,
       unit: unitInput.value,
-      location: row.querySelector("[data-receipt-location]").value
+      location: row.querySelector("[data-receipt-location]").value,
+      // レシートの数量は、商品名から引いた標準の買い方を初期値にしている。
+      // 直さずに通した分は実物と違いうるので、確認済みとは区別する
+      confidence: QUANTITY_ESTIMATED
     });
   }
 
@@ -4876,7 +4933,9 @@ function saveIngredient(event) {
         active: true,
         confirmedAt: todayIso(),
         step: stepForUnit(unit),
-        maxQuantity
+        maxQuantity,
+        // 本人が数量欄を見て保存したので、量は確認済みになる
+        quantityConfidence: QUANTITY_CONFIRMED
       });
       showToast(`${name}を更新しました`);
     }
@@ -5948,11 +6007,14 @@ elements.inventoryList.addEventListener("click", (event) => {
   if (!item) return;
 
   if (button.dataset.action === "edit") openIngredientDialog(item);
+  // 残量を手で動かしたときは、本人が実物を見ているので量は確認済みになる。
+  // 「まだある」（confirm）は在庫の有無の合図なので、量の確信度は上げない。
   if (button.dataset.action === "increase") {
     updateItem(item.id, (current) => {
       current.quantity = Number((current.quantity + current.step).toFixed(2));
       current.maxQuantity = Math.max(Number(current.maxQuantity) || 0, current.quantity);
       current.confirmedAt = todayIso();
+      current.quantityConfidence = QUANTITY_CONFIRMED;
     });
   }
   if (button.dataset.action === "decrease") {
@@ -5963,6 +6025,7 @@ elements.inventoryList.addEventListener("click", (event) => {
       updateItem(item.id, (current) => {
         current.quantity = nextQuantity;
         current.confirmedAt = todayIso();
+        current.quantityConfidence = QUANTITY_CONFIRMED;
       });
     }
   }
