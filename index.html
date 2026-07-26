@@ -6,9 +6,9 @@
   <meta name="theme-color" content="#f3f0e6">
   <meta name="description" content="冷蔵庫の在庫を管理し、残っている食材から今日作れる料理を提案するスマホ向けプロトタイプ">
   <title>冷蔵庫の現在地</title>
-  <link rel="stylesheet" href="styles.css?v=2aceedc8">
+  <link rel="stylesheet" href="styles.css?v=4b1ea308">
   <script src="vendor/tesseract/tesseract.min.js?v=7.0.0" defer></script>
-  <script src="app.js?v=063313b3" defer></script>
+  <script src="app.js?v=68bd2bb4" defer></script>
 </head>
 <body>
   <div class="app-shell">
@@ -17,8 +17,8 @@
       <p class="eyebrow">台所の在庫帳</p>
       <div class="header-line">
         <h1>冷蔵庫の現在地</h1>
-        <button class="header-add-button" type="button" id="header-add-ingredient" aria-label="食材を追加">
-          <span aria-hidden="true">＋</span> 食材
+        <button class="header-settings-button" type="button" id="open-settings" aria-label="設定" aria-haspopup="dialog" aria-controls="settings-dialog">
+          <span aria-hidden="true">⚙</span>
         </button>
       </div>
     </header>
@@ -241,6 +241,33 @@
       </button>
     </nav>
   </div>
+
+  <dialog class="settings-dialog" id="settings-dialog" aria-labelledby="settings-dialog-title">
+    <section class="settings-shell">
+      <div class="dialog-head">
+        <div>
+          <p class="eyebrow">表示を選ぶ</p>
+          <h2 id="settings-dialog-title">設定</h2>
+        </div>
+        <button class="icon-button" type="button" id="close-settings" aria-label="閉じる">×</button>
+      </div>
+
+      <label class="settings-row" for="setting-show-nutrition">
+        <span class="settings-row-copy">
+          <strong>カロリーとPFCを表示する</strong>
+          <small>料理の候補と、作る前の確認画面に出します</small>
+        </span>
+        <input id="setting-show-nutrition" type="checkbox" role="switch">
+      </label>
+
+      <p class="settings-note" id="settings-nutrition-note">
+        表示される数値は、食品ごとの一般的な参考値と基本調味料の仮定から丸めた目安です。
+        商品表示や医療・栄養指導の代わりにはなりません。
+      </p>
+
+      <p class="privacy-note">設定は、この端末のブラウザ内だけに保存されます。</p>
+    </section>
+  </dialog>
 
   <dialog class="today-ingredient-dialog" id="today-ingredient-dialog" aria-labelledby="today-ingredient-dialog-title">
     <section class="today-ingredient-dialog-shell">

@@ -130,31 +130,107 @@ h3 {
   font-size: 1.08rem;
 }
 
-.header-add-button {
+/* ホーム右上の設定ボタン。食材追加は在庫画面と各棚の「＋」に入口があるので、
+   ここは設定に譲っている。 */
+.header-settings-button {
   flex: none;
+  width: 44px;
   min-height: 44px;
-  padding: 7px 10px;
-  border: 1px solid var(--leaf);
+  padding: 0;
+  border: 1px solid rgb(66 76 68 / 18%);
   border-radius: 3px;
+  background: #fff;
+  color: var(--leaf);
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+.header-settings-button:active {
+  background: #f1efe6;
+}
+
+.settings-dialog {
+  width: min(92vw, 420px);
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: #fdfcf7;
+}
+
+.settings-dialog::backdrop {
+  background: rgb(38 44 39 / 45%);
+}
+
+.settings-shell {
+  padding: 18px 18px 20px;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: 6px;
+  padding: 12px 0;
+  border-top: 1px solid rgb(66 76 68 / 12%);
+  border-bottom: 1px solid rgb(66 76 68 / 12%);
+}
+
+.settings-row-copy strong {
+  display: block;
+  font-size: 0.92rem;
+}
+
+.settings-row-copy small {
+  display: block;
+  margin-top: 3px;
+  font-size: 0.76rem;
+  color: #6d7a6f;
+}
+
+/* 在庫帳の見た目に合わせ、丸いスイッチではなく角のある札を左右へ寄せる。
+   タップ範囲は 52x30 + 上下の余白で 44px 以上を確保する。 */
+.settings-row input[type="checkbox"] {
+  flex: none;
+  position: relative;
+  width: 52px;
+  height: 30px;
+  margin: 0;
+  padding: 0;
+  appearance: none;
+  border: 1px solid rgb(66 76 68 / 22%);
+  border-radius: 3px;
+  background: #f1efe6;
+  transition: background 140ms ease, border-color 140ms ease;
+}
+
+.settings-row input[type="checkbox"]::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 2px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgb(38 44 39 / 22%);
+  transition: transform 140ms ease;
+}
+
+.settings-row input[type="checkbox"]:checked {
+  border-color: var(--leaf);
   background: var(--leaf);
-  color: #fff;
-  font-size: 0.78rem;
-  font-weight: 800;
 }
 
-.header-add-button span {
-  margin-right: 2px;
-  font-size: 1rem;
+.settings-row input[type="checkbox"]:checked::after {
+  transform: translateX(22px);
 }
 
-.header-add-button:hover,
-.header-add-button:active,
-.header-add-button:focus-visible {
-  background: var(--leaf-dark);
-}
-
-.header-add-button[hidden] {
-  display: none;
+.settings-note {
+  margin: 12px 0 0;
+  font-size: 0.76rem;
+  line-height: 1.6;
+  color: #6d7a6f;
 }
 
 .view {

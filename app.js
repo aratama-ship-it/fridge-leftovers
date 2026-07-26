@@ -3,9 +3,13 @@ const SHOPPING_STORAGE_KEY = "fridge-leftovers-shopping-v1";
 const COOKING_HISTORY_STORAGE_KEY = "fridge-leftovers-cooking-history-v1";
 const SHELF_COUNTS_STORAGE_KEY = "fridge-leftovers-shelf-counts-v1";
 const RECENT_INGREDIENTS_STORAGE_KEY = "fridge-leftovers-recent-ingredients-v1";
+const SETTINGS_STORAGE_KEY = "fridge-leftovers-settings-v1";
 const APP_VERSION = "0.9.0";
 const RECIPE_PAGE_SIZE = 3;
 const RECIPE_LIST_SERVINGS = 1;
+
+// 方針書の「初期状態では料理選びを複雑にしない」に合わせ、栄養表示は既定で出さない
+const DEFAULT_SETTINGS = { showNutrition: false };
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
@@ -2594,13 +2598,18 @@ const state = {
   shoppingPickerCategory: null,
   recentIngredientIds: [],
   pendingCookRecipeId: null,
-  pendingCookServings: 1
+  pendingCookServings: 1,
+  settings: { ...DEFAULT_SETTINGS }
 };
 
 const elements = {
   appVersion: document.querySelector("#app-version"),
   appHeader: document.querySelector("#app-header"),
-  headerAddIngredient: document.querySelector("#header-add-ingredient"),
+  openSettings: document.querySelector("#open-settings"),
+  settingsDialog: document.querySelector("#settings-dialog"),
+  closeSettings: document.querySelector("#close-settings"),
+  settingShowNutrition: document.querySelector("#setting-show-nutrition"),
+  settingsNutritionNote: document.querySelector("#settings-nutrition-note"),
   fridgeScene: document.querySelector("#fridge-scene"),
   inventoryList: document.querySelector("#inventory-list"),
   finishedSection: document.querySelector("#finished-section"),
@@ -2757,6 +2766,29 @@ function rememberRecentIngredient(id) {
       RECENT_INGREDIENTS_STORAGE_KEY,
       JSON.stringify(state.recentIngredientIds)
     );
+  } catch {
+    markStorageUnavailable();
+  }
+}
+
+function loadSettings() {
+  state.settings = { ...DEFAULT_SETTINGS };
+  try {
+    const saved = localStorage.getItem(SETTINGS_STORAGE_KEY);
+    if (!saved) return;
+    const parsed = JSON.parse(saved);
+    if (typeof parsed?.showNutrition === "boolean") {
+      state.settings.showNutrition = parsed.showNutrition;
+    }
+  } catch {
+    markStorageUnavailable();
+  }
+}
+
+function persistSettings() {
+  if (!state.storageEnabled) return;
+  try {
+    localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(state.settings));
   } catch {
     markStorageUnavailable();
   }
@@ -4077,12 +4109,13 @@ function renderRecipe(recipe, index) {
         </nav>
       </div>
       <p class="recipe-meta">調理時間の目安 約${recipe.minutes}分</p>
+      ${state.settings.showNutrition ? `
       <p class="recipe-nutrition" aria-label="1人分の栄養目安">
         <span>約${nutrition.kcal} kcal</span>
         <span>P ${nutrition.p}g</span>
         <span>F ${nutrition.f}g</span>
         <span>C ${nutrition.c}g</span>
-      </p>
+      </p>` : ""}
       <div class="recipe-ingredient-summary" aria-label="主に使う食材">${ingredientSummary}</div>
       <p class="recipe-status${shortages.length ? " is-missing" : ""}">${status}</p>
 
@@ -4164,7 +4197,7 @@ function renderCookingHistory() {
 
 function showView(viewName) {
   elements.appHeader.hidden = viewName !== "inventory";
-  elements.headerAddIngredient.hidden = viewName !== "inventory";
+  elements.openSettings.hidden = viewName !== "inventory";
   elements.inventoryView.hidden = viewName !== "inventory";
   elements.managementView.hidden = viewName !== "management";
   elements.suggestionsView.hidden = viewName !== "suggestions";
@@ -4934,7 +4967,10 @@ function updateCookConfirmation() {
     ${optionalRows ? `<h4>あるとより良い <small>使うものを選択</small></h4><ul>${optionalRows}</ul>` : ""}
   `;
   const nutrition = estimateRecipeNutrition(recipe, servings, selectedIngredients);
-  elements.cookConfirmNutrition.textContent = `合計目安 ${nutrition.kcal} kcal・P ${nutrition.p}g・F ${nutrition.f}g・C ${nutrition.c}g`;
+  elements.cookConfirmNutrition.hidden = !state.settings.showNutrition;
+  elements.cookConfirmNutrition.textContent = state.settings.showNutrition
+    ? `合計目安 ${nutrition.kcal} kcal・P ${nutrition.p}g・F ${nutrition.f}g・C ${nutrition.c}g`
+    : "";
 
   const shortages = shortageFor(recipe, servings);
   elements.cookConfirmMessage.classList.toggle("is-missing", shortages.length > 0);
@@ -5439,7 +5475,20 @@ function startReceiptScanFromDevice() {
 }
 
 document.querySelector("#add-ingredient").addEventListener("click", () => openIngredientDialog());
-elements.headerAddIngredient.addEventListener("click", () => openIngredientDialog());
+elements.openSettings.addEventListener("click", () => {
+  elements.settingsDialog.showModal();
+  requestAnimationFrame(() => elements.settingShowNutrition.focus());
+});
+
+elements.closeSettings.addEventListener("click", () => elements.settingsDialog.close());
+
+elements.settingShowNutrition.addEventListener("change", () => {
+  state.settings.showNutrition = elements.settingShowNutrition.checked;
+  elements.settingsNutritionNote.hidden = !state.settings.showNutrition;
+  persistSettings();
+  renderRecipes();
+  if (state.pendingCookRecipeId) updateCookConfirmation();
+});
 document.querySelector("#scan-receipt").addEventListener("click", startReceiptScanFromDevice);
 elements.ingredientReceiptShortcut.addEventListener("click", startReceiptScanFromDevice);
 document.querySelector("#close-dialog").addEventListener("click", closeIngredientDialog);
@@ -5928,6 +5977,9 @@ elements.toastAction.addEventListener("click", () => {
 });
 
 elements.appVersion.textContent = `v${APP_VERSION}`;
+loadSettings();
+elements.settingShowNutrition.checked = state.settings.showNutrition;
+elements.settingsNutritionNote.hidden = !state.settings.showNutrition;
 loadShelfCounts();
 loadRecentIngredients();
 loadInventory();
