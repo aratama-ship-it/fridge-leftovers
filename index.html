@@ -12,9 +12,9 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="冷蔵庫の現在地">
-  <link rel="stylesheet" href="styles.css?v=34b1804d">
+  <link rel="stylesheet" href="styles.css?v=a3d1c53a">
   <script src="vendor/tesseract/tesseract.min.js?v=7.0.0" defer></script>
-  <script src="app.js?v=6b1b0a25" defer></script>
+  <script src="app.js?v=c92f3a8d" defer></script>
 </head>
 <body>
   <div class="app-shell">
@@ -30,7 +30,41 @@
     </header>
 
     <main>
+      <!-- 初回だけ出す。サンプルの5品を入れる代わりに、最初の一食を決める
+           過程をそのまま登録にする（PRODUCT_DIRECTION.md の該当節） -->
+      <section class="view onboarding-view" id="onboarding-view" aria-labelledby="onboarding-title" hidden>
+        <div class="onboarding-head">
+          <p class="eyebrow" id="onboarding-step-label">はじめに</p>
+          <h2 id="onboarding-title">今夜、何を使いますか？</h2>
+          <p class="onboarding-lead" id="onboarding-lead">1つでも2つでも。あとから増やせます。</p>
+        </div>
+
+        <div class="onboarding-leads" id="onboarding-leads"></div>
+
+        <div class="onboarding-extras" id="onboarding-extras" hidden>
+          <div class="onboarding-preview" id="onboarding-preview" aria-live="polite"></div>
+          <div class="onboarding-extra-grid" id="onboarding-extra-grid"></div>
+        </div>
+
+        <div class="onboarding-actions">
+          <button class="button button-secondary" type="button" id="onboarding-skip">あとで入れる</button>
+          <button class="button button-primary" type="button" id="onboarding-next" disabled>候補を見る</button>
+        </div>
+      </section>
+
       <section class="view" id="inventory-view" aria-label="冷蔵庫">
+        <!-- 保存済みデータにサンプルの5品が残っている人へ、一度だけ出す -->
+        <section class="sample-notice" id="sample-notice" hidden>
+          <p class="eyebrow">はじめに入っていた食材</p>
+          <h3>この5品は、あなたが入れたものではありません</h3>
+          <p id="sample-notice-list"></p>
+          <p class="sample-notice-note">片付けると、料理の候補が実際の冷蔵庫だけから出ます。自分で足したものは残ります。</p>
+          <div class="sample-notice-actions">
+            <button class="button button-secondary" type="button" id="sample-notice-keep">このまま使う</button>
+            <button class="button button-primary" type="button" id="sample-notice-clear">片付ける</button>
+          </div>
+        </section>
+
         <section class="fridge-visual" aria-labelledby="fridge-visual-title">
           <div class="fridge-visual-heading">
             <div>

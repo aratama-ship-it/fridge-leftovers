@@ -9,7 +9,7 @@ const RECIPE_PAGE_SIZE = 3;
 const RECIPE_LIST_SERVINGS = 1;
 
 // 方針書の「初期状態では料理選びを複雑にしない」に合わせ、栄養表示は既定で出さない
-const DEFAULT_SETTINGS = { showNutrition: false };
+const DEFAULT_SETTINGS = { showNutrition: false, sampleNoticeDone: false };
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
@@ -2761,6 +2761,8 @@ const state = {
   // 作る前に量を確認した結果。{ 食材id: true（ある）/ false（足りない）}。
   // ダイアログを開くたびに空へ戻す（前回の答えを持ち回らない）
   cookAmountAnswers: {},
+  // 初回登録。step 1 は主役選び、step 2 は候補の分かれ目を聞く
+  onboarding: { step: 1, leads: [], extras: [] },
   settings: { ...DEFAULT_SETTINGS }
 };
 
@@ -2860,6 +2862,21 @@ const elements = {
   cookServingOptions: document.querySelector("#cook-serving-options"),
   cookConfirmIngredients: document.querySelector("#cook-confirm-ingredients"),
   cookConfirmNutrition: document.querySelector("#cook-confirm-nutrition"),
+  bottomNav: document.querySelector(".bottom-nav"),
+  onboardingView: document.querySelector("#onboarding-view"),
+  onboardingStepLabel: document.querySelector("#onboarding-step-label"),
+  onboardingTitle: document.querySelector("#onboarding-title"),
+  onboardingLead: document.querySelector("#onboarding-lead"),
+  onboardingLeads: document.querySelector("#onboarding-leads"),
+  onboardingExtras: document.querySelector("#onboarding-extras"),
+  onboardingPreview: document.querySelector("#onboarding-preview"),
+  onboardingExtraGrid: document.querySelector("#onboarding-extra-grid"),
+  onboardingSkip: document.querySelector("#onboarding-skip"),
+  onboardingNext: document.querySelector("#onboarding-next"),
+  sampleNotice: document.querySelector("#sample-notice"),
+  sampleNoticeList: document.querySelector("#sample-notice-list"),
+  sampleNoticeKeep: document.querySelector("#sample-notice-keep"),
+  sampleNoticeClear: document.querySelector("#sample-notice-clear"),
   cookConfirmMessage: document.querySelector("#cook-confirm-message"),
   cookFallback: document.querySelector("#cook-fallback"),
   cookFallbackSingle: document.querySelector("#cook-fallback-single"),
@@ -2884,8 +2901,10 @@ function loadInventory() {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (!saved) {
-      state.inventory = cloneDefaults();
-      persistInventory();
+      // 初回はサンプルを入れない。他人の5品が入っていると、最初の料理提案が
+      // 実際の冷蔵庫と無関係になる。代わりに初回登録へ案内する
+      state.inventory = [];
+      state.needsOnboarding = true;
       return;
     }
     const parsed = JSON.parse(saved);
@@ -2894,6 +2913,43 @@ function loadInventory() {
     state.inventory = cloneDefaults();
     markStorageUnavailable();
   }
+}
+
+// 保存済みデータに残っているサンプルの5品。印が付いていない古いデータでも
+// 拾えるよう、数量・単位・場所が初期値のままかどうかも見る。
+// **一致しないものは触らない**（本人が同じ食材を足していることがある）。
+function untouchedSampleItems() {
+  return state.inventory.filter((item) => {
+    const sample = DEFAULT_INVENTORY.find((candidate) => candidate.id === item.id);
+    if (!sample) return false;
+    if (item.origin === SAMPLE_ORIGIN) return true;
+    return item.quantity === sample.quantity
+      && item.unit === sample.unit
+      && item.location === sample.location
+      && item.active !== false;
+  });
+}
+
+function renderSampleNotice() {
+  const samples = state.settings.sampleNoticeDone ? [] : untouchedSampleItems();
+  elements.sampleNotice.hidden = samples.length === 0;
+  if (!samples.length) return;
+  elements.sampleNoticeList.textContent = samples
+    .map((item) => `${item.name} ${formatQuantity(item.quantity, item.unit)}`)
+    .join("・");
+}
+
+function clearSampleItems() {
+  const removed = untouchedSampleItems();
+  if (!removed.length) return;
+  const ids = new Set(removed.map((item) => item.id));
+  state.inventory = state.inventory.filter((item) => !ids.has(item.id));
+  state.settings.sampleNoticeDone = true;
+  persistInventory();
+  persistSettings();
+  renderAll();
+  renderSampleNotice();
+  showToast(`はじめに入っていた${removed.length}品を片付けました`);
 }
 
 function persistInventory() {
@@ -2944,6 +3000,9 @@ function loadSettings() {
     const parsed = JSON.parse(saved);
     if (typeof parsed?.showNutrition === "boolean") {
       state.settings.showNutrition = parsed.showNutrition;
+    }
+    if (typeof parsed?.sampleNoticeDone === "boolean") {
+      state.settings.sampleNoticeDone = parsed.sampleNoticeDone;
     }
   } catch {
     markStorageUnavailable();
@@ -4405,8 +4464,187 @@ function renderCookingHistory() {
   }).join("");
 }
 
+// ---- 初回登録 ------------------------------------------------------------
+// 「最初の一食を決める過程をそのまま登録にする」。指標は登録完了率ではなく、
+// 最初の正直で有用な提案までの時間（PRODUCT_DIRECTION.md）。
+
+const ONBOARDING_MAX_LEADS = 2;
+const ONBOARDING_EXTRA_LIMIT = 6;
+
+// 持っている食材で、この材料を満たせるか。代用も見る
+function ownedCovers(requirement, owned) {
+  if (owned.has(requirement.id)) return true;
+  return (INGREDIENT_SUBSTITUTES[requirement.id] || [])
+    .some((entry) => owned.has(normalizedSubstitute(entry).id));
+}
+
+// 主役から料理候補を出す。2品目は**両方必須にしない**。
+// 実データで、両方必須にすると0件になる組み合わせがある（鶏ひき肉＋鶏むね肉など）。
+// 両方使うレシピを上に、片方だけのレシピも候補に残す。
+function onboardingCandidates(leads, extras) {
+  const owned = new Set([...leads, ...extras]);
+  const leadSet = new Set(leads);
+  const ranked = RECIPES
+    .map((recipe) => {
+      let leadHits = 0;
+      let covered = 0;
+      for (const requirement of recipe.required) {
+        if (ownedCovers(requirement, leadSet)) leadHits += 1;
+        if (ownedCovers(requirement, owned)) covered += 1;
+      }
+      return { recipe, leadHits, missing: recipe.required.length - covered };
+    })
+    .filter((entry) => entry.leadHits > 0)
+    .sort((a, b) =>
+      b.leadHits - a.leadHits
+      || a.missing - b.missing
+      || a.recipe.minutes - b.recipe.minutes)
+    .map((entry) => entry.recipe);
+
+  if (leads.length < 2) return ranked;
+
+  // 両方を使うレシピが無い組み合わせがある（豚こま＋卵は0件）。そのまま並べると
+  // 材料の少ない側だけが上に来て、**選んだのに一度も出てこない主役**が生まれる。
+  // 聞いた意味が無くなるので、それぞれの最上位を先に持ってくる。
+  const uses = (recipe, id) =>
+    recipe.required.some((requirement) => ownedCovers(requirement, new Set([id])));
+  const promoted = [];
+  for (const id of leads) {
+    const best = ranked.find((recipe) => uses(recipe, id) && !promoted.includes(recipe));
+    if (best) promoted.push(best);
+  }
+  return [...promoted, ...ranked.filter((recipe) => !promoted.includes(recipe))];
+}
+
+// 候補を分けるのに効く食材。上位の候補で多く使われていて、まだ持っていないもの。
+// ここで全部の食材を並べると「カテゴリー式7画面」に戻ってしまうので、少数に絞る。
+function onboardingExtraChoices(leads) {
+  const leadSet = new Set(leads);
+  const counts = new Map();
+  for (const recipe of onboardingCandidates(leads, []).slice(0, 8)) {
+    for (const requirement of recipe.required) {
+      if (ownedCovers(requirement, leadSet)) continue;
+      if (!INGREDIENT_ILLUSTRATIONS[requirement.id]) continue;
+      if (!illustratedIngredientItem(requirement.id)) continue;
+      counts.set(requirement.id, (counts.get(requirement.id) || 0) + 1);
+    }
+  }
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .slice(0, ONBOARDING_EXTRA_LIMIT)
+    .map(([id]) => id);
+}
+
+function onboardingTile(id, selected) {
+  const item = illustratedIngredientItem(id);
+  if (!item) return "";
+  return `
+    <button
+      type="button"
+      class="onboarding-tile${selected ? " is-selected" : ""}"
+      data-onboarding-pick="${escapeHtml(id)}"
+      aria-pressed="${selected ? "true" : "false"}"
+    >
+      ${renderIngredientIllustration(item.id, item.name)}
+      <span>${escapeHtml(item.name)}</span>
+    </button>
+  `;
+}
+
+function renderOnboarding() {
+  const { step, leads, extras } = state.onboarding;
+
+  if (step === 1) {
+    elements.onboardingStepLabel.textContent = "はじめに";
+    elements.onboardingTitle.textContent = "今夜、何を使いますか？";
+    elements.onboardingLead.textContent = leads.length >= ONBOARDING_MAX_LEADS
+      ? "2つまで選べます。変えるときは、もう一度タップして外してください。"
+      : "1つでも2つでも。あとから増やせます。";
+    elements.onboardingLeads.hidden = false;
+    elements.onboardingExtras.hidden = true;
+    elements.onboardingLeads.innerHTML = LEAD_INGREDIENTS.map((group) => `
+      <div class="onboarding-group">
+        <h3>${escapeHtml(group.name)}</h3>
+        <div class="onboarding-tile-grid">
+          ${group.ids.map((id) => onboardingTile(id, leads.includes(id))).join("")}
+        </div>
+      </div>
+    `).join("");
+    elements.onboardingNext.disabled = leads.length === 0;
+    elements.onboardingNext.textContent = "候補を見る";
+    elements.onboardingSkip.textContent = "あとで入れる";
+    return;
+  }
+
+  const candidates = onboardingCandidates(leads, extras).slice(0, 3);
+  const choices = onboardingExtraChoices(leads);
+  const leadNames = leads.map((id) => illustratedIngredientItem(id)?.name || id).join("と");
+
+  elements.onboardingStepLabel.textContent = "あと1問";
+  elements.onboardingTitle.textContent = `${leadNames}で作れそうな料理`;
+  elements.onboardingLead.textContent = "下の食材のうち、家にあるものをタップしてください。候補が絞られます。";
+  elements.onboardingLeads.hidden = true;
+  elements.onboardingExtras.hidden = false;
+
+  elements.onboardingPreview.innerHTML = candidates.length
+    ? candidates.map((recipe, at) => {
+      const shortages = recipe.required.filter(
+        (requirement) => !ownedCovers(requirement, new Set([...leads, ...extras]))
+      );
+      return `
+        <div class="onboarding-candidate${at === 0 ? " is-top" : ""}">
+          <strong>${escapeHtml(recipe.name)}</strong>
+          <small>${shortages.length
+            ? `あと ${shortages.map((item) => item.name).join("、")}`
+            : "材料あり"}</small>
+        </div>
+      `;
+    }).join("")
+    : `<p class="onboarding-empty">この組み合わせに合う料理がまだありません。次の画面で食材を足してください。</p>`;
+
+  elements.onboardingExtraGrid.innerHTML = choices
+    .map((id) => onboardingTile(id, extras.includes(id)))
+    .join("");
+  elements.onboardingNext.disabled = false;
+  elements.onboardingNext.textContent = "これで始める";
+  elements.onboardingSkip.textContent = "主役を選び直す";
+}
+
+// 登録は「ある・量は不明」で入れる。数量を聞かずに始められるようにするためで、
+// 量は最初に料理を作るときに確認する（→ unconfirmedFor / cookBlockers）。
+function finishOnboarding() {
+  const { leads, extras } = state.onboarding;
+  for (const id of [...leads, ...extras]) {
+    const item = illustratedIngredientItem(id);
+    if (!item) continue;
+    addOrMergeInventoryItem({
+      name: item.name,
+      quantity: item.quantity,
+      unit: item.unit,
+      location: item.location,
+      confidence: QUANTITY_UNKNOWN
+    });
+    rememberRecentIngredient(id);
+  }
+  persistInventory();
+  state.needsOnboarding = false;
+  persistSettings();
+  renderAll();
+  // 主役を選んだ人には、その主役の候補から見せる
+  showView(leads.length ? "suggestions" : "inventory");
+}
+
+function startOnboarding() {
+  state.onboarding = { step: 1, leads: [], extras: [] };
+  renderOnboarding();
+  showView("onboarding");
+}
+
 function showView(viewName) {
-  elements.appHeader.hidden = viewName !== "inventory";
+  // 初回登録の途中は下のタブを隠す。まだ「どの画面」でもないため
+  elements.bottomNav.hidden = viewName === "onboarding";
+  elements.onboardingView.hidden = viewName !== "onboarding";
+  elements.appHeader.hidden = viewName !== "inventory" && viewName !== "onboarding";
   elements.openSettings.hidden = viewName !== "inventory";
   elements.inventoryView.hidden = viewName !== "inventory";
   elements.managementView.hidden = viewName !== "management";
@@ -6009,6 +6247,68 @@ elements.cookConfirmIngredients.addEventListener("change", (event) => {
 });
 elements.cookConfirmForm.addEventListener("submit", confirmCookRecipe);
 
+// ---- 初回登録の操作 ------------------------------------------------------
+elements.onboardingLeads.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-onboarding-pick]");
+  if (!button) return;
+  const id = button.dataset.onboardingPick;
+  const { leads } = state.onboarding;
+  const at = leads.indexOf(id);
+  if (at >= 0) {
+    leads.splice(at, 1);
+  } else if (leads.length < ONBOARDING_MAX_LEADS) {
+    leads.push(id);
+  } else {
+    // 2品でいっぱいのときは、古いほうを押し出す。
+    // 「2つまでです」と断るより、選び直せるほうが速い
+    leads.shift();
+    leads.push(id);
+  }
+  renderOnboarding();
+});
+
+elements.onboardingExtraGrid.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-onboarding-pick]");
+  if (!button) return;
+  const id = button.dataset.onboardingPick;
+  const { extras } = state.onboarding;
+  const at = extras.indexOf(id);
+  if (at >= 0) extras.splice(at, 1);
+  else extras.push(id);
+  renderOnboarding();
+});
+
+elements.onboardingNext.addEventListener("click", () => {
+  if (state.onboarding.step === 1) {
+    state.onboarding.step = 2;
+    state.onboarding.extras = [];
+    renderOnboarding();
+    window.scrollTo({ top: 0, behavior: "auto" });
+    return;
+  }
+  finishOnboarding();
+});
+
+elements.onboardingSkip.addEventListener("click", () => {
+  if (state.onboarding.step === 2) {
+    state.onboarding.step = 1;
+    renderOnboarding();
+    return;
+  }
+  // 空の冷蔵庫で始める。サンプルを入れ直すより正直
+  state.needsOnboarding = false;
+  persistInventory();
+  renderAll();
+  showView("inventory");
+});
+
+elements.sampleNoticeClear.addEventListener("click", clearSampleItems);
+elements.sampleNoticeKeep.addEventListener("click", () => {
+  state.settings.sampleNoticeDone = true;
+  persistSettings();
+  renderSampleNotice();
+});
+
 // 量が足りないと分かったときの逃げ道
 elements.cookFallbackSingle.addEventListener("click", () => {
   setPendingCookServings(1);
@@ -6299,6 +6599,9 @@ syncQuantityControl(
   elements.shoppingUnit.value
 );
 renderAll();
+renderSampleNotice();
+
+if (state.needsOnboarding) startOnboarding();
 
 // ホーム画面のアイコンを長押しして選ぶショートカット（manifest.json）から
 // 開いたとき、その画面を最初に出す。履歴は触らない（戻るで画面が増えると
@@ -6310,6 +6613,8 @@ const VIEW_BY_HASH = {
 };
 
 function showViewFromHash() {
+  // 初回登録の途中は割り込ませない
+  if (!elements.onboardingView.hidden) return;
   const viewName = VIEW_BY_HASH[window.location.hash];
   if (viewName) showView(viewName);
 }
