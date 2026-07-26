@@ -983,22 +983,22 @@ body.is-fridge-dragging .food-consume-station {
 }
 
 .ingredient-illustration {
-  background-image: url("assets/ingredient-atlas.png?v=20260724-2");
+  background-image: url("assets/ingredient-atlas.png?v=20260726-2");
   background-repeat: no-repeat;
   background-position: var(--atlas-x) var(--atlas-y);
   background-size: 440% 330%;
 }
 
 .ingredient-illustration-everyday {
-  background-image: url("assets/ingredient-atlas-everyday.png?v=20260724-2");
+  background-image: url("assets/ingredient-atlas-everyday.png?v=20260726-2");
 }
 
 .ingredient-illustration-recipe {
-  background-image: url("assets/ingredient-atlas-recipe.png?v=20260724-2");
+  background-image: url("assets/ingredient-atlas-recipe.png?v=20260726-2");
 }
 
 .ingredient-illustration-expanded {
-  background-image: url("assets/ingredient-atlas-expanded.png?v=20260724-2");
+  background-image: url("assets/ingredient-atlas-expanded.png?v=20260726-2");
 }
 
 /* 5枚目以降の受け口。画像を assets/ へ置き、app.js の INGREDIENT_ILLUSTRATIONS へ

@@ -17,17 +17,19 @@
 正円を描いたテスト用アトラスで比較すると、1254×1254では横長の楕円になり、1254×940では正円になる。
 
 - **新しいシートは必ず 1254 × 940 px で作る**
-- 既存4枚（base / everyday / recipe / expanded）は潰れたまま。修正には12個を切り出して
-  940px の高さへ再配置する作業が必要で、これは別タスクとして残している
+- 既存4枚は 2026-07-26 に `scripts/refit-legacy-atlas.mjs` で修正済み。各マスから
+  被写体を切り出し、新しいシートと同じ 68% 占有・中心そろえで 1254×940 へ置き直した。
+  元シートは被写体が隣のマスへはみ出しているものがあり、マス単位で切ると隣の破片が
+  混入するため、アルファの連結成分を見て小さすぎる破片を落としている
 
 ## 現状
 
 | アトラス | ファイル | 収録 | 寸法 |
 |---|---|---|---|
-| base | `ingredient-atlas.png` | 12/12 | 1254×1254（潰れあり） |
-| everyday | `ingredient-atlas-everyday.png` | 12/12 | 1254×1254（潰れあり） |
-| recipe | `ingredient-atlas-recipe.png` | 12/12 | 1254×1254（潰れあり） |
-| expanded | `ingredient-atlas-expanded.png` | 12/12 | 1254×1254（潰れあり） |
+| base | `ingredient-atlas.png` | 12/12 | 1254×940（2026-07-26に修正） |
+| everyday | `ingredient-atlas-everyday.png` | 12/12 | 1254×940（同） |
+| recipe | `ingredient-atlas-recipe.png` | 12/12 | 1254×940（同） |
+| expanded | `ingredient-atlas-expanded.png` | 12/12 | 1254×940（同） |
 | s05〜s27 | `ingredient-atlas-05.png` 〜 `-27.png` | **未作成（23枚・276品）** | 1254×940 で作る |
 
 4枚とも12枠が満杯のため、食材を足すには新しいシートが必要。
