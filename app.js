@@ -2063,6 +2063,42 @@ const SUBSTITUTE_GENERICS = new Map(
 );
 
 const INGREDIENT_ILLUSTRATIONS = {
+  chirimen: [0, 0, "s18"],
+  "dried-aji": [1, 0, "s18"],
+  ikura: [2, 0, "s18"],
+  crab: [3, 0, "s18"],
+  hamaguri: [0, 1, "s18"],
+  mozuku: [1, 1, "s18"],
+  mekabu: [2, 1, "s18"],
+  "fish-sausage": [3, 1, "s18"],
+  "ika-shiokara": [0, 2, "s18"],
+  "sliced-cheese": [1, 2, "s18"],
+  "pizza-cheese": [2, 2, "s18"],
+  "cream-cheese": [3, 2, "s18"],
+  mozzarella: [0, 0, "s19"],
+  "powdered-cheese": [1, 0, "s19"],
+  margarine: [2, 0, "s19"],
+  "condensed-milk": [3, 0, "s19"],
+  "quail-egg": [0, 1, "s19"],
+  ganmodoki: [1, 1, "s19"],
+  yuba: [2, 1, "s19"],
+  okara: [3, 1, "s19"],
+  "tamago-tofu": [0, 2, "s19"],
+  "rice-raw": [1, 2, "s19"],
+  "mochi-rice": [2, 2, "s19"],
+  "brown-rice": [3, 2, "s19"],
+  croissant: [0, 0, "s20"],
+  bagel: [1, 0, "s20"],
+  "english-muffin": [2, 0, "s20"],
+  naan: [3, 0, "s20"],
+  tortilla: [0, 1, "s20"],
+  penne: [1, 1, "s20"],
+  bifun: [2, 1, "s20"],
+  kishimen: [3, 1, "s20"],
+  "pancake-mix": [0, 2, "s20"],
+  "okonomiyaki-flour": [1, 2, "s20"],
+  "bread-flour": [2, 2, "s20"],
+  shiratamako: [3, 2, "s20"],
   avocado: [0, 0, "s14"],
   "green-onion-small": [1, 0, "s14"],
   "red-onion": [2, 0, "s14"],
@@ -2270,6 +2306,10 @@ const INGREDIENT_ILLUSTRATIONS = {
 };
 
 const RECEIPT_RULES = [
+  // うずらの卵を卵として拾わないよう前に置く
+  { id: "quail-egg", name: "うずらの卵", pattern: /(?:うずらの卵|ウズラの卵|うずら卵|鶉卵)/, quantity: 1, unit: "パック", location: "冷蔵" },
+  // 卵豆腐を卵・豆腐として拾わないよう前に置く（卵は豆腐より前にある）
+  { id: "tamago-tofu", name: "卵豆腐", pattern: /(?:卵豆腐|たまご豆腐|玉子豆腐)/, quantity: 1, unit: "個", location: "冷蔵" },
   { id: "eggs", name: "卵", pattern: /(?:卵|玉子|たまご)/, quantity: 1, unit: "個", location: "冷蔵" },
   // 芽キャベツをキャベツとして拾わないよう前に置く
   { id: "brussels-sprouts", name: "芽キャベツ", pattern: /(?:芽キャベツ|めキャベツ|芽きゃべつ)/, quantity: 1, unit: "袋", location: "冷蔵" },
@@ -2306,11 +2346,15 @@ const RECEIPT_RULES = [
   // 生ハムをハムとして拾わないよう前に置く
   { id: "prosciutto", name: "生ハム", pattern: /(?:生ハム|生はむ|プロシュート)/, quantity: 1, unit: "パック", location: "冷蔵" },
   { id: "ham", name: "ハム", pattern: /(?:ハム|はむ)/, quantity: 1, unit: "パック", location: "冷蔵" },
+  // 魚肉ソーセージをソーセージとして拾わないよう前に置く
+  { id: "fish-sausage", name: "魚肉ソーセージ", pattern: /(?:魚肉ソーセージ|フィッシュソーセージ|おさかなソーセージ)/, quantity: 1, unit: "本", location: "冷蔵" },
   { id: "sausage", name: "ソーセージ", pattern: /(?:ソーセージ|ウインナー|ウィンナー)/, quantity: 1, unit: "袋", location: "冷蔵" },
   { id: "potato", name: "じゃがいも", pattern: /(?:じゃがいも|ジャガイモ|馬鈴薯)/, quantity: 1, unit: "個", location: "冷蔵" },
   // 小ねぎをねぎとして拾わないよう前に置く
   { id: "green-onion-small", name: "小ねぎ", pattern: /(?:小ねぎ|小ネギ|万能ねぎ|万能ネギ|わけぎ|ワケギ|細ねぎ)/, quantity: 1, unit: "袋", location: "冷蔵" },
   { id: "green-onion", name: "ねぎ", pattern: /(?:長ねぎ|長ネギ|青ねぎ|青ネギ|ねぎ|ネギ|葱)/, quantity: 1, unit: "本", location: "冷蔵" },
+  // コンデンスミルクを牛乳として拾わないよう前に置く（牛乳のパターンに「ミルク」がある）
+  { id: "condensed-milk", name: "練乳", pattern: /(?:練乳|れん乳|コンデンスミルク)/, quantity: 1, unit: "個", location: "常温" },
   { id: "milk", name: "牛乳", pattern: /(?:牛乳|ミルク)/, quantity: 1, unit: "本", location: "冷蔵" },
   { id: "yogurt", name: "ヨーグルト", pattern: /(?:ヨーグルト|ヨ-グルト)/, quantity: 1, unit: "個", location: "冷蔵" },
   { id: "natto", name: "納豆", pattern: /(?:納豆|なっとう)/, quantity: 1, unit: "パック", location: "冷蔵" },
@@ -2330,6 +2374,16 @@ const RECEIPT_RULES = [
   { id: "cucumber", name: "きゅうり", pattern: /(?:きゅうり|キュウリ|胡瓜)/, quantity: 1, unit: "本", location: "冷蔵" },
   { id: "beef", name: "牛肉", pattern: /(?:牛肉|国産牛|和牛|牛肩|牛バラ|牛ばら|牛もも|牛こま|牛切落|牛切り落)/, quantity: 100, unit: "g", location: "冷蔵" },
   { id: "salmon", name: "鮭", pattern: /(?:鮭|サーモン)/, quantity: 1, unit: "切れ", location: "冷蔵" },
+  // スライスチーズをチーズとして拾わないよう前に置く
+  { id: "sliced-cheese", name: "スライスチーズ", pattern: /(?:スライスチーズ|とろけるスライス)/, quantity: 1, unit: "袋", location: "冷蔵" },
+  // ピザ用チーズをチーズとして拾わないよう前に置く
+  { id: "pizza-cheese", name: "ピザ用チーズ", pattern: /(?:ピザ用チーズ|シュレッドチーズ|とろけるチーズ)/, quantity: 1, unit: "袋", location: "冷蔵" },
+  // クリームチーズをチーズとして拾わないよう前に置く
+  { id: "cream-cheese", name: "クリームチーズ", pattern: /(?:クリームチーズ)/, quantity: 1, unit: "個", location: "冷蔵" },
+  // 粉チーズをチーズとして拾わないよう前に置く
+  { id: "powdered-cheese", name: "粉チーズ", pattern: /(?:粉チーズ|パルメザン|パルミジャーノ)/, quantity: 1, unit: "個", location: "常温" },
+  // モッツァレラチーズをチーズとして拾わないよう前に置く
+  { id: "mozzarella", name: "モッツァレラ", pattern: /(?:モッツァレラ|モッツアレラ)/, quantity: 1, unit: "個", location: "冷蔵" },
   { id: "cheese", name: "チーズ", pattern: /(?:チーズ|ちーず)/, quantity: 100, unit: "g", location: "冷蔵" },
   { id: "bonito", name: "かつお節", pattern: /(?:かつお節|カツオ節|鰹節)/, quantity: 1, unit: "袋", location: "常温" },
   // 部位つきのひき肉を、総称の「ひき肉」より先に判定させる
@@ -2374,6 +2428,8 @@ const RECEIPT_RULES = [
   { id: "tuna-sashimi", name: "まぐろ", pattern: /(?:まぐろ|マグロ|鮪|めばち|びんちょう)/, quantity: 1, unit: "パック", location: "冷蔵" },
   { id: "cod", name: "たら", pattern: /(?:真だら|マダラ|生たら|たら切身|たら切り身|鱈)/, quantity: 1, unit: "切れ", location: "冷蔵" },
   { id: "saury", name: "さんま", pattern: /(?:さんま|サンマ|秋刀魚)/, quantity: 1, unit: "本", location: "冷蔵" },
+  // 既存のあじが「あじの開き」も拾うので前に置く
+  { id: "dried-aji", name: "あじの開き", pattern: /(?:あじの開き|アジの開き|鯵の開き|アジ開き)/, quantity: 1, unit: "枚", location: "冷蔵" },
   { id: "horse-mackerel", name: "あじ", pattern: /(?:鯵|アジ(?!ア)|あじ(?:の開き)?(?![^\s]*(?:つけ|付け)))/, quantity: 1, unit: "本", location: "冷蔵" },
   { id: "sardine", name: "いわし", pattern: /(?:いわし|イワシ|鰯)/, quantity: 1, unit: "本", location: "冷蔵" },
   { id: "squid", name: "いか", pattern: /(?:するめいか|スルメイカ|やりいか|ヤリイカ|烏賊|イカ(?!リ))/, quantity: 1, unit: "本", location: "冷蔵" },
@@ -2414,6 +2470,8 @@ const RECEIPT_RULES = [
   { id: "yam", name: "長芋", pattern: /(?:長芋|ながいも|ナガイモ|山芋|やまいも)/, quantity: 1, unit: "本", location: "冷蔵" },
   { id: "burdock", name: "ごぼう", pattern: /(?:ごぼう|ゴボウ|牛蒡)/, quantity: 1, unit: "本", location: "冷蔵" },
   { id: "lotus-root", name: "れんこん", pattern: /(?:れんこん|レンコン|蓮根)/, quantity: 1, unit: "本", location: "冷蔵" },
+  // めかぶを「かぶ」として拾わないよう前に置く
+  { id: "mekabu", name: "めかぶ", pattern: /(?:めかぶ|メカブ|芽かぶ)/, quantity: 1, unit: "パック", location: "冷蔵" },
   { id: "turnip", name: "かぶ", pattern: /(?:かぶ(?!せ)|カブ(?!キ)|蕪)/, quantity: 1, unit: "個", location: "冷蔵" },
   { id: "boiled-bamboo", name: "たけのこ水煮", pattern: /(?:たけのこ|タケノコ|筍)/, quantity: 1, unit: "袋", location: "常温" },
   { id: "paprika", name: "パプリカ", pattern: /(?:パプリカ|ぱぷりか)/, quantity: 1, unit: "個", location: "冷蔵" },
@@ -2505,7 +2563,33 @@ const RECEIPT_RULES = [
   { id: "sea-bream", name: "たい", pattern: /(?:真鯛|まだい|マダイ|鯛)/, quantity: 1, unit: "切れ", location: "冷蔵" },
   { id: "bonito-fresh", name: "かつお", pattern: /(?:かつおたたき|かつお(?!節|ぶし|だし)|カツオ(?!節)|鰹(?!節))/, quantity: 1, unit: "パック", location: "冷蔵" },
   { id: "swordfish", name: "めかじき", pattern: /(?:めかじき|メカジキ|旗魚|かじき)/, quantity: 1, unit: "切れ", location: "冷蔵" },
-  { id: "eel", name: "うなぎ", pattern: /(?:うなぎ|ウナギ|鰻|蒲焼)/, quantity: 1, unit: "パック", location: "冷蔵" }
+  { id: "eel", name: "うなぎ", pattern: /(?:うなぎ|ウナギ|鰻|蒲焼)/, quantity: 1, unit: "パック", location: "冷蔵" },
+  // ここから シート18〜20 の食材
+  { id: "chirimen", name: "ちりめんじゃこ", pattern: /(?:ちりめんじゃこ|ちりめん雑魚|ちりめん|じゃこ)/, quantity: 1, unit: "パック", location: "冷蔵" },
+  { id: "ikura", name: "いくら", pattern: /(?:いくら|イクラ)/, quantity: 1, unit: "パック", location: "冷蔵" },
+  { id: "crab", name: "かに", pattern: /(?:ずわいがに|ズワイガニ|たらばがに|タラバガニ|かに(?!かま)|カニ(?!カマ|風味))/, quantity: 1, unit: "パック", location: "冷蔵" },
+  { id: "hamaguri", name: "はまぐり", pattern: /(?:はまぐり|ハマグリ|蛤)/, quantity: 1, unit: "袋", location: "冷蔵" },
+  { id: "mozuku", name: "もずく", pattern: /(?:もずく|モズク)/, quantity: 1, unit: "パック", location: "冷蔵" },
+  { id: "ika-shiokara", name: "いかの塩辛", pattern: /(?:塩辛|しおから)/, quantity: 1, unit: "個", location: "冷蔵" },
+  { id: "margarine", name: "マーガリン", pattern: /(?:マーガリン|まーがりん)/, quantity: 1, unit: "個", location: "冷蔵" },
+  { id: "ganmodoki", name: "がんもどき", pattern: /(?:がんもどき|ガンモドキ|がんも)/, quantity: 1, unit: "袋", location: "冷蔵" },
+  { id: "yuba", name: "湯葉", pattern: /(?:湯葉|ゆば)/, quantity: 1, unit: "袋", location: "冷蔵" },
+  { id: "okara", name: "おから", pattern: /(?:おから|オカラ|卯の花)/, quantity: 1, unit: "袋", location: "冷蔵" },
+  { id: "brown-rice", name: "玄米", pattern: /(?:玄米)/, quantity: 2000, unit: "g", location: "常温" },
+  { id: "mochi-rice", name: "もち米", pattern: /(?:もち米|もちごめ|糯米)/, quantity: 1000, unit: "g", location: "常温" },
+  { id: "rice-raw", name: "米", pattern: /(?:無洗米|白米|精米|コシヒカリ|あきたこまち|ひとめぼれ|米(?!粉|油|酢|味噌|びつ|麹|こうじ))/, quantity: 5000, unit: "g", location: "常温" },
+  { id: "croissant", name: "クロワッサン", pattern: /(?:クロワッサン)/, quantity: 1, unit: "個", location: "常温" },
+  { id: "bagel", name: "ベーグル", pattern: /(?:ベーグル)/, quantity: 1, unit: "個", location: "常温" },
+  { id: "english-muffin", name: "イングリッシュマフィン", pattern: /(?:イングリッシュマフィン|マフィン)/, quantity: 1, unit: "袋", location: "常温" },
+  { id: "naan", name: "ナン", pattern: /(?:ナン(?!プラー)|ナンブレッド)/, quantity: 1, unit: "袋", location: "常温" },
+  { id: "tortilla", name: "トルティーヤ", pattern: /(?:トルティーヤ|トルティージャ)/, quantity: 1, unit: "袋", location: "常温" },
+  { id: "penne", name: "ペンネ", pattern: /(?:ペンネ|ぺんね)/, quantity: 100, unit: "g", location: "常温" },
+  { id: "bifun", name: "ビーフン", pattern: /(?:ビーフン|びーふん)/, quantity: 1, unit: "袋", location: "常温" },
+  { id: "kishimen", name: "きしめん", pattern: /(?:きしめん|キシメン)/, quantity: 1, unit: "袋", location: "常温" },
+  { id: "pancake-mix", name: "ホットケーキミックス", pattern: /(?:ホットケーキミックス|パンケーキミックス)/, quantity: 600, unit: "g", location: "常温" },
+  { id: "okonomiyaki-flour", name: "お好み焼き粉", pattern: /(?:お好み焼き粉|お好み焼粉|おこのみ焼き粉)/, quantity: 400, unit: "g", location: "常温" },
+  { id: "bread-flour", name: "強力粉", pattern: /(?:強力粉|きょうりき粉)/, quantity: 500, unit: "g", location: "常温" },
+  { id: "shiratamako", name: "白玉粉", pattern: /(?:白玉粉|しらたま粉)/, quantity: 200, unit: "g", location: "常温" }
 ];
 
 const ILLUSTRATED_INGREDIENT_CATEGORIES = [
