@@ -9,7 +9,13 @@ const RECIPE_PAGE_SIZE = 3;
 const RECIPE_LIST_SERVINGS = 1;
 
 // 方針書の「初期状態では料理選びを複雑にしない」に合わせ、栄養表示は既定で出さない
-const DEFAULT_SETTINGS = { showNutrition: false, sampleNoticeDone: false, dayAfterSkippedOn: "" };
+const DEFAULT_SETTINGS = {
+  showNutrition: false,
+  sampleNoticeDone: false,
+  dayAfterSkippedOn: "",
+  // 見終わった売り場。進み具合の表示だけに使う（在庫の判定には使わない）
+  reviewedCategories: []
+};
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
@@ -2763,6 +2769,8 @@ const state = {
   cookAmountAnswers: {},
   // 初回登録。step 1 は主役選び、step 2 は候補の分かれ目を聞く
   onboarding: { step: 1, leads: [], extras: [] },
+  // 売り場を順番に回って足していく画面。added はこの画面で入れたぶん
+  refine: { index: 0, added: [] },
   settings: { ...DEFAULT_SETTINGS }
 };
 
@@ -2873,6 +2881,14 @@ const elements = {
   onboardingExtraGrid: document.querySelector("#onboarding-extra-grid"),
   onboardingSkip: document.querySelector("#onboarding-skip"),
   onboardingNext: document.querySelector("#onboarding-next"),
+  refineView: document.querySelector("#refine-view"),
+  refineProgress: document.querySelector("#refine-progress"),
+  refineTitle: document.querySelector("#refine-title"),
+  refineGrid: document.querySelector("#refine-grid"),
+  refineNext: document.querySelector("#refine-next"),
+  refineQuit: document.querySelector("#refine-quit"),
+  openRefine: document.querySelector("#open-refine"),
+  refineEntryNote: document.querySelector("#refine-entry-note"),
   dayAfterCheck: document.querySelector("#day-after-check"),
   dayAfterLead: document.querySelector("#day-after-lead"),
   dayAfterList: document.querySelector("#day-after-list"),
@@ -3035,6 +3051,120 @@ function answerDayAfter(id, answer) {
   renderDayAfterCheck();
 }
 
+// ---- 冷蔵庫をもっと正確にする ---------------------------------------------
+// 初回登録の続き。売り場を順番に回って、持っているものをタップするだけ。
+// 方針書ではカテゴリー式を第一案から「あとで足す精度向上機能」へ格下げした。
+// ここはその格下げ後の姿で、初回に押し付けず、いつでも途中でやめられる。
+//
+// 見終わった売り場を覚えておく（reviewed）。**在庫の判定には使わない**。
+// 見ていない売り場を「その食材は無い」と決めつけないためで、用途は進み具合の
+// 表示だけ。全部見た人に「ここまで見た」と返せるようにしている。
+
+function reviewedCategories() {
+  const saved = state.settings.reviewedCategories;
+  return Array.isArray(saved) ? saved : [];
+}
+
+function refineCategories() {
+  return displayedIngredientCategories();
+}
+
+function renderRefineEntry() {
+  const categories = refineCategories();
+  const reviewed = reviewedCategories().filter(
+    (name) => categories.some((category) => category.name === name)
+  );
+  elements.refineEntryNote.textContent = reviewed.length
+    ? `${categories.length}の売り場のうち ${reviewed.length} を見ました`
+    : `${categories.length}の売り場を順番に見て、あるものをタップします`;
+}
+
+function renderRefine() {
+  const categories = refineCategories();
+  const category = categories[state.refine.index];
+  if (!category) {
+    finishRefine();
+    return;
+  }
+
+  const owned = new Set(state.inventory.filter((item) => item.active !== false).map((item) => item.id));
+  elements.refineProgress.textContent = `${state.refine.index + 1} / ${categories.length}`;
+  elements.refineTitle.textContent = category.name;
+  elements.refineGrid.innerHTML = categoryDisplayGroups(category).map((group) => `
+    <section class="refine-group">
+      ${group.name ? `<h3>${escapeHtml(group.name)}</h3>` : ""}
+      <div class="refine-tile-grid">
+        ${group.items.map((id) => {
+          const item = illustratedIngredientItem(id);
+          if (!item) return "";
+          const has = owned.has(id);
+          const justAdded = state.refine.added.includes(id);
+          return `
+            <button
+              type="button"
+              class="onboarding-tile${has ? " is-selected" : ""}"
+              data-refine-pick="${escapeHtml(id)}"
+              aria-pressed="${has ? "true" : "false"}"
+              ${has && !justAdded ? "disabled" : ""}
+            >
+              ${renderIngredientIllustration(item.id, item.name)}
+              <span>${escapeHtml(item.name)}</span>
+            </button>
+          `;
+        }).join("")}
+      </div>
+    </section>
+  `).join("");
+
+  const last = state.refine.index === categories.length - 1;
+  elements.refineNext.textContent = last ? "見終わった" : "次の売り場へ";
+}
+
+function toggleRefineItem(id) {
+  const at = state.refine.added.indexOf(id);
+  if (at >= 0) {
+    // この画面で入れたものだけ取り消せる。前から入っていた在庫は消さない
+    state.refine.added.splice(at, 1);
+    state.inventory = state.inventory.filter((item) => item.id !== id);
+  } else {
+    const item = illustratedIngredientItem(id);
+    if (!item) return;
+    addOrMergeInventoryItem({
+      name: item.name,
+      quantity: item.quantity,
+      unit: item.unit,
+      location: item.location,
+      confidence: QUANTITY_UNKNOWN
+    });
+    rememberRecentIngredient(id);
+    state.refine.added.push(id);
+  }
+  persistInventory();
+  renderRefine();
+}
+
+function markCategoryReviewed() {
+  const category = refineCategories()[state.refine.index];
+  if (!category) return;
+  const reviewed = new Set(reviewedCategories());
+  reviewed.add(category.name);
+  state.settings.reviewedCategories = [...reviewed];
+  persistSettings();
+}
+
+function startRefine() {
+  state.refine = { index: 0, added: [] };
+  renderRefine();
+  showView("refine");
+  window.scrollTo({ top: 0, behavior: "auto" });
+}
+
+function finishRefine() {
+  renderAll();
+  renderRefineEntry();
+  showView("inventory");
+}
+
 function renderSampleNotice() {
   const samples = state.settings.sampleNoticeDone ? [] : untouchedSampleItems();
   elements.sampleNotice.hidden = samples.length === 0;
@@ -3111,6 +3241,11 @@ function loadSettings() {
     }
     if (typeof parsed?.dayAfterSkippedOn === "string") {
       state.settings.dayAfterSkippedOn = parsed.dayAfterSkippedOn;
+    }
+    if (Array.isArray(parsed?.reviewedCategories)) {
+      state.settings.reviewedCategories = parsed.reviewedCategories.filter(
+        (name) => typeof name === "string"
+      );
     }
   } catch {
     markStorageUnavailable();
@@ -4750,9 +4885,10 @@ function startOnboarding() {
 
 function showView(viewName) {
   // 初回登録の途中は下のタブを隠す。まだ「どの画面」でもないため
-  elements.bottomNav.hidden = viewName === "onboarding";
+  elements.bottomNav.hidden = viewName === "onboarding" || viewName === "refine";
   elements.onboardingView.hidden = viewName !== "onboarding";
-  elements.appHeader.hidden = viewName !== "inventory" && viewName !== "onboarding";
+  elements.refineView.hidden = viewName !== "refine";
+  elements.appHeader.hidden = !["inventory", "onboarding", "refine"].includes(viewName);
   elements.openSettings.hidden = viewName !== "inventory";
   elements.inventoryView.hidden = viewName !== "inventory";
   elements.managementView.hidden = viewName !== "management";
@@ -6416,6 +6552,29 @@ elements.onboardingSkip.addEventListener("click", () => {
   showView("inventory");
 });
 
+elements.openRefine.addEventListener("click", startRefine);
+
+elements.refineGrid.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-refine-pick]");
+  if (!button || button.disabled) return;
+  toggleRefineItem(button.dataset.refinePick);
+});
+
+elements.refineNext.addEventListener("click", () => {
+  markCategoryReviewed();
+  state.refine.index += 1;
+  state.refine.added = [];
+  if (state.refine.index >= refineCategories().length) {
+    finishRefine();
+    showToast("冷蔵庫を見直しました");
+    return;
+  }
+  renderRefine();
+  window.scrollTo({ top: 0, behavior: "auto" });
+});
+
+elements.refineQuit.addEventListener("click", finishRefine);
+
 elements.dayAfterList.addEventListener("click", (event) => {
   const button = event.target.closest("[data-day-after]");
   if (!button) return;
@@ -6726,6 +6885,7 @@ syncQuantityControl(
   elements.shoppingUnit.value
 );
 renderAll();
+renderRefineEntry();
 renderDayAfterCheck();
 renderSampleNotice();
 

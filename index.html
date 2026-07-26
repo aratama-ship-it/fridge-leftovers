@@ -12,9 +12,9 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="冷蔵庫の現在地">
-  <link rel="stylesheet" href="styles.css?v=8d00c0e4">
+  <link rel="stylesheet" href="styles.css?v=4fa4880a">
   <script src="vendor/tesseract/tesseract.min.js?v=7.0.0" defer></script>
-  <script src="app.js?v=2761d1cc" defer></script>
+  <script src="app.js?v=e46a3dd7" defer></script>
 </head>
 <body>
   <div class="app-shell">
@@ -52,6 +52,20 @@
         </div>
       </section>
 
+      <!-- 初回登録の続き。売り場を順番に回って、持っているものをタップする -->
+      <section class="view refine-view" id="refine-view" aria-labelledby="refine-title" hidden>
+        <div class="refine-head">
+          <p class="eyebrow" id="refine-progress"></p>
+          <h2 id="refine-title"></h2>
+          <p class="refine-lead">家にあるものをタップしてください。量は聞きません。</p>
+        </div>
+        <div class="refine-grid" id="refine-grid"></div>
+        <div class="refine-actions">
+          <button class="button button-secondary" type="button" id="refine-quit">やめる</button>
+          <button class="button button-primary" type="button" id="refine-next">次の売り場へ</button>
+        </div>
+      </section>
+
       <section class="view" id="inventory-view" aria-label="冷蔵庫">
         <!-- 昨日以前に作った分の在庫を、実物と突き合わせる -->
         <section class="day-after-check" id="day-after-check" aria-labelledby="day-after-title" hidden>
@@ -73,6 +87,15 @@
             <button class="button button-primary" type="button" id="sample-notice-clear">片付ける</button>
           </div>
         </section>
+
+        <!-- 初回登録の続き。押すまで何も起きない -->
+        <button class="refine-entry" type="button" id="open-refine">
+          <span class="refine-entry-copy">
+            <strong>冷蔵庫をもっと正確にする</strong>
+            <small id="refine-entry-note"></small>
+          </span>
+          <span class="refine-entry-mark" aria-hidden="true">→</span>
+        </button>
 
         <section class="fridge-visual" aria-labelledby="fridge-visual-title">
           <div class="fridge-visual-heading">
