@@ -6106,3 +6106,28 @@ syncQuantityControl(
   elements.shoppingUnit.value
 );
 renderAll();
+
+// ホーム画面のアイコンを長押しして選ぶショートカット（manifest.json）から
+// 開いたとき、その画面を最初に出す。履歴は触らない（戻るで画面が増えると
+// 「冷蔵庫へ戻れない」感じになるため）。
+const VIEW_BY_HASH = {
+  "#recipes": "suggestions",
+  "#shopping": "shopping",
+  "#stock": "management"
+};
+
+function showViewFromHash() {
+  const viewName = VIEW_BY_HASH[window.location.hash];
+  if (viewName) showView(viewName);
+}
+
+showViewFromHash();
+window.addEventListener("hashchange", showViewFromHash);
+
+// 通信が無くても起動できるようにする。index.html を file:// で直接開いた
+// ときは Service Worker を登録できないので、その場合は何もしない。
+if ("serviceWorker" in navigator && window.location.protocol.startsWith("http")) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js").catch(() => {});
+  });
+}

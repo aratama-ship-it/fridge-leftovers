@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ホーム画面アイコンの見え方</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 24px 20px 40px;
+      background: #d9ddd5;
+      color: #222722;
+      font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic UI", sans-serif;
+    }
+    h1 { margin: 0 0 4px; font-size: 1.05rem; }
+    p { margin: 0 0 22px; max-width: 34em; font-size: 0.82rem; line-height: 1.7; color: #667067; }
+    h2 { margin: 26px 0 10px; font-size: 0.82rem; letter-spacing: 0.06em; color: #2f644b; }
+    .row { display: flex; align-items: flex-end; gap: 18px; flex-wrap: wrap; }
+    figure { margin: 0; text-align: center; }
+    figcaption { margin-top: 6px; font-size: 0.68rem; color: #667067; }
+    img { display: block; }
+    .ios img { border-radius: 22.37%; }
+    .android img { border-radius: 50%; }
+    /* ホーム画面に並んだときの見え方。実機の壁紙は明るいことも暗いこともある */
+    .wall { display: flex; gap: 20px; padding: 18px; border-radius: 6px; }
+    .wall.light { background: #efe9dd; }
+    .wall.dark { background: #2a2f2b; }
+    .wall figcaption { color: inherit; }
+    .wall.dark { color: #cfd6cd; }
+  </style>
+</head>
+<body>
+  <h1>ホーム画面アイコンの見え方</h1>
+  <p>
+    <code>node scripts/build-icons.mjs</code> が書き出した実ファイルを並べている。
+    絵を直すときは <code>scripts/build-icons.mjs</code> を編集して書き出し直す。
+    iOSは角を自分で丸め、Androidは中央の円だけを安全域として扱うため、
+    それぞれのマスクをかけた状態も出している。
+  </p>
+
+  <h2>原寸</h2>
+  <div class="row">
+    <figure><img src="icons/icon-512.png" width="256" height="256" alt="512pxのアイコン"><figcaption>icon-512（半分に縮小）</figcaption></figure>
+    <figure class="ios"><img src="icons/apple-touch-icon.png" width="180" height="180" alt="iOSの角丸をかけた180pxのアイコン"><figcaption>apple-touch-icon / iOS角丸</figcaption></figure>
+    <figure class="android"><img src="icons/icon-maskable-512.png" width="180" height="180" alt="Androidの丸マスクをかけたアイコン"><figcaption>maskable / Android丸マスク</figcaption></figure>
+  </div>
+
+  <h2>実寸（ホーム画面に並ぶ大きさ）</h2>
+  <div class="wall light">
+    <figure class="ios"><img src="icons/icon-192.png" width="60" height="60" alt=""><figcaption>60pt</figcaption></figure>
+    <figure class="ios"><img src="icons/icon-192.png" width="48" height="48" alt=""><figcaption>48pt</figcaption></figure>
+    <figure><img src="icons/favicon-32.png" width="32" height="32" alt=""><figcaption>32px favicon</figcaption></figure>
+    <figure><img src="icons/favicon-32.png" width="16" height="16" alt=""><figcaption>16px</figcaption></figure>
+  </div>
+  <div class="wall dark" style="margin-top:12px">
+    <figure class="ios"><img src="icons/icon-192.png" width="60" height="60" alt=""><figcaption>60pt（暗い壁紙）</figcaption></figure>
+    <figure class="ios"><img src="icons/icon-192.png" width="48" height="48" alt=""><figcaption>48pt</figcaption></figure>
+    <figure><img src="icons/favicon-32.png" width="32" height="32" alt=""><figcaption>32px</figcaption></figure>
+  </div>
+</body>
+</html>

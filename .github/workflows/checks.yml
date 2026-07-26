@@ -18,6 +18,14 @@ jobs:
       - name: 初期単位チェック
         run: node scripts/check-initial-units.mjs
 
-      # index.html の ?v= が中身と合っているか（上げ忘れの検出）
+      # index.html の ?v= と sw.js の版・先読みリストが中身と合っているか
       - name: キャッシュ回避クエリの整合
         run: node scripts/cache-version.mjs --check
+
+      # ホーム画面のアイコンが、今の版下から書き出したものと一致しているか
+      - name: アイコンの整合
+        run: node scripts/build-icons.mjs --check
+
+      # アトラスの背景がちゃんと抜けているか（緑背景の混入の検出）
+      - name: アトラスの背景抜け
+        run: node scripts/check-atlas-alpha.mjs all

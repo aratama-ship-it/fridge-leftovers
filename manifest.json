@@ -1,0 +1,50 @@
+{
+  "name": "冷蔵庫の現在地",
+  "short_name": "冷蔵庫の現在地",
+  "description": "冷蔵庫の在庫を管理し、残っている食材から今日作れる料理を提案する",
+  "lang": "ja",
+  "start_url": "./",
+  "scope": "./",
+  "id": "fridge-leftovers",
+  "display": "standalone",
+  "background_color": "#f3f0e6",
+  "theme_color": "#f3f0e6",
+  "categories": ["food", "lifestyle", "utilities"],
+  "icons": [
+    {
+      "src": "assets/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "今日つくれる料理",
+      "short_name": "レシピ",
+      "url": "./#recipes"
+    },
+    {
+      "name": "スーパーで買うもの",
+      "short_name": "買い物",
+      "url": "./#shopping"
+    },
+    {
+      "name": "在庫を直す",
+      "short_name": "在庫",
+      "url": "./#stock"
+    }
+  ]
+}
