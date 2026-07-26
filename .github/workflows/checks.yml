@@ -18,6 +18,10 @@ jobs:
       - name: 初期単位チェック
         run: node scripts/check-initial-units.mjs
 
+      # 主役リストが今のレシピと食い違っていないか
+      - name: 主役リストの整合
+        run: node scripts/pick-lead-ingredients.mjs --check
+
       # 在庫とレシピの突き合わせ（不足判定・代用・単位換算・数量の確信度）
       - name: レシピ判定チェック
         run: node scripts/check-recipe-logic.mjs

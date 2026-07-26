@@ -36,12 +36,38 @@ const quantityUnknown = (item) => quantityConfidence(item) === QUANTITY_UNKNOWN;
 const lessCertain = (a, b) =>
   CONFIDENCE_ORDER[Math.max(CONFIDENCE_ORDER.indexOf(a), CONFIDENCE_ORDER.indexOf(b))];
 
+// はじめから入っている5品。**本人の冷蔵庫ではない**ので、初回の料理提案が
+// 実際と無関係になる。オンボーディングで置き換える対象で、origin で見分ける。
+// 既存の保存データにはこの項目が無いため、片付けを提案するときは
+// 数量・単位・場所が初期値のままかどうかも併せて見る。
+const SAMPLE_ORIGIN = "sample";
+
 const DEFAULT_INVENTORY = [
-  { id: "cabbage", name: "キャベツ", quantity: 180, unit: "g", location: "冷蔵", priority: true, active: true, confirmedAt: todayIso(), step: 50 },
-  { id: "eggs", name: "卵", quantity: 3, unit: "個", location: "冷蔵", priority: false, active: true, confirmedAt: todayIso(), step: 1 },
-  { id: "mushroom", name: "しめじ", quantity: 0.5, unit: "株", location: "冷蔵", priority: false, active: true, confirmedAt: todayIso(), step: 0.25 },
-  { id: "pork", name: "豚こま", quantity: 120, unit: "g", location: "冷蔵", priority: false, active: true, confirmedAt: todayIso(), step: 50 },
-  { id: "rice", name: "ごはん", quantity: 1, unit: "膳", location: "冷凍", priority: false, active: true, confirmedAt: todayIso(), step: 1 }
+  { id: "cabbage", name: "キャベツ", quantity: 180, unit: "g", location: "冷蔵", priority: true, active: true, confirmedAt: todayIso(), step: 50, origin: SAMPLE_ORIGIN },
+  { id: "eggs", name: "卵", quantity: 3, unit: "個", location: "冷蔵", priority: false, active: true, confirmedAt: todayIso(), step: 1, origin: SAMPLE_ORIGIN },
+  { id: "mushroom", name: "しめじ", quantity: 0.5, unit: "株", location: "冷蔵", priority: false, active: true, confirmedAt: todayIso(), step: 0.25, origin: SAMPLE_ORIGIN },
+  { id: "pork", name: "豚こま", quantity: 120, unit: "g", location: "冷蔵", priority: false, active: true, confirmedAt: todayIso(), step: 50, origin: SAMPLE_ORIGIN },
+  { id: "rice", name: "ごはん", quantity: 1, unit: "膳", location: "冷凍", priority: false, active: true, confirmedAt: todayIso(), step: 1, origin: SAMPLE_ORIGIN }
+];
+
+// 初回に「今夜使えそうな主役」として見せる食材。
+//
+// レシピの実データから選んでいる（`node scripts/pick-lead-ingredients.mjs`）。
+// 選ぶ基準は「その食材が最低限必要に入るレシピが何件あるか」。選んだのに
+// 候補が出ない食材を並べると、そこが行き止まりになるため。
+//
+// 総称と部位が両方ある場合（鶏むね・もも・ささみ・手羽）は、代用が効いて
+// どれを選んでも同じ件数になる。並べても選びにくくなるだけなので、
+// 家庭でよく買う形だけを出す。
+//
+// さば2件・ぶり2件・えび2件・納豆1件・そば1件・焼きそば麺1件は3件に届かない。
+// それでも出すのは、実際に持っている人がいるため。足りない分は主役以外の
+// レシピから補う。
+const LEAD_INGREDIENTS = [
+  { name: "肉", ids: ["ground-meat", "pork", "pork-belly", "chicken", "chicken-thigh", "beef"] },
+  { name: "魚介", ids: ["salmon", "tuna", "mackerel", "yellowtail", "shrimp"] },
+  { name: "卵・豆腐", ids: ["eggs", "tofu", "natto"] },
+  { name: "主食・麺", ids: ["rice", "bread", "pasta", "udon", "yakisoba-noodles", "soba"] }
 ];
 
 const RECIPES = [
