@@ -1,10 +1,15 @@
 #!/usr/bin/env node
 // ホーム画面のアイコンを書き出す。
 //
-// 絵は「アプリの中の冷蔵庫」をそのまま小さくしたもの。地は葉色、本体は
-// クリームの紙色、上は冷凍室の淡い青、下の庫内に棚2本と中身3つ。色は
-// styles.css の :root と .fridge-* から取っている。ホーム画面に並んだとき、
-// つるつるしたアイコンの列の中で「台所のノート」に見えることを狙っている。
+// 素材は2つ（Codexが描いたもの）。
+//   assets/icon-src/foreground-1024.png … 冷蔵庫の絵だけ。背景は透過
+//   assets/icon-src/background.txt      … 地の色。1行なら単色、2行なら縦グラデ
+//
+// ★この2つに分けているのは、Androidのアイコンが「背景」と「前景」を重ねて
+// 端末側が円や角丸に切り抜く決まりだから。前景を分けておけば、切り抜きに
+// 合わせて縮め方を変えられる。1枚の完成画像だと、切り抜かれる分を見越した
+// 余白を絵の中に持たせることになり、iOSでは余白が大きすぎ、Androidでは
+// ぎりぎり、という板挟みになる。
 //
 //   node scripts/build-icons.mjs           assets/icons/ へ5枚書き出す
 //   node scripts/build-icons.mjs --check    今のファイルと一致するか確かめる
@@ -19,8 +24,9 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = path.join(ROOT, "assets/icons");
+const SRC = path.join(ROOT, "assets/icon-src");
 
-// PNG の書き出しは build-atlas.mjs のものを借りる。二重に実装したくない。
+// PNG の読み書きは build-atlas.mjs のものを借りる。二重に実装したくない。
 const source = fs.readFileSync(path.join(ROOT, "scripts/build-atlas.mjs"), "utf8");
 const grab = (name) => {
   const start = source.indexOf(`function ${name}(`);
@@ -32,15 +38,12 @@ const crcTableSource = source.slice(
   source.indexOf("const crcTable ="),
   source.indexOf(";", source.indexOf("});", source.indexOf("const crcTable ="))) + 1
 );
-const { encodePng } = new Function(
+const { decodePng, encodePng } = new Function(
   "fs", "zlib", "Buffer", "PNG_SIGNATURE",
-  crcTableSource + "\n" + ["crc32", "pngChunk", "encodePng"].map(grab).join("\n")
-  + "; return { encodePng };"
+  crcTableSource + "\n"
+  + ["paethPredictor", "decodePng", "crc32", "pngChunk", "encodePng"].map(grab).join("\n")
+  + "; return { decodePng, encodePng };"
 )(fs, zlib, Buffer, Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
-
-// ---- 塗り ----------------------------------------------------------------
-// 形は符号付き距離で持つ。距離から被覆率を出せば、追加の標本化なしで
-// 縁がなめらかになる（32pxでも輪郭が階段にならない）。
 
 const rgb = (hex) => [
   parseInt(hex.slice(1, 3), 16),
@@ -48,183 +51,155 @@ const rgb = (hex) => [
   parseInt(hex.slice(5, 7), 16)
 ];
 
-const PAPER = rgb("#f3f0e6");
-const LEAF = rgb("#2f644b");
-const LEAF_DARK = rgb("#1d4331");
-const FREEZER = rgb("#c7e2ed");
-const CHAMBER = rgb("#e7eee8");
-const SHELF = rgb("#96a99c");
-const HANDLE = rgb("#dfe6dc");
-const WARM = rgb("#a8492d");
-const SPROUT = rgb("#4c7a52");
-const BUTTER = rgb("#e8c25f");
-const EDGE = rgb("#788a7c");
+function readBackground() {
+  const lines = fs.readFileSync(path.join(SRC, "background.txt"), "utf8")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => /^#[0-9a-fA-F]{6}$/.test(line));
+  if (!lines.length) throw new Error("background.txt に色（#RRGGBB）がありません");
+  return lines.length === 1 ? [rgb(lines[0]), rgb(lines[0])] : [rgb(lines[0]), rgb(lines[1])];
+}
+
+// ---- 画像の組み立て ------------------------------------------------------
 
 function canvas(size) {
   return { width: size, height: size, pixels: Buffer.alloc(size * size * 4, 0) };
 }
 
-function blend(image, x, y, color, alpha) {
-  if (alpha <= 0) return;
-  const offset = (y * image.width + x) * 4;
-  const source = Math.min(1, alpha);
-  const target = image.pixels[offset + 3] / 255;
-  const out = source + target * (1 - source);
-  for (let channel = 0; channel < 3; channel += 1) {
-    const under = image.pixels[offset + channel];
-    image.pixels[offset + channel] = Math.round(
-      (color[channel] * source + under * target * (1 - source)) / out
-    );
-  }
-  image.pixels[offset + 3] = Math.round(out * 255);
-}
-
-// 角丸長方形までの符号付き距離（内側が負）
-function roundRectDistance(px, py, x, y, w, h, r) {
-  const radius = Math.min(r, w / 2, h / 2);
-  const cx = Math.abs(px - (x + w / 2)) - (w / 2 - radius);
-  const cy = Math.abs(py - (y + h / 2)) - (h / 2 - radius);
-  const dx = Math.max(cx, 0);
-  const dy = Math.max(cy, 0);
-  return Math.min(Math.max(cx, cy), 0) + Math.hypot(dx, dy) - radius;
-}
-
-function fillShape(image, distance, color, box) {
-  const left = Math.max(0, Math.floor(box[0]) - 2);
-  const top = Math.max(0, Math.floor(box[1]) - 2);
-  const right = Math.min(image.width, Math.ceil(box[2]) + 2);
-  const bottom = Math.min(image.height, Math.ceil(box[3]) + 2);
-  for (let y = top; y < bottom; y += 1) {
-    for (let x = left; x < right; x += 1) {
-      const d = distance(x + 0.5, y + 0.5);
-      const coverage = Math.min(1, Math.max(0, 0.5 - d));
-      if (coverage > 0) blend(image, x, y, color, coverage);
+// 面で平均する縮小。1024→60 のような大きな縮小でも、点を拾うだけの方式と
+// 違って線が消えたり跳ねたりしない。
+function resize(image, size) {
+  const out = canvas(size);
+  const scale = image.width / size;
+  for (let y = 0; y < size; y += 1) {
+    const top = Math.floor(y * scale);
+    const bottom = Math.min(image.height, Math.max(top + 1, Math.ceil((y + 1) * scale)));
+    for (let x = 0; x < size; x += 1) {
+      const left = Math.floor(x * scale);
+      const right = Math.min(image.width, Math.max(left + 1, Math.ceil((x + 1) * scale)));
+      let r = 0;
+      let g = 0;
+      let b = 0;
+      let a = 0;
+      let count = 0;
+      for (let sy = top; sy < bottom; sy += 1) {
+        for (let sx = left; sx < right; sx += 1) {
+          const at = (sy * image.width + sx) * 4;
+          const alpha = image.pixels[at + 3] / 255;
+          // 色は不透明度で重み付けして混ぜる。しないと透明部分の色が
+          // にじみ出て、縁がくすむ
+          r += image.pixels[at] * alpha;
+          g += image.pixels[at + 1] * alpha;
+          b += image.pixels[at + 2] * alpha;
+          a += alpha;
+          count += 1;
+        }
+      }
+      const at = (y * size + x) * 4;
+      if (a > 0) {
+        out.pixels[at] = Math.round(r / a);
+        out.pixels[at + 1] = Math.round(g / a);
+        out.pixels[at + 2] = Math.round(b / a);
+      }
+      out.pixels[at + 3] = Math.round((a / count) * 255);
     }
   }
+  return out;
 }
 
-function roundRect(image, x, y, w, h, r, color) {
-  fillShape(image, (px, py) => roundRectDistance(px, py, x, y, w, h, r), color,
-    [x, y, x + w, y + h]);
+// 前景を中心のまま拡げる／縮める。1倍を超えると枠から出た分は捨てる
+// （素材は中央に寄っているので、絵そのものは欠けない）。
+function rescale(image, ratio) {
+  if (ratio === 1) return image;
+  const inner = resize(image, Math.round(image.width * ratio));
+  const out = canvas(image.width);
+  const offset = Math.round((image.width - inner.width) / 2);
+  for (let y = 0; y < inner.height; y += 1) {
+    const ty = y + offset;
+    if (ty < 0 || ty >= out.height) continue;
+    for (let x = 0; x < inner.width; x += 1) {
+      const tx = x + offset;
+      if (tx < 0 || tx >= out.width) continue;
+      const from = (y * inner.width + x) * 4;
+      const to = (ty * out.width + tx) * 4;
+      for (let channel = 0; channel < 4; channel += 1) {
+        out.pixels[to + channel] = inner.pixels[from + channel];
+      }
+    }
+  }
+  return out;
 }
 
-function roundRectOutline(image, x, y, w, h, r, width, color) {
-  fillShape(
-    image,
-    (px, py) => Math.abs(roundRectDistance(px, py, x, y, w, h, r)) - width / 2,
-    color,
-    [x - width, y - width, x + w + width, y + h + width]
-  );
+function compose(foreground, size, [top, bottom]) {
+  const art = resize(foreground, size);
+  const out = canvas(size);
+  for (let y = 0; y < size; y += 1) {
+    const ratio = size === 1 ? 0 : y / (size - 1);
+    const ground = [0, 1, 2].map((channel) =>
+      top[channel] + (bottom[channel] - top[channel]) * ratio);
+    for (let x = 0; x < size; x += 1) {
+      const at = (y * size + x) * 4;
+      const alpha = art.pixels[at + 3] / 255;
+      for (let channel = 0; channel < 3; channel += 1) {
+        out.pixels[at + channel] = Math.round(
+          art.pixels[at + channel] * alpha + ground[channel] * (1 - alpha)
+        );
+      }
+      out.pixels[at + 3] = 255;
+    }
+  }
+  return out;
 }
 
-function circle(image, cx, cy, r, color) {
-  fillShape(image, (px, py) => Math.hypot(px - cx, py - cy) - r, color,
-    [cx - r, cy - r, cx + r, cy + r]);
-}
-
-// ---- 絵 ------------------------------------------------------------------
-// 座標はすべて S（辺の長さ）に対する比。scale は maskable 用で、Androidが
-// 安全域として扱う中央80%の円へ収めるために中心のまま縮める。
+// ★切り抜きの有無で置く大きさを変える。前景を別に受け取っている利点はここ。
 //
-// 64px以下では棚2本＋中身3つが潰れて灰色の帯になるので、棚1本・中身2つに
-// 減らして粒を大きくする（光学サイズの作り分け）。
-
-function drawIcon(size, scale = 1) {
-  const image = canvas(size);
-  const S = size;
-  const small = S <= 64;
-
-  // 地：葉色。上から下へわずかに沈ませて、紙の白が浮くようにする
-  for (let y = 0; y < S; y += 1) {
-    const ratio = y / (S - 1);
-    const color = [0, 1, 2].map((channel) =>
-      Math.round(LEAF[channel] + (LEAF_DARK[channel] - LEAF[channel]) * ratio)
-    );
-    for (let x = 0; x < S; x += 1) blend(image, x, y, color, 1);
-  }
-
-  // scale を効かせるため、比を中心から縮める座標変換を用意する
-  const px = (value) => S / 2 + (value * S - S / 2) * scale;
-  const len = (value) => value * S * scale;
-
-  const bodyX = px(0.205);
-  const bodyY = px(0.145);
-  const bodyW = len(0.59);
-  const bodyH = len(0.71);
-
-  // 取っ手は本体の右外側。アプリ内の冷蔵庫と同じ位置
-  roundRect(image, bodyX + bodyW - len(0.004), bodyY + len(0.145),
-    len(0.042), len(0.17), len(0.018), HANDLE);
-
-  roundRect(image, bodyX, bodyY, bodyW, bodyH, len(0.055), PAPER);
-
-  const inset = len(0.045);
-  const innerX = bodyX + inset;
-  const innerW = bodyW - inset * 2;
-
-  // 冷凍室（上）。淡い青はこの絵が「冷蔵庫」だと一目で分かる手がかり
-  const freezerY = bodyY + inset;
-  const freezerH = len(small ? 0.16 : 0.145);
-  roundRect(image, innerX, freezerY, innerW, freezerH, len(0.026), FREEZER);
-
-  // 冷蔵室（下）
-  const chamberY = freezerY + freezerH + len(0.032);
-  const chamberH = bodyY + bodyH - inset - chamberY;
-  roundRect(image, innerX, chamberY, innerW, chamberH, len(0.026), CHAMBER);
-
-  // 仕切りの縁。塗りだけだと平たいので、庫内に細い線を回す
-  if (!small) {
-    const width = Math.max(1, len(0.006));
-    const edge = EDGE.map((channel, index) =>
-      Math.round(channel * 0.34 + CHAMBER[index] * 0.66)
-    );
-    roundRectOutline(image, innerX, freezerY, innerW, freezerH, len(0.026), width, edge);
-    roundRectOutline(image, innerX, chamberY, innerW, chamberH, len(0.026), width, edge);
-  }
-
-  // 棚。中身を乗せる線として、はっきり引く
-  const shelfH = len(small ? 0.028 : 0.019);
-  const shelves = small
-    ? [chamberY + chamberH * 0.62]
-    : [chamberY + chamberH * 0.44, chamberY + chamberH * 0.83];
-  for (const y of shelves) {
-    roundRect(image, innerX + len(0.012), y, innerW - len(0.024), shelfH, shelfH / 2, SHELF);
-  }
-
-  // 中身。棚の上に置く
-  if (small) {
-    const top = shelves[0];
-    circle(image, innerX + innerW * 0.33, top - len(0.062), len(0.058), WARM);
-    circle(image, innerX + innerW * 0.68, top - len(0.056), len(0.05), SPROUT);
-  } else {
-    const [upper, lower] = shelves;
-    circle(image, innerX + innerW * 0.31, upper - len(0.043), len(0.04), WARM);
-    circle(image, innerX + innerW * 0.66, upper - len(0.037), len(0.034), SPROUT);
-    circle(image, innerX + innerW * 0.47, lower - len(0.036), len(0.033), BUTTER);
-  }
-
-  return image;
-}
-
-// Androidは中央80%の円だけを安全域として扱う。本体の角が円の外へ出るので、
-// maskable 用は少し縮める。
-const MASKABLE_SCALE = 0.84;
+// maskable（Android）は中央80%の円しか安全域が無いので、素材のまま置く。
+// 素材は中心から399pxに収まっていて、安全域409.6pxの内側なので触らない。
+//
+// それ以外（iOSのホーム画面・favicon）は角が丸められるだけなので、同じ
+// 大きさで置くと余白が広すぎて絵が小さく見える。実寸48〜60pxで並べて
+// 確かめ、1.3倍に上げた。
+const MASKABLE_SCALE = 1;
+const ANY_SCALE = 1.3;
 
 const FILES = [
-  { name: "icon-192.png", size: 192, scale: 1 },
-  { name: "icon-512.png", size: 512, scale: 1 },
+  { name: "icon-192.png", size: 192, scale: ANY_SCALE },
+  { name: "icon-512.png", size: 512, scale: ANY_SCALE },
   { name: "icon-maskable-512.png", size: 512, scale: MASKABLE_SCALE },
-  { name: "apple-touch-icon.png", size: 180, scale: 1 },
-  { name: "favicon-32.png", size: 32, scale: 1 }
+  { name: "apple-touch-icon.png", size: 180, scale: ANY_SCALE },
+  { name: "favicon-32.png", size: 32, scale: ANY_SCALE }
 ];
 
 const checkOnly = process.argv.includes("--check");
+const foregroundPath = path.join(SRC, "foreground-1024.png");
+if (!fs.existsSync(foregroundPath)) {
+  console.error("assets/icon-src/foreground-1024.png がありません");
+  process.exit(1);
+}
+const foreground = decodePng(foregroundPath);
+const background = readBackground();
 fs.mkdirSync(OUT, { recursive: true });
+
+// 安全域からはみ出していないか。ここで気づかないと、Androidで角が切れる
+const centre = foreground.width / 2;
+let worst = 0;
+for (let y = 0; y < foreground.height; y += 1) {
+  for (let x = 0; x < foreground.width; x += 1) {
+    if (foreground.pixels[(y * foreground.width + x) * 4 + 3] < 32) continue;
+    worst = Math.max(worst, Math.hypot(x - centre + 0.5, y - centre + 0.5));
+  }
+}
+const safe = foreground.width * 0.4;
+console.log(`前景: ${foreground.width}px・中心からの最遠 ${worst.toFixed(0)}px（安全域 ${safe}px）`);
+if (worst > safe) {
+  console.log(`★安全域からはみ出しています。maskable では ${(safe / worst).toFixed(2)}倍まで縮みます`);
+}
 
 let stale = 0;
 for (const file of FILES) {
   const target = path.join(OUT, file.name);
-  const png = encodePng(drawIcon(file.size, file.scale));
+  const art = rescale(foreground, file.scale);
+  const png = encodePng(compose(art, file.size, background));
   const same = fs.existsSync(target) && Buffer.compare(fs.readFileSync(target), png) === 0;
   if (same) {
     console.log(`assets/icons/${file.name}: 変化なし（${file.size}px）`);

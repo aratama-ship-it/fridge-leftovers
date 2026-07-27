@@ -33,9 +33,10 @@
   <h1>ホーム画面アイコンの見え方</h1>
   <p>
     <code>node scripts/build-icons.mjs</code> が書き出した実ファイルを並べている。
-    絵を直すときは <code>scripts/build-icons.mjs</code> を編集して書き出し直す。
-    iOSは角を自分で丸め、Androidは中央の円だけを安全域として扱うため、
+    絵を直すときは <code>assets/icon-src/</code>（前景の透過PNGと背景色）を差し替えて
+    書き出し直す。iOSは角を自分で丸め、Androidは中央の円だけを安全域として扱うため、
     それぞれのマスクをかけた状態も出している。
+    <strong>切り抜きのない用途では絵を1.3倍で置いている</strong>ので、maskable より大きく見えるのが正しい。
   </p>
 
   <h2>原寸</h2>
@@ -57,5 +58,11 @@
     <figure class="ios"><img src="icons/icon-192.png" width="48" height="48" alt=""><figcaption>48pt</figcaption></figure>
     <figure><img src="icons/favicon-32.png" width="32" height="32" alt=""><figcaption>32px</figcaption></figure>
   </div>
+<script>
+// 書き出し直したあと古い画像を見てしまわないよう、毎回取り直す
+for (const image of document.querySelectorAll("img")) {
+  image.src = `${image.getAttribute("src").split("?")[0]}?t=${Date.now()}`;
+}
+</script>
 </body>
 </html>
