@@ -4105,3 +4105,57 @@ input[type="number"] {
 .refine-actions .button {
   flex: 1;
 }
+
+/* ---- データの持ち出し ---------------------------------------------------- */
+.settings-block {
+  margin-top: 6px;
+  padding: 12px 0 0;
+  border-top: 1px solid rgb(66 76 68 / 12%);
+}
+
+.settings-data-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.settings-data-actions .button {
+  flex: 1;
+}
+
+/* 読み込みは置き換えなので、確かめる帯を出してから実行する */
+.import-preview {
+  margin-top: 12px;
+  padding: 11px 12px;
+  border: 1px solid rgb(168 73 45 / 30%);
+  border-radius: 4px;
+  background: var(--warm-soft);
+}
+
+.import-preview[hidden] {
+  display: none;
+}
+
+.import-preview p {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.65;
+}
+
+.import-preview-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.import-preview-actions .button {
+  flex: 1;
+}
+
+.import-error {
+  color: var(--warm);
+}
+
+.import-error[hidden] {
+  display: none;
+}

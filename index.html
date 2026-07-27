@@ -12,9 +12,9 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="冷蔵庫の現在地">
-  <link rel="stylesheet" href="styles.css?v=236c9d6f">
+  <link rel="stylesheet" href="styles.css?v=978f0218">
   <script src="vendor/tesseract/tesseract.min.js?v=7.0.0" defer></script>
-  <script src="app.js?v=74ede192" defer></script>
+  <script src="app.js?v=c652e743" defer></script>
 </head>
 <body>
   <div class="app-shell">
@@ -336,6 +336,28 @@
         表示される数値は、食品ごとの一般的な参考値と基本調味料の仮定から丸めた目安です。
         商品表示や医療・栄養指導の代わりにはなりません。
       </p>
+
+      <div class="settings-block">
+        <div class="settings-row-copy">
+          <strong>データの持ち出し</strong>
+          <small>機種変更や、うっかり消したときの備えに。ファイル1つに書き出します。</small>
+        </div>
+        <div class="settings-data-actions">
+          <button class="button button-secondary" type="button" id="export-data">書き出す</button>
+          <button class="button button-secondary" type="button" id="import-data">読み込む</button>
+        </div>
+        <input type="file" id="import-file" accept="application/json,.json" hidden>
+
+        <!-- 読み込みは今のデータを置き換えるので、何が入るかを見せてから確かめる -->
+        <div class="import-preview" id="import-preview" hidden>
+          <p id="import-preview-summary"></p>
+          <div class="import-preview-actions">
+            <button class="button button-secondary" type="button" id="import-cancel">やめる</button>
+            <button class="button button-primary" type="button" id="import-apply">置き換える</button>
+          </div>
+        </div>
+        <p class="settings-note import-error" id="import-error" hidden></p>
+      </div>
 
       <p class="privacy-note">設定は、この端末のブラウザ内だけに保存されます。</p>
     </section>

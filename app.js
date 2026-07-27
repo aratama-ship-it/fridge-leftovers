@@ -3050,6 +3050,8 @@ const state = {
   onboarding: { step: 1, leads: [], extras: [] },
   // 売り場を順番に回って足していく画面。added はこの画面で入れたぶん
   refine: { index: 0, added: [] },
+  // 読み込もうとしているファイルの中身。置き換えるまで在庫には触らない
+  pendingBackup: null,
   settings: { ...DEFAULT_SETTINGS }
 };
 
@@ -3160,6 +3162,14 @@ const elements = {
   onboardingExtraGrid: document.querySelector("#onboarding-extra-grid"),
   onboardingSkip: document.querySelector("#onboarding-skip"),
   onboardingNext: document.querySelector("#onboarding-next"),
+  exportData: document.querySelector("#export-data"),
+  importData: document.querySelector("#import-data"),
+  importFile: document.querySelector("#import-file"),
+  importPreview: document.querySelector("#import-preview"),
+  importPreviewSummary: document.querySelector("#import-preview-summary"),
+  importCancel: document.querySelector("#import-cancel"),
+  importApply: document.querySelector("#import-apply"),
+  importError: document.querySelector("#import-error"),
   refineView: document.querySelector("#refine-view"),
   refineProgress: document.querySelector("#refine-progress"),
   refineTitle: document.querySelector("#refine-title"),
@@ -3227,6 +3237,119 @@ function untouchedSampleItems() {
       && item.location === sample.location
       && item.active !== false;
   });
+}
+
+// ---- データの書き出し・読み込み --------------------------------------------
+// 端末のブラウザ内にしか無いので、機種変更でも消える。ファイル1つに出せる
+// ようにしておく。二人で1つの冷蔵庫を共有する仕組み（SUPABASE_SETUP.md）の
+// 前段でもあり、それ抜きでもバックアップとして意味がある。
+const EXPORT_FORMAT = 1;
+const EXPORT_APP = "fridge-leftovers";
+
+// 書き出す中身。保存キーとの対応をここ1箇所にまとめる
+const EXPORT_SECTIONS = [
+  { key: "inventory", label: "冷蔵庫の中身", storage: STORAGE_KEY, get: () => state.inventory },
+  { key: "shopping", label: "買い物リスト", storage: SHOPPING_STORAGE_KEY, get: () => state.shopping },
+  { key: "cookingHistory", label: "調理履歴", storage: COOKING_HISTORY_STORAGE_KEY, get: () => state.cookingHistory },
+  { key: "shelfCounts", label: "棚の数", storage: SHELF_COUNTS_STORAGE_KEY, get: () => state.shelfCounts },
+  { key: "recentIngredientIds", label: "最近追加した食材", storage: RECENT_INGREDIENTS_STORAGE_KEY, get: () => state.recentIngredientIds },
+  { key: "settings", label: "設定", storage: SETTINGS_STORAGE_KEY, get: () => state.settings }
+];
+
+function backupPayload() {
+  const data = {};
+  for (const section of EXPORT_SECTIONS) data[section.key] = section.get();
+  return {
+    app: EXPORT_APP,
+    format: EXPORT_FORMAT,
+    appVersion: APP_VERSION,
+    exportedAt: new Date().toISOString(),
+    data
+  };
+}
+
+function downloadBackup() {
+  const blob = new Blob([JSON.stringify(backupPayload(), null, 2)], {
+    type: "application/json"
+  });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `fridge-leftovers-${todayIso()}.json`;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  // すぐ解放すると保存が始まらない端末があるので、少し待ってから捨てる
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+  showToast("冷蔵庫のデータを書き出しました");
+}
+
+// 読み込みは今のデータを置き換えるので、まず中身を確かめる。
+// **ファイルに入っている項目だけを置き換える。** 入っていない項目は今のまま
+// 残す（黙って消さないため）。
+function readBackup(text) {
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    throw new Error("ファイルを読めませんでした。書き出したJSONファイルを選んでください。");
+  }
+  if (parsed?.app !== EXPORT_APP) {
+    throw new Error("このアプリで書き出したファイルではないようです。");
+  }
+  if (Number(parsed.format) > EXPORT_FORMAT) {
+    throw new Error("新しい版のアプリで書き出したファイルです。アプリを更新してから読み込んでください。");
+  }
+  const data = parsed.data;
+  if (!data || typeof data !== "object") {
+    throw new Error("中身が入っていないファイルです。");
+  }
+
+  const found = EXPORT_SECTIONS
+    .filter((section) => data[section.key] !== undefined)
+    .map((section) => {
+      const value = data[section.key];
+      const count = Array.isArray(value) ? value.length : null;
+      return { section, value, count };
+    });
+  if (!found.length) throw new Error("読み込める項目がありませんでした。");
+  return { payload: parsed, found };
+}
+
+function describeBackup({ payload, found }) {
+  const when = String(payload.exportedAt || "").slice(0, 10);
+  const parts = found.map(({ section, count }) =>
+    count === null ? section.label : `${section.label}${count}件`);
+  const now = state.inventory.filter((item) => item.active !== false).length;
+  return `${when || "日付不明"}に書き出したファイルです。${parts.join("・")}を読み込みます。`
+    + `いまの冷蔵庫（${now}品）は置き換わります。`;
+}
+
+function applyBackup({ found }) {
+  for (const { section, value } of found) {
+    try {
+      localStorage.setItem(section.storage, JSON.stringify(value));
+    } catch {
+      markStorageUnavailable();
+      return false;
+    }
+  }
+  // 保存し直したあとは、通常の読み込みをそのまま通す。
+  // ここで検証をやり直せるので、壊れた値が state へ入らない
+  loadSettings();
+  loadShelfCounts();
+  loadRecentIngredients();
+  loadInventory();
+  loadShoppingList();
+  loadCookingHistory();
+  state.needsOnboarding = false;
+  elements.settingShowNutrition.checked = state.settings.showNutrition;
+  elements.settingsNutritionNote.hidden = !state.settings.showNutrition;
+  renderAll();
+  renderRefineEntry();
+  renderDayAfterCheck();
+  renderSampleNotice();
+  return true;
 }
 
 // ---- 翌日の在庫確認・補正 ------------------------------------------------
@@ -6834,6 +6957,47 @@ elements.onboardingSkip.addEventListener("click", () => {
   persistInventory();
   renderAll();
   showView("inventory");
+});
+
+elements.exportData.addEventListener("click", downloadBackup);
+
+elements.importData.addEventListener("click", () => {
+  elements.importFile.value = "";
+  elements.importFile.click();
+});
+
+elements.importFile.addEventListener("change", async (event) => {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  elements.importError.hidden = true;
+  try {
+    const backup = readBackup(await file.text());
+    state.pendingBackup = backup;
+    elements.importPreviewSummary.textContent = describeBackup(backup);
+    elements.importPreview.hidden = false;
+  } catch (error) {
+    state.pendingBackup = null;
+    elements.importPreview.hidden = true;
+    elements.importError.textContent = error.message;
+    elements.importError.hidden = false;
+  }
+});
+
+elements.importCancel.addEventListener("click", () => {
+  state.pendingBackup = null;
+  elements.importPreview.hidden = true;
+});
+
+elements.importApply.addEventListener("click", () => {
+  if (!state.pendingBackup) return;
+  const applied = applyBackup(state.pendingBackup);
+  state.pendingBackup = null;
+  elements.importPreview.hidden = true;
+  if (applied) {
+    elements.settingsDialog.close();
+    showView("inventory");
+    showToast("読み込んだデータに置き換えました");
+  }
 });
 
 elements.openRefine.addEventListener("click", startRefine);
