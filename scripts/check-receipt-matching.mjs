@@ -75,7 +75,37 @@ const CASES = [
   ["マーガリン", "margarine"], ["クロワッサン", "croissant"], ["ベーグル", "bagel"],
   ["イングリッシュマフィン", "english-muffin"], ["トルティーヤ", "tortilla"],
   ["ペンネ", "penne"], ["ビーフン", "bifun"], ["きしめん", "kishimen"],
-  ["スパゲッティ", "pasta"], ["食パン", "bread"]
+  ["スパゲッティ", "pasta"], ["食パン", "bread"],
+  // シート21〜27
+  ["生パスタ", "fresh-pasta"], ["パスタ", "pasta"],
+  ["青のり", "aonori"], ["のりの佃煮", "nori-tsukudani"], ["焼のり", "nori"],
+  ["桜えび", "sakura-shrimp"], ["干しエビ", "dried-shrimp"], ["甘えび", "sweet-shrimp"], ["えび", "shrimp"],
+  ["とろろ昆布", "tororo-kombu"], ["塩昆布", "shio-kombu"], ["だし昆布", "kombu"],
+  ["ドライトマト", "dried-tomato"], ["トマトピューレ", "tomato-puree"], ["トマト缶", "canned-tomato"], ["トマト", "tomato"],
+  ["いわし缶", "canned-sardine"], ["いわし", "sardine"],
+  ["ココナッツミルク", "coconut-milk"], ["牛乳", "milk"],
+  ["ピーナッツバター", "peanut-butter"], ["バター", "butter"], ["バターロール", "butter-roll"],
+  ["桃缶", "canned-peach"], ["白桃", "peach"],
+  ["紅生姜", "beni-shoga"], ["新生姜", "new-ginger"], ["しょうが", "ginger"],
+  ["ベーコンブロック", "bacon-block"], ["ベーコン", "bacon"],
+  ["あなご", "conger-eel"], ["穴子の蒲焼", "conger-eel"], ["うなぎ蒲焼", "eel"],
+  ["しめ鯖", "shime-saba"], ["さば", "mackerel"], ["さわら", "spanish-mackerel"],
+  ["カマンベールチーズ", "camembert"], ["ブルーチーズ", "blue-cheese"],
+  ["カッテージチーズ", "cottage-cheese"], ["サワークリーム", "sour-cream"], ["生クリーム", "fresh-cream"],
+  ["温泉卵", "onsen-egg"], ["焼き豆腐", "grilled-tofu"], ["絹ごし豆腐", "tofu"],
+  ["そば粉", "buckwheat-flour"], ["そば", "soba"],
+  ["大豆水煮", "boiled-soybeans"], ["乾燥大豆", "dried-soybeans"], ["小豆", "azuki"],
+  ["ふき", "fuki"], ["梅", "ume"], ["梅干し", "umeboshi"],
+  ["すもも", "plum"], ["プルーン", "prune"],
+  ["フォー", "pho-noodles"], ["フォーク", null],
+  ["コーンスターチ", "corn-starch"], ["コーン缶", "canned-corn"], ["とうもろこし", "corn"],
+  ["押し麦", "barley"], ["クスクス", "couscous"], ["ふりかけ", "furikake"],
+  ["サラダ菜", "salad-greens"], ["サニーレタス", "sunny-lettuce"],
+  ["スナップえんどう", "snap-peas"], ["絹さや", "snow-peas"], ["グリーンピース", "green-peas"],
+  ["牛すじ", "beef-tendon"], ["牛タン", "beef-tongue"], ["牛こま", "beef"],
+  ["鶏皮", "chicken-skin"], ["鶏むね肉", "chicken"],
+  ["冷凍ポテト", "frozen-potato"], ["じゃがいも", "potato"],
+  ["うに", "uni"], ["ライ麦パン", "rye-bread"], ["ワンタンの皮", "wonton-wrapper"], ["餃子の皮", "gyoza-wrapper"]
 ];
 
 // 商品ではない行（店名・合計など）を落とせているか。
