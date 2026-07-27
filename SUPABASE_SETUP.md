@@ -68,12 +68,24 @@
 > 実際の保護は下の行レベルセキュリティが行う。**Database Password と service_role キーは
 > アプリに入れない・人に見せない。**
 
-## 4. メール確認の設定
+## 4. メール確認の設定（見るだけ。ふつうは触らない）
 
-**Authentication → Providers → Email** で
+https://supabase.com/dashboard/project/_/auth/providers を開き、**Email** の節で
+**Enable email provider が ON** であることだけ確かめる。
 
-- Enable Email provider: ON
-- Confirm email: **ON**（本人のメールアドレスであることを確かめてから使わせる）
+**「Confirm email」の項目は画面に無いことがある。** ダッシュボードの構成は
+たびたび変わっていて、2026-07-28 時点の画面には出ていなかった。**探さなくてよい。**
+Supabaseがホストしているプロジェクトでは**メール確認は既定で有効**だと
+公式ドキュメントに書かれている（自前でホストした場合だけ既定が無効）。
+
+> On hosted Supabase projects, this is true by default.
+> — https://supabase.com/docs/guides/auth/auth-email
+
+実際に有効かどうかは、アプリからサインアップしたときに確認メールが届くかで
+分かる。届かず、そのまま入れてしまう場合だけ設定を探す。
+
+なお、ここが仮に無効でも、他人の冷蔵庫は見られない。世帯へ入るには**招待コード**が
+要るため（→ `join_household`）。
 
 ## 5. SQL（丸ごと貼り付け）
 
