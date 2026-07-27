@@ -5072,12 +5072,17 @@ function receiptQuantity(line, rule) {
 
 function parseReceiptText(rawText) {
   const ignoredLine = /(?:合計|小計|消費税|外税|内税|お預|お釣|釣銭|クレジット|カード|現金|ポイント|領収|レシート|電話|TEL|日時|担当|登録番号|買上点数|お買上)/i;
+  // 店名の行。地名がそのまま食材名になることがある
+  // （「seiyu蓮根店」の蓮根をレンコンとして拾ってしまった実例がある）。
+  // 商品名が「店」で終わることはまず無いので、行末の「店」で見分ける。
+  const storeLine = /(?:店$|支店|株式会社|有限会社|\(株\)|（株）|〒)/;
   const candidates = [];
 
   String(rawText).split(/\r?\n/).forEach((rawLine) => {
     const line = normalizedReceiptLine(rawLine);
     const compactLine = line.replace(/\s+/g, "");
     if (compactLine.length < 2 || ignoredLine.test(compactLine)) return;
+    if (storeLine.test(compactLine)) return;
 
     const rule = receiptRuleForLine(compactLine);
     if (!rule) return;

@@ -22,6 +22,10 @@ jobs:
       - name: 主役リストの整合
         run: node scripts/pick-lead-ingredients.mjs --check
 
+      # レシートの行が正しい食材へ当たるか（総称に先取りされる事故の検出）
+      - name: レシート照合チェック
+        run: node scripts/check-receipt-matching.mjs
+
       # 在庫とレシピの突き合わせ（不足判定・代用・単位換算・数量の確信度）
       - name: レシピ判定チェック
         run: node scripts/check-recipe-logic.mjs

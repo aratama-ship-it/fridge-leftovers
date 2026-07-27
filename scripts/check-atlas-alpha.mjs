@@ -13,6 +13,9 @@
 // 判定：
 //   ・不透明率が高すぎる（マスの大半が埋まっている）＝抜けていない
 //   ・緑らしさ g - max(r,b) > 60 のピクセルが多い＝緑背景が残っている
+//   ・外接矩形が隙間なく埋まっている＝背景の矩形がそのまま入っている
+//     （★シート23の野沢菜がマゼンタ背景のまま入っていたのを、緑しか見て
+//       いなかったせいで取り逃がした。色に依らない判定として足した）
 //
 // バジル・絹さや・小ねぎ・ライム・ピーマンのように被写体そのものが緑の
 // ものは緑ピクセルが多く出る。緑が多いマスは「要確認」として出すだけで、
@@ -66,6 +69,8 @@ function illustrationMap() {
 // 不透明率が6割を超えたら背景が残っていると見る。
 const OPAQUE_LIMIT = 0.6;
 const GREEN_LIMIT = 0.05;
+// 外接矩形の充填率。ここまで埋まるのは矩形そのものだけ（実測の最大は器の97.7%）
+const FILL_LIMIT = 0.995;
 
 function inspectCell(image, index) {
   const cellWidth = image.width / COLUMNS;
@@ -79,18 +84,31 @@ function inspectCell(image, index) {
   let opaque = 0;
   let green = 0;
   let total = 0;
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -1;
+  let maxY = -1;
   for (let y = top; y < bottom; y += 1) {
     for (let x = left; x < right; x += 1) {
       const offset = (y * image.width + x) * 4;
       total += 1;
       if (image.pixels[offset + 3] < 32) continue;
       opaque += 1;
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
       const g = image.pixels[offset + 1];
       const rest = Math.max(image.pixels[offset], image.pixels[offset + 2]);
       if (g - rest > 60) green += 1;
     }
   }
-  return { opaque: opaque / total, green: green / total };
+  // 被写体の外接矩形が隙間なく埋まっていたら、それは絵ではなく背景の矩形。
+  // 実測では、正面から見た四角い器でも97.7%までしか埋まらない（縁がぼけるため）。
+  // 抜き忘れた背景はちょうど100%になる。
+  const boxArea = maxX < 0 ? 0 : (maxX - minX + 1) * (maxY - minY + 1);
+  const fill = boxArea ? opaque / boxArea : 0;
+  return { opaque: opaque / total, green: green / total, fill };
 }
 
 const requested = process.argv.slice(2);
@@ -123,13 +141,16 @@ for (const sheet of sheets) {
   const lines = [];
   let sheetFailures = 0;
   for (let index = 0; index < COLUMNS * ROWS; index += 1) {
-    const { opaque, green } = inspectCell(image, index);
+    const { opaque, green, fill } = inspectCell(image, index);
     const id = ids.get(index) || `(未登録 ${index})`;
     const opaqueText = `不透明${(opaque * 100).toFixed(0)}%`;
     const greenText = `緑${(green * 100).toFixed(1)}%`;
     if (opaque > OPAQUE_LIMIT) {
       sheetFailures += 1;
       lines.push(`  ★${id}: ${opaqueText} ${greenText} ← 背景が抜けていない`);
+    } else if (fill >= FILL_LIMIT) {
+      sheetFailures += 1;
+      lines.push(`  ★${id}: ${opaqueText} 充填${(fill * 100).toFixed(1)}% ← 背景の矩形が残っている（緑以外の色でも起きる）`);
     } else if (green > GREEN_LIMIT) {
       warnings += 1;
       lines.push(`  ?${id}: ${opaqueText} ${greenText} ← 緑が多い（被写体が緑なら問題なし）`);

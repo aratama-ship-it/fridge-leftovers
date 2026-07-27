@@ -12,8 +12,12 @@
 // 中身まで消えるため、対象ファイルは必ず明示的に渡す。ディレクトリを
 // まとめて処理する機能は意図的に付けていない。
 //
-//   node scripts/key-green.mjs assets/atlas-src/16-keyed/chicken-liver.png ...
+//   node scripts/key-green.mjs assets/atlas-src/16/chicken-liver.png ...
+//   node scripts/key-green.mjs --auto <file...>    四隅の色を背景として抜く（緑以外にも効く）
 //   node scripts/key-green.mjs --check <file...>   判定だけして書き換えない
+//
+// --auto はシート23の野沢菜（マゼンタ背景）で必要になった。緑決め打ちだと
+// 抜けない背景があるため、四隅の色を見て単色なら抜く形も用意している。
 
 import fs from "node:fs";
 import zlib from "node:zlib";
@@ -45,6 +49,57 @@ const { decodePng, encodePng } = new Function(
 const FULL_KEY = 60;
 const EDGE_KEY = 12;
 
+// --auto：四隅の色を見て、その色を背景として抜く。
+// 緑以外の背景（シート23の野沢菜はマゼンタだった）にも効かせるため。
+// 四隅がそろっていないときは、背景が単色ではないと見て何もしない。
+const AUTO_FULL = 40;   // これより近ければ背景
+const AUTO_EDGE = 110;  // これより遠ければ被写体。間は半透明
+
+function cornerColor(image) {
+  const { width, height, pixels } = image;
+  const at = (x, y) => {
+    const offset = (y * width + x) * 4;
+    return [pixels[offset], pixels[offset + 1], pixels[offset + 2], pixels[offset + 3]];
+  };
+  const margin = 4;
+  const corners = [
+    at(margin, margin),
+    at(width - 1 - margin, margin),
+    at(margin, height - 1 - margin),
+    at(width - 1 - margin, height - 1 - margin)
+  ];
+  if (corners.some((corner) => corner[3] < 250)) return null;   // すでに抜けている
+  const [base] = corners;
+  const far = corners.some((corner) =>
+    Math.hypot(corner[0] - base[0], corner[1] - base[1], corner[2] - base[2]) > 24);
+  return far ? null : base;
+}
+
+function keyOutColor(image, color) {
+  const { width, height, pixels } = image;
+  let removed = 0;
+  let softened = 0;
+  for (let at = 0; at < width * height; at += 1) {
+    const offset = at * 4;
+    if (pixels[offset + 3] === 0) continue;
+    const distance = Math.hypot(
+      pixels[offset] - color[0],
+      pixels[offset + 1] - color[1],
+      pixels[offset + 2] - color[2]
+    );
+    if (distance >= AUTO_EDGE) continue;
+    if (distance <= AUTO_FULL) {
+      pixels[offset + 3] = 0;
+      removed += 1;
+      continue;
+    }
+    const ratio = (distance - AUTO_FULL) / (AUTO_EDGE - AUTO_FULL);
+    pixels[offset + 3] = Math.round(pixels[offset + 3] * ratio);
+    softened += 1;
+  }
+  return { removed, softened };
+}
+
 function keyOut(image) {
   const { width, height, pixels } = image;
   let removed = 0;
@@ -74,7 +129,8 @@ function keyOut(image) {
 
 const args = process.argv.slice(2);
 const checkOnly = args.includes("--check");
-const files = args.filter((value) => value !== "--check");
+const auto = args.includes("--auto");
+const files = args.filter((value) => value !== "--check" && value !== "--auto");
 if (!files.length) {
   console.error("対象ファイルを渡してください（緑の被写体へ当てないよう明示が必要）");
   process.exit(1);
@@ -83,7 +139,16 @@ if (!files.length) {
 for (const file of files) {
   const target = path.resolve(ROOT, file);
   const image = decodePng(target);
-  const { removed, softened } = keyOut(image);
+  let color = null;
+  if (auto) {
+    color = cornerColor(image);
+    if (!color) {
+      console.log(`${file}: 四隅の色がそろっていないので触りません（背景が単色でないか、すでに抜けている）`);
+      continue;
+    }
+  }
+  const { removed, softened } = color ? keyOutColor(image, color) : keyOut(image);
+  if (color) console.log(`  背景色として ${color.slice(0, 3).map((v) => v.toString(16).padStart(2, "0")).join("")} を抜きます`);
   const total = image.width * image.height;
   const share = ((removed / total) * 100).toFixed(1);
   console.log(
