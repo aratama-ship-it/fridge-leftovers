@@ -12,9 +12,9 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="冷蔵庫の現在地">
-  <link rel="stylesheet" href="styles.css?v=978f0218">
+  <link rel="stylesheet" href="styles.css?v=f4c630e1">
   <script src="vendor/tesseract/tesseract.min.js?v=7.0.0" defer></script>
-  <script src="app.js?v=1fd5c4ae" defer></script>
+  <script src="app.js?v=c27b861a" defer></script>
 </head>
 <body>
   <div class="app-shell">
@@ -336,6 +336,35 @@
         表示される数値は、食品ごとの一般的な参考値と基本調味料の仮定から丸めた目安です。
         商品表示や医療・栄養指導の代わりにはなりません。
       </p>
+
+      <div class="settings-block">
+        <div class="settings-row-copy">
+          <strong>二人で共有する</strong>
+          <small id="account-note">同じ冷蔵庫を、別の端末からも見られるようにします。</small>
+        </div>
+
+        <form class="account-form" id="account-form">
+          <label class="account-field" for="account-email">
+            メールアドレス
+            <input id="account-email" type="email" autocomplete="email" required placeholder="you@example.com">
+          </label>
+          <label class="account-field" for="account-password">
+            パスワード
+            <input id="account-password" type="password" autocomplete="current-password" required minlength="6" placeholder="6文字以上">
+          </label>
+          <div class="account-actions">
+            <button class="button button-secondary" type="button" id="account-signup">はじめて使う</button>
+            <button class="button button-primary" type="submit" id="account-signin">ログイン</button>
+          </div>
+        </form>
+
+        <div class="account-signed-in" id="account-signed-in" hidden>
+          <p id="account-who"></p>
+          <button class="button button-secondary" type="button" id="account-signout">ログアウト</button>
+        </div>
+
+        <p class="settings-note account-message" id="account-message" hidden></p>
+      </div>
 
       <div class="settings-block">
         <div class="settings-row-copy">
