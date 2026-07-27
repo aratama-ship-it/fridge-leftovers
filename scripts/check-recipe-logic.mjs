@@ -41,7 +41,7 @@ function takeFunction(name) {
 
 const CONSTANTS = [
   "QUANTITY_CONFIRMED", "QUANTITY_ESTIMATED", "QUANTITY_UNKNOWN",
-  "DAY_AFTER_LEVELS", "DAY_AFTER_LIMIT",
+  "DAY_AFTER_LEVELS", "DAY_AFTER_LIMIT", "SYNC_KINDS",
   "CONFIDENCE_ORDER", "quantityConfidence", "quantityUnknown", "lessCertain",
   "RECIPES", "RECEIPT_RULES", "INGREDIENT_SUBSTITUTES", "UNIT_CONVERSIONS",
   "SUBSTITUTE_GENERICS", "RECIPE_LIST_SERVINGS"
@@ -50,14 +50,15 @@ const FUNCTIONS = [
   "normalizedSubstitute", "conversionRatio", "stockForRequirement",
   "availableForRequirement", "requiredAmount", "shortageFor", "unconfirmedFor",
   "cookBlockers", "confirmUnknownAmounts", "optionalReady",
-  "inventoryLevel", "pendingDayAfterItems", "dayAfterCorrection"
+  "inventoryLevel", "pendingDayAfterItems", "dayAfterCorrection",
+  "markSyncChanges", "pendingSyncChanges", "applySyncResult"
 ];
 
 // stockForRequirement は inventoryMap() と state を使う。テスト側で差し替える。
 const harness = `
 "use strict";
 const todayIso = () => "2026-01-01";
-const state = { inventory: [], servings: 1, cookingHistory: [], settings: { dayAfterSkippedOn: "" } };
+const state = { inventory: [], servings: 1, cookingHistory: [], shopping: [], shelfCounts: {}, syncMeta: {}, settings: { dayAfterSkippedOn: "" } };
 const inventoryMap = () => new Map(state.inventory.filter((item) => item.active !== false).map((item) => [item.id, item]));
 ${CONSTANTS.map(takeConst).join("\n")}
 ${FUNCTIONS.map(takeFunction).join("\n")}
@@ -67,7 +68,8 @@ return {
   quantityConfidence, lessCertain, conversionRatio, stockForRequirement,
   availableForRequirement, shortageFor, unconfirmedFor, cookBlockers,
   confirmUnknownAmounts, optionalReady, requiredAmount,
-  pendingDayAfterItems, dayAfterCorrection, DAY_AFTER_LEVELS
+  pendingDayAfterItems, dayAfterCorrection, DAY_AFTER_LEVELS,
+  markSyncChanges, pendingSyncChanges, applySyncResult
 };
 `;
 
@@ -77,7 +79,8 @@ const {
   QUANTITY_CONFIRMED, QUANTITY_ESTIMATED, QUANTITY_UNKNOWN,
   quantityConfidence, lessCertain, stockForRequirement,
   shortageFor, unconfirmedFor, cookBlockers, confirmUnknownAmounts,
-  pendingDayAfterItems, dayAfterCorrection, DAY_AFTER_LEVELS
+  pendingDayAfterItems, dayAfterCorrection, DAY_AFTER_LEVELS,
+  markSyncChanges, pendingSyncChanges, applySyncResult
 } = app_;
 
 const ruleFor = (id) => RECEIPT_RULES.find((rule) => rule.id === id);
@@ -330,6 +333,93 @@ check("使い切ったものを「ある」で戻せる", (() => {
   dayAfterCorrection(item, "plenty");
   return [item.quantity, item.active, item.consumedAt ?? null];
 })(), [DAY_AFTER_LEVELS.plenty, true, null]);
+
+// ---- 同期の下ごしらえ（1品1行） ------------------------------------------
+// 在庫を消す場所がアプリ内に7箇所あるので、印は変更のたびに付けず、
+// 保存のたびに前回の内容と比べて出す。その差分の出し方を確かめる。
+const syncSetup = (items) => {
+  state.syncMeta = {};
+  state.shopping = [];
+  state.cookingHistory = [];
+  state.shelfCounts = {};
+  state.inventory = items;
+  markSyncChanges();
+};
+const pendingKeys = () => pendingSyncChanges().map((change) => change.key).sort();
+// 見つからないときに落ちると原因が読みにくいので、空のまま比較させる
+const changeFor = (key) => pendingSyncChanges().find((change) => change.key === key) || {};
+
+check("新しい在庫は送る印が付く", (() => {
+  syncSetup([stock("eggs", 3)]);
+  return pendingKeys();
+})(), ["item:eggs", "shelves:shelves"]);
+
+check("変えていなければ送らない", (() => {
+  syncSetup([stock("eggs", 3)]);
+  pendingSyncChanges().forEach((change) => applySyncResult(change.key, 1));
+  markSyncChanges();
+  return pendingKeys();
+})(), []);
+
+check("数量を変えたら送る印が付く", (() => {
+  syncSetup([stock("eggs", 3)]);
+  pendingSyncChanges().forEach((change) => applySyncResult(change.key, 1));
+  state.inventory[0].quantity = 2;
+  markSyncChanges();
+  return pendingKeys();
+})(), ["item:eggs"]);
+
+check("送るときは自分が見ていた版を申告する", (() => {
+  syncSetup([stock("eggs", 3)]);
+  pendingSyncChanges().forEach((change) => applySyncResult(change.key, 7));
+  state.inventory[0].quantity = 2;
+  markSyncChanges();
+  return changeFor("item:eggs").baseVersion;
+})(), 7);
+
+// ★消えたものを伝えるのが、この仕組みのいちばんの目的
+check("消したものは墓石として送る", (() => {
+  syncSetup([stock("eggs", 3), stock("tofu", 1)]);
+  pendingSyncChanges().forEach((change) => applySyncResult(change.key, 1));
+  state.inventory = state.inventory.filter((item) => item.id !== "tofu");
+  markSyncChanges();
+  const change = changeFor("item:tofu");
+  return [change.deleted, change.body, change.baseVersion];
+})(), [true, null, 1]);
+
+check("サーバーが知らないまま消えたものは、表から外すだけ", (() => {
+  syncSetup([stock("eggs", 3), stock("tofu", 1)]);
+  state.inventory = state.inventory.filter((item) => item.id !== "tofu");
+  markSyncChanges();
+  return Object.keys(state.syncMeta).includes("item:tofu");
+})(), false);
+
+check("墓石が通ったら表から外す", (() => {
+  syncSetup([stock("eggs", 3)]);
+  pendingSyncChanges().forEach((change) => applySyncResult(change.key, 1));
+  state.inventory = [];
+  markSyncChanges();
+  applySyncResult("item:eggs", 2);
+  return Object.keys(state.syncMeta).includes("item:eggs");
+})(), false);
+
+check("同じidで戻ってきたら墓石を取り消す", (() => {
+  syncSetup([stock("eggs", 3)]);
+  pendingSyncChanges().forEach((change) => applySyncResult(change.key, 1));
+  state.inventory = [];
+  markSyncChanges();
+  state.inventory = [stock("eggs", 6)];
+  markSyncChanges();
+  const change = changeFor("item:eggs");
+  return [change.deleted, change.body?.quantity, change.baseVersion];
+})(), [false, 6, 1]);
+
+check("棚の数も1行として扱う", (() => {
+  syncSetup([]);
+  state.shelfCounts = { 冷蔵: 3, 冷凍: 1, 常温: 2 };
+  markSyncChanges();
+  return (pendingSyncChanges().find((change) => change.kind === "shelves") || {}).body;
+})(), { id: "shelves", 冷蔵: 3, 冷凍: 1, 常温: 2 });
 
 console.log(failures
   ? `\n★${failures}件が期待と違います`

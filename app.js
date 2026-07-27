@@ -3052,6 +3052,8 @@ const state = {
   refine: { index: 0, added: [] },
   // 読み込もうとしているファイルの中身。置き換えるまで在庫には触らない
   pendingBackup: null,
+  // 同期の版と「まだ送っていない」印。実体とは別に持つ
+  syncMeta: {},
   settings: { ...DEFAULT_SETTINGS }
 };
 
@@ -3239,6 +3241,116 @@ function untouchedSampleItems() {
   });
 }
 
+// ---- 同期の下ごしらえ（1品1行として扱う） ---------------------------------
+// 二人で1つの冷蔵庫を共有する仕組み（SUPABASE_SETUP.md）は、食材1品ごとに
+// 1行を持ち、行ごとに「サーバーで何版か」を申告して送る。いまの保存は配列を
+// 丸ごと1件として書いているので、その形へ寄せる必要がある。
+//
+// ★実体（在庫アイテムなど）には項目を足さない。版と印は別の表で持つ。
+// こうすれば、在庫の判定・描画・書き出しのコードを一切触らずに済む。
+//
+// ★どこで何が変わったかを、変更のたびに記録しない。保存のたびに前回の内容と
+// 比べて差分を出す。在庫を消す場所がアプリ内に7箇所あり、全部へ印を付ける
+// 細工を入れると、足し忘れが必ず起きるため。
+const SYNC_STORAGE_KEY = "fridge-leftovers-sync-v1";
+
+const SYNC_KINDS = [
+  { kind: "item", list: () => state.inventory },
+  { kind: "shopping", list: () => state.shopping },
+  { kind: "cooking", list: () => state.cookingHistory },
+  // 棚の数は冷蔵庫そのものの形なので、1行として扱う
+  { kind: "shelves", list: () => [{ id: "shelves", ...state.shelfCounts }] }
+];
+
+function loadSyncMeta() {
+  state.syncMeta = {};
+  try {
+    const saved = localStorage.getItem(SYNC_STORAGE_KEY);
+    if (!saved) return;
+    const parsed = JSON.parse(saved);
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      state.syncMeta = parsed;
+    }
+  } catch {
+    markStorageUnavailable();
+  }
+}
+
+function persistSyncMeta() {
+  if (!state.storageEnabled) return;
+  try {
+    localStorage.setItem(SYNC_STORAGE_KEY, JSON.stringify(state.syncMeta));
+  } catch {
+    markStorageUnavailable();
+  }
+}
+
+// 保存のたびに呼ぶ。前回覚えた内容と比べ、変わった行へ「送る」印を付ける。
+function markSyncChanges() {
+  const seen = new Set();
+  for (const { kind, list } of SYNC_KINDS) {
+    for (const entity of list()) {
+      if (!entity || entity.id === undefined || entity.id === null) continue;
+      const key = `${kind}:${entity.id}`;
+      seen.add(key);
+      const body = JSON.stringify(entity);
+      const meta = state.syncMeta[key];
+      if (!meta) {
+        state.syncMeta[key] = { version: 0, body, dirty: true };
+        continue;
+      }
+      // 一度消したものが同じidで戻ってきたら、墓石を取り消す
+      // （使い切った食材を買い直したときに起きる）
+      if (meta.deletedAt) delete meta.deletedAt;
+      if (meta.body !== body) {
+        meta.body = body;
+        meta.dirty = true;
+      }
+    }
+  }
+
+  for (const [key, meta] of Object.entries(state.syncMeta)) {
+    if (seen.has(key) || meta.deletedAt) continue;
+    // サーバーが知らないまま消えたものは、伝える相手がいない。
+    // 墓石を残すと、足して消しただけで表が増え続ける
+    if (!meta.version) {
+      delete state.syncMeta[key];
+      continue;
+    }
+    meta.deletedAt = new Date().toISOString();
+    meta.dirty = true;
+  }
+}
+
+// まだ送っていない変更。サーバーへ渡す形（SUPABASE_SETUP.md の apply_mutation）
+function pendingSyncChanges() {
+  return Object.entries(state.syncMeta)
+    .filter(([, meta]) => meta.dirty)
+    .map(([key, meta]) => {
+      const at = key.indexOf(":");
+      return {
+        key,
+        kind: key.slice(0, at),
+        id: key.slice(at + 1),
+        baseVersion: meta.version,
+        deleted: Boolean(meta.deletedAt),
+        body: meta.deletedAt ? null : JSON.parse(meta.body)
+      };
+    });
+}
+
+// 送信が通ったときに呼ぶ。墓石は通った時点で表から外す（もう伝える用が無い）
+function applySyncResult(key, version) {
+  const meta = state.syncMeta[key];
+  if (!meta) return;
+  if (meta.deletedAt) {
+    delete state.syncMeta[key];
+    return;
+  }
+  meta.version = Number(version) || meta.version;
+  meta.dirty = false;
+}
+
 // ---- データの書き出し・読み込み --------------------------------------------
 // 端末のブラウザ内にしか無いので、機種変更でも消える。ファイル1つに出せる
 // ようにしておく。二人で1つの冷蔵庫を共有する仕組み（SUPABASE_SETUP.md）の
@@ -3253,7 +3365,10 @@ const EXPORT_SECTIONS = [
   { key: "cookingHistory", label: "調理履歴", storage: COOKING_HISTORY_STORAGE_KEY, get: () => state.cookingHistory },
   { key: "shelfCounts", label: "棚の数", storage: SHELF_COUNTS_STORAGE_KEY, get: () => state.shelfCounts },
   { key: "recentIngredientIds", label: "最近追加した食材", storage: RECENT_INGREDIENTS_STORAGE_KEY, get: () => state.recentIngredientIds },
-  { key: "settings", label: "設定", storage: SETTINGS_STORAGE_KEY, get: () => state.settings }
+  { key: "settings", label: "設定", storage: SETTINGS_STORAGE_KEY, get: () => state.settings },
+  // 同期の版も一緒に持ち出す。持ち越さないと、読み込んだ先で全部が
+  // 「サーバーの知らない新しい行」になり、二重に登録されてしまう
+  { key: "syncMeta", label: "同期の記録", storage: SYNC_STORAGE_KEY, get: () => state.syncMeta }
 ];
 
 function backupPayload() {
@@ -3336,6 +3451,7 @@ function applyBackup({ found }) {
   }
   // 保存し直したあとは、通常の読み込みをそのまま通す。
   // ここで検証をやり直せるので、壊れた値が state へ入らない
+  loadSyncMeta();
   loadSettings();
   loadShelfCounts();
   loadRecentIngredients();
@@ -3596,6 +3712,8 @@ function persistInventory() {
   } catch {
     markStorageUnavailable();
   }
+  markSyncChanges();
+  persistSyncMeta();
 }
 
 function loadRecentIngredients() {
@@ -3687,6 +3805,8 @@ function persistShelfCounts() {
   } catch {
     markStorageUnavailable();
   }
+  markSyncChanges();
+  persistSyncMeta();
 }
 
 function loadShoppingList() {
@@ -3710,6 +3830,8 @@ function persistShoppingList() {
   } catch {
     markStorageUnavailable();
   }
+  markSyncChanges();
+  persistSyncMeta();
 }
 
 function loadCookingHistory() {
@@ -3735,6 +3857,8 @@ function persistCookingHistory() {
   } catch {
     markStorageUnavailable();
   }
+  markSyncChanges();
+  persistSyncMeta();
 }
 
 function escapeHtml(value) {
@@ -7314,6 +7438,7 @@ elements.toastAction.addEventListener("click", () => {
 });
 
 elements.appVersion.textContent = `v${APP_VERSION}`;
+loadSyncMeta();
 loadSettings();
 elements.settingShowNutrition.checked = state.settings.showNutrition;
 elements.settingsNutritionNote.hidden = !state.settings.showNutrition;
