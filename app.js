@@ -3054,8 +3054,6 @@ const state = {
   pendingBackup: null,
   // 同期の版と「まだ送っていない」印。実体とは別に持つ
   syncMeta: {},
-  // ログイン状態。圏外でも持ち越したいので端末に保存する
-  session: null,
   settings: { ...DEFAULT_SETTINGS }
 };
 
@@ -3166,15 +3164,6 @@ const elements = {
   onboardingExtraGrid: document.querySelector("#onboarding-extra-grid"),
   onboardingSkip: document.querySelector("#onboarding-skip"),
   onboardingNext: document.querySelector("#onboarding-next"),
-  accountForm: document.querySelector("#account-form"),
-  accountEmail: document.querySelector("#account-email"),
-  accountPassword: document.querySelector("#account-password"),
-  accountSignup: document.querySelector("#account-signup"),
-  accountSignedIn: document.querySelector("#account-signed-in"),
-  accountWho: document.querySelector("#account-who"),
-  accountSignout: document.querySelector("#account-signout"),
-  accountMessage: document.querySelector("#account-message"),
-  accountNote: document.querySelector("#account-note"),
   exportData: document.querySelector("#export-data"),
   importData: document.querySelector("#import-data"),
   importFile: document.querySelector("#import-file"),
@@ -3250,148 +3239,6 @@ function untouchedSampleItems() {
       && item.location === sample.location
       && item.active !== false;
   });
-}
-
-// ---- サーバーとのつなぎ（Supabase） ---------------------------------------
-// 二人で1つの冷蔵庫を共有するための接続。設計と用意の手順は SUPABASE_SETUP.md。
-//
-// ★この2つはアプリに埋め込む前提の公開情報。実際の保護は、サーバー側の
-// 行レベルセキュリティ（自分が入っている世帯の行しか読み書きできない）が行う。
-// 秘密鍵（service_role）はここにも、どこにも置かない。
-const SUPABASE_URL = "https://uxxarrsfgjucfiqexuvc.supabase.co";
-const SUPABASE_KEY = "sb_publishable_r-iTGmGdVhtq7UsAy6S8Eg_JcOPkrb6";
-const SESSION_STORAGE_KEY = "fridge-leftovers-session-v1";
-
-// ★公式のライブラリは使わず、必要な呼び出しだけ自前で書いている。
-// このアプリは通信ゼロで作ってきたもので、圏外でも動くことが前提。
-// 読み込むだけで数十KB増えるものを、認証と数本のAPIのために入れたくない。
-// 使うのは4つだけ：登録・ログイン・更新・RPC。
-
-function loadSession() {
-  state.session = null;
-  try {
-    const saved = localStorage.getItem(SESSION_STORAGE_KEY);
-    if (!saved) return;
-    const parsed = JSON.parse(saved);
-    if (parsed?.accessToken && parsed?.refreshToken) state.session = parsed;
-  } catch {
-    markStorageUnavailable();
-  }
-}
-
-function persistSession() {
-  if (!state.storageEnabled) return;
-  try {
-    if (state.session) {
-      localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(state.session));
-    } else {
-      localStorage.removeItem(SESSION_STORAGE_KEY);
-    }
-  } catch {
-    markStorageUnavailable();
-  }
-}
-
-function rememberSession(payload) {
-  if (!payload?.access_token) return null;
-  state.session = {
-    accessToken: payload.access_token,
-    refreshToken: payload.refresh_token,
-    // 期限は少し手前に見ておく。ぎりぎりで送ると往復の途中で切れる
-    expiresAt: Date.now() + Math.max(0, (Number(payload.expires_in) || 3600) - 60) * 1000,
-    email: payload.user?.email || state.session?.email || ""
-  };
-  persistSession();
-  return state.session;
-}
-
-// サーバーからの応答は、失敗しても本文に理由が入っている。取り出して投げ直す
-async function supabaseJson(response) {
-  const text = await response.text();
-  let body = null;
-  try {
-    body = text ? JSON.parse(text) : null;
-  } catch {
-    body = null;
-  }
-  if (response.ok) return body;
-  const message = body?.message || body?.error_description || body?.msg || body?.error || text;
-  const error = new Error(message || `通信に失敗しました（${response.status}）`);
-  error.status = response.status;
-  error.code = body?.code || body?.error_code || "";
-  throw error;
-}
-
-async function authRequest(path, body) {
-  const response = await fetch(`${SUPABASE_URL}/auth/v1/${path}`, {
-    method: "POST",
-    headers: { apikey: SUPABASE_KEY, "Content-Type": "application/json" },
-    body: JSON.stringify(body)
-  });
-  return supabaseJson(response);
-}
-
-async function refreshSession() {
-  if (!state.session?.refreshToken) return null;
-  try {
-    const payload = await authRequest("token?grant_type=refresh_token", {
-      refresh_token: state.session.refreshToken
-    });
-    return rememberSession(payload);
-  } catch (error) {
-    // 更新に失敗したら、もう一度ログインしてもらうしかない。
-    // 圏外なら次に開いたときへ持ち越したいので、通信の失敗では消さない
-    if (error.status) {
-      state.session = null;
-      persistSession();
-    }
-    return null;
-  }
-}
-
-// ログインした状態でサーバーを呼ぶ。期限切れなら一度だけ更新して呼び直す
-async function supabaseRequest(path, { method = "GET", body, retry = true } = {}) {
-  if (!state.session) throw new Error("ログインしていません");
-  if (state.session.expiresAt && state.session.expiresAt < Date.now()) {
-    if (!await refreshSession()) throw new Error("ログインし直してください");
-  }
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    method,
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${state.session.accessToken}`,
-      "Content-Type": "application/json",
-      Prefer: "return=representation"
-    },
-    body: body === undefined ? undefined : JSON.stringify(body)
-  });
-  if (response.status === 401 && retry && await refreshSession()) {
-    return supabaseRequest(path, { method, body, retry: false });
-  }
-  return supabaseJson(response);
-}
-
-const callFunction = (name, args = {}) =>
-  supabaseRequest(`rpc/${name}`, { method: "POST", body: args });
-
-async function signIn(email, password) {
-  const payload = await authRequest("token?grant_type=password", { email, password });
-  rememberSession(payload);
-  await callFunction("ensure_household");
-}
-
-async function signUp(email, password) {
-  const payload = await authRequest("signup", { email, password });
-  // 確認メールが要る設定だと、この時点では入れない（access_token が来ない）
-  if (!payload?.access_token) return { confirmationRequired: true };
-  rememberSession(payload);
-  await callFunction("ensure_household");
-  return { confirmationRequired: false };
-}
-
-function signOut() {
-  state.session = null;
-  persistSession();
 }
 
 // ---- 同期の下ごしらえ（1品1行として扱う） ---------------------------------
@@ -7236,103 +7083,6 @@ elements.onboardingSkip.addEventListener("click", () => {
   showView("inventory");
 });
 
-// ---- 二人で共有する（ログイン） -------------------------------------------
-function renderAccount() {
-  const signedIn = Boolean(state.session);
-  elements.accountForm.hidden = signedIn;
-  elements.accountSignedIn.hidden = !signedIn;
-  elements.accountNote.textContent = signedIn
-    ? "この端末はつながっています。"
-    : "同じ冷蔵庫を、別の端末からも見られるようにします。";
-  if (signedIn) {
-    elements.accountWho.textContent = `${state.session.email || "ログイン中"} でつながっています`;
-  }
-}
-
-function showAccountMessage(text, tone = "error") {
-  elements.accountMessage.textContent = text;
-  elements.accountMessage.classList.toggle("is-error", tone === "error");
-  elements.accountMessage.hidden = !text;
-}
-
-// 通信の失敗は文言を言い換える。英語のまま出しても何をすればいいか分からない
-function accountErrorText(error) {
-  if (!navigator.onLine) return "いまはつながっていません。電波のあるところで試してください。";
-  const message = String(error?.message || "");
-  if (/Invalid login credentials/i.test(message)) {
-    return "メールアドレスかパスワードが違います。";
-  }
-  if (/already registered/i.test(message)) {
-    return "このメールアドレスは登録済みです。「ログイン」を押してください。";
-  }
-  if (/Password should be/i.test(message)) return "パスワードは6文字以上にしてください。";
-  if (/Email not confirmed/i.test(message)) {
-    return "確認メールのリンクを開いてから、もう一度ログインしてください。";
-  }
-  if (!error?.status) return "つながりませんでした。時間をおいて試してください。";
-  return message || "うまくいきませんでした。";
-}
-
-async function withAccountBusy(label, run) {
-  const buttons = [elements.accountSignup, elements.accountSignout,
-    elements.accountForm.querySelector("#account-signin")];
-  buttons.forEach((button) => { if (button) button.disabled = true; });
-  showAccountMessage(label, "info");
-  try {
-    await run();
-  } catch (error) {
-    showAccountMessage(accountErrorText(error), "error");
-    return false;
-  } finally {
-    buttons.forEach((button) => { if (button) button.disabled = false; });
-  }
-  return true;
-}
-
-function accountInput() {
-  const email = elements.accountEmail.value.trim();
-  const password = elements.accountPassword.value;
-  if (!email || !password) {
-    showAccountMessage("メールアドレスとパスワードを入れてください。", "error");
-    return null;
-  }
-  return { email, password };
-}
-
-elements.accountForm.addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const input = accountInput();
-  if (!input) return;
-  const done = await withAccountBusy("つないでいます…", async () => {
-    await signIn(input.email, input.password);
-  });
-  if (!done) return;
-  elements.accountPassword.value = "";
-  renderAccount();
-  showAccountMessage("つながりました。", "info");
-});
-
-elements.accountSignup.addEventListener("click", async () => {
-  const input = accountInput();
-  if (!input) return;
-  let result = null;
-  const done = await withAccountBusy("登録しています…", async () => {
-    result = await signUp(input.email, input.password);
-  });
-  if (!done) return;
-  elements.accountPassword.value = "";
-  renderAccount();
-  showAccountMessage(result?.confirmationRequired
-    ? "確認メールを送りました。リンクを開いてから「ログイン」を押してください。"
-    : "登録してつながりました。", "info");
-});
-
-elements.accountSignout.addEventListener("click", () => {
-  signOut();
-  renderAccount();
-  showAccountMessage("この端末のつながりを切りました。冷蔵庫のデータは残っています。", "info");
-});
-
 elements.exportData.addEventListener("click", downloadBackup);
 
 elements.importData.addEventListener("click", () => {
@@ -7689,7 +7439,6 @@ elements.toastAction.addEventListener("click", () => {
 
 elements.appVersion.textContent = `v${APP_VERSION}`;
 loadSyncMeta();
-loadSession();
 loadSettings();
 elements.settingShowNutrition.checked = state.settings.showNutrition;
 elements.settingsNutritionNote.hidden = !state.settings.showNutrition;
@@ -7709,7 +7458,6 @@ syncQuantityControl(
   elements.shoppingUnit.value
 );
 renderAll();
-renderAccount();
 renderRefineEntry();
 renderDayAfterCheck();
 renderSampleNotice();
