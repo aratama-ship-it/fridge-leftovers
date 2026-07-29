@@ -1,0 +1,9 @@
+name = "fridge-leftovers"
+main = "src/index.js"
+compatibility_date = "2026-07-30"
+
+# npx wrangler d1 create fridge-leftovers で出た database_id をここへ貼る
+[[d1_databases]]
+binding = "DB"
+database_name = "fridge-leftovers"
+database_id = "ここに database_id を貼る"

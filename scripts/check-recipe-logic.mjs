@@ -41,7 +41,7 @@ function takeFunction(name) {
 
 const CONSTANTS = [
   "QUANTITY_CONFIRMED", "QUANTITY_ESTIMATED", "QUANTITY_UNKNOWN",
-  "DAY_AFTER_LEVELS", "DAY_AFTER_LIMIT", "SYNC_KINDS",
+  "DAY_AFTER_LEVELS", "DAY_AFTER_LIMIT", "SYNC_KINDS", "STORAGE_SHELF_CAPACITIES",
   "CONFIDENCE_ORDER", "quantityConfidence", "quantityUnknown", "lessCertain",
   "RECIPES", "RECEIPT_RULES", "INGREDIENT_SUBSTITUTES", "UNIT_CONVERSIONS",
   "SUBSTITUTE_GENERICS", "RECIPE_LIST_SERVINGS"
@@ -51,7 +51,7 @@ const FUNCTIONS = [
   "availableForRequirement", "requiredAmount", "shortageFor", "unconfirmedFor",
   "cookBlockers", "confirmUnknownAmounts", "optionalReady",
   "inventoryLevel", "pendingDayAfterItems", "dayAfterCorrection",
-  "markSyncChanges", "pendingSyncChanges", "applySyncResult"
+  "markSyncChanges", "pendingSyncChanges", "applySyncResult", "mergeEntity"
 ];
 
 // stockForRequirement は inventoryMap() と state を使う。テスト側で差し替える。
@@ -69,7 +69,7 @@ return {
   availableForRequirement, shortageFor, unconfirmedFor, cookBlockers,
   confirmUnknownAmounts, optionalReady, requiredAmount,
   pendingDayAfterItems, dayAfterCorrection, DAY_AFTER_LEVELS,
-  markSyncChanges, pendingSyncChanges, applySyncResult
+  markSyncChanges, pendingSyncChanges, applySyncResult, mergeEntity
 };
 `;
 
@@ -80,7 +80,7 @@ const {
   quantityConfidence, lessCertain, stockForRequirement,
   shortageFor, unconfirmedFor, cookBlockers, confirmUnknownAmounts,
   pendingDayAfterItems, dayAfterCorrection, DAY_AFTER_LEVELS,
-  markSyncChanges, pendingSyncChanges, applySyncResult
+  markSyncChanges, pendingSyncChanges, applySyncResult, mergeEntity
 } = app_;
 
 const ruleFor = (id) => RECEIPT_RULES.find((rule) => rule.id === id);
@@ -420,6 +420,44 @@ check("棚の数も1行として扱う", (() => {
   markSyncChanges();
   return (pendingSyncChanges().find((change) => change.kind === "shelves") || {}).body;
 })(), { id: "shelves", 冷蔵: 3, 冷凍: 1, 常温: 2 });
+
+// ---- 競合の決着 ----------------------------------------------------------
+// 迷ったら少ないほう・確かでないほう・無いほうを採る。多く見積もると
+// 「材料あり」と出て買い物に行かず、帰ってから足りないと分かるため。
+const item = (extra) => ({ id: "eggs", name: "卵", unit: "個", active: true, ...extra });
+
+check("在庫は少ないほうの数量を採る",
+  mergeEntity("item", item({ quantity: 6 }), item({ quantity: 2 })).quantity, 2);
+check("向きを変えても同じ",
+  mergeEntity("item", item({ quantity: 2 }), item({ quantity: 6 })).quantity, 2);
+check("片方が使い切っていれば無いものとして扱う", (() => {
+  const merged = mergeEntity("item", item({ quantity: 6 }), item({ quantity: 0, active: false }));
+  return [merged.active, Boolean(merged.consumedAt)];
+})(), [false, true]);
+check("確信度は低いほうを採る",
+  mergeEntity("item",
+    item({ quantity: 3, quantityConfidence: QUANTITY_CONFIRMED }),
+    item({ quantity: 3, quantityConfidence: QUANTITY_UNKNOWN })).quantityConfidence,
+  QUANTITY_UNKNOWN);
+check("満量は大きいほうを残す（残量の目盛りが縮まないように）",
+  mergeEntity("item", item({ quantity: 1, maxQuantity: 6 }), item({ quantity: 1, maxQuantity: 2 })).maxQuantity, 6);
+
+check("買い物は消したほうが勝つ", (() => {
+  const mine = { id: "s1", name: "牛乳", checked: false };
+  const theirs = { id: "s1", name: "牛乳", checked: true };
+  return [mergeEntity("shopping", mine, theirs).checked,
+          mergeEntity("shopping", theirs, mine).checked];
+})(), [true, true]);
+
+check("棚は多いほうを採る（食材の行き場が無くならないように）",
+  mergeEntity("shelves", { id: "shelves", 冷蔵: 2, 冷凍: 1, 常温: 3 },
+                         { id: "shelves", 冷蔵: 4, 冷凍: 1, 常温: 1 }),
+  { id: "shelves", 冷蔵: 4, 冷凍: 1, 常温: 3 });
+
+check("片方しか無ければそれを採る", [
+  mergeEntity("item", null, item({ quantity: 1 })).quantity,
+  mergeEntity("item", item({ quantity: 5 }), null).quantity
+], [1, 5]);
 
 console.log(failures
   ? `\n★${failures}件が期待と違います`

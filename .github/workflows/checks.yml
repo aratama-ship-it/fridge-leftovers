@@ -26,6 +26,10 @@ jobs:
       - name: レシート照合チェック
         run: node scripts/check-receipt-matching.mjs
 
+      # 共有サーバー（Cloudflare Worker）を node:sqlite で動かして確かめる
+      - name: 共有サーバーのチェック
+        run: node worker/check-worker.mjs
+
       # 在庫とレシピの突き合わせ（不足判定・代用・単位換算・数量の確信度）
       - name: レシピ判定チェック
         run: node scripts/check-recipe-logic.mjs

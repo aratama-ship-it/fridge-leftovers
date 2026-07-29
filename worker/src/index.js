@@ -1,0 +1,195 @@
+// 冷蔵庫アプリの共有サーバー（Cloudflare Workers + D1）
+//
+// 設計は ../CLOUDFLARE_SYNC.md。要点だけ:
+//
+// ・認証は「冷蔵庫IDを知っていること」で代える。二人で使うだけなので
+//   アカウントを作らない。IDは推測できない長さにする
+// ・**サーバーは冷蔵庫の中身を解釈しない。** 食材の名前も数量も、ただのJSONと
+//   して預かるだけ。レシピや判定はすべて端末側にある
+// ・競合したときサーバーは「あなたが見ていた版と違う」と返すだけ。何を採るかは
+//   アプリの都合（在庫は少ないほうを採る、など）なので端末側で決める
+
+// 紛らわしい l/1/0/o を除いた32文字。ちょうど32なので、下の byte % 長さ に
+// 偏りが出ない（33文字だと一部の文字がわずかに出やすくなる）
+const ID_ALPHABET = "abcdefghijkmnpqrstuvwxyz23456789";
+const ID_LENGTH = 22;
+const MAX_BODY_BYTES = 512 * 1024;
+const MAX_CHANGES = 200;
+
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type",
+  "Access-Control-Max-Age": "86400"
+};
+
+const json = (data, status = 200) =>
+  new Response(JSON.stringify(data), {
+    status,
+    headers: { "Content-Type": "application/json; charset=utf-8", ...CORS }
+  });
+
+const fail = (message, status = 400) => json({ error: message }, status);
+
+function newFridgeId() {
+  const bytes = new Uint8Array(ID_LENGTH);
+  crypto.getRandomValues(bytes);
+  let id = "";
+  for (const byte of bytes) id += ID_ALPHABET[byte % ID_ALPHABET.length];
+  return id;
+}
+
+const looksLikeId = (value) =>
+  typeof value === "string"
+  && value.length === ID_LENGTH
+  && [...value].every((letter) => ID_ALPHABET.includes(letter));
+
+async function createFridge(env) {
+  const id = newFridgeId();
+  const now = Date.now();
+  await env.DB.prepare(
+    "insert into fridges (id, seq, created_at, touched_at) values (?, 0, ?, ?)"
+  ).bind(id, now, now).run();
+  return json({ id });
+}
+
+async function readChanges(env, fridgeId, since) {
+  const rows = await env.DB.prepare(
+    `select kind, id, body, version, change_seq, deleted_at
+       from entities
+      where fridge_id = ? and change_seq > ?
+      order by change_seq
+      limit 500`
+  ).bind(fridgeId, since).all();
+
+  const head = await env.DB.prepare("select seq from fridges where id = ?")
+    .bind(fridgeId).first();
+
+  return json({
+    seq: head?.seq ?? 0,
+    changes: (rows.results || []).map((row) => ({
+      kind: row.kind,
+      id: row.id,
+      body: row.body ? JSON.parse(row.body) : null,
+      version: row.version,
+      changeSeq: row.change_seq,
+      deleted: Boolean(row.deleted_at)
+    }))
+  });
+}
+
+// 1件を適用する。端末が申告した版と食い違えば、書き換えずにサーバー側を返す。
+async function applyOne(env, fridgeId, change) {
+  const { kind, id, body = null, baseVersion = 0, deleted = false } = change;
+  if (!["item", "shopping", "cooking", "shelves"].includes(kind)) {
+    return { kind, id, status: "rejected", reason: "kind" };
+  }
+  if (typeof id !== "string" || !id || id.length > 200) {
+    return { kind, id, status: "rejected", reason: "id" };
+  }
+
+  const current = await env.DB.prepare(
+    "select body, version, change_seq, deleted_at from entities where fridge_id = ? and kind = ? and id = ?"
+  ).bind(fridgeId, kind, id).first();
+
+  if (current && current.version !== baseVersion) {
+    return {
+      kind,
+      id,
+      status: "conflict",
+      server: {
+        body: current.body ? JSON.parse(current.body) : null,
+        version: current.version,
+        changeSeq: current.change_seq,
+        deleted: Boolean(current.deleted_at)
+      }
+    };
+  }
+  if (!current && baseVersion) {
+    // サーバーに無いのに版を申告している＝端末の想定とずれている
+    return { kind, id, status: "conflict", server: null };
+  }
+
+  // 通し番号は冷蔵庫ごとに1つ。追加でも更新でも必ず進める
+  const bumped = await env.DB.prepare(
+    "update fridges set seq = seq + 1, touched_at = ? where id = ? returning seq"
+  ).bind(Date.now(), fridgeId).first();
+  const seq = bumped?.seq;
+  if (!seq) return { kind, id, status: "rejected", reason: "fridge" };
+
+  const now = Date.now();
+  const text = deleted ? null : JSON.stringify(body);
+  const version = (current?.version || 0) + 1;
+
+  await env.DB.prepare(
+    `insert into entities (fridge_id, kind, id, body, version, change_seq, deleted_at, updated_at)
+     values (?, ?, ?, ?, ?, ?, ?, ?)
+     on conflict (fridge_id, kind, id) do update set
+       body = excluded.body,
+       version = excluded.version,
+       change_seq = excluded.change_seq,
+       deleted_at = excluded.deleted_at,
+       updated_at = excluded.updated_at`
+  ).bind(fridgeId, kind, id, text, version, seq, deleted ? now : null, now).run();
+
+  return { kind, id, status: "applied", version, changeSeq: seq };
+}
+
+async function writeChanges(env, fridgeId, changes) {
+  if (!Array.isArray(changes)) return fail("changes は配列で送ってください");
+  if (changes.length > MAX_CHANGES) {
+    return fail(`一度に送れるのは${MAX_CHANGES}件までです`, 413);
+  }
+  const results = [];
+  for (const change of changes) {
+    results.push(await applyOne(env, fridgeId, change));
+  }
+  const head = await env.DB.prepare("select seq from fridges where id = ?")
+    .bind(fridgeId).first();
+  return json({ seq: head?.seq ?? 0, results });
+}
+
+export default {
+  async fetch(request, env) {
+    if (request.method === "OPTIONS") return new Response(null, { headers: CORS });
+
+    const url = new URL(request.url);
+    const parts = url.pathname.split("/").filter(Boolean);
+
+    // POST /v1/fridges
+    if (request.method === "POST" && parts.length === 2
+      && parts[0] === "v1" && parts[1] === "fridges") {
+      return createFridge(env);
+    }
+
+    // /v1/fridges/:id/changes
+    if (parts.length === 4 && parts[0] === "v1" && parts[1] === "fridges"
+      && parts[3] === "changes") {
+      const fridgeId = parts[2];
+      if (!looksLikeId(fridgeId)) return fail("冷蔵庫のIDが正しくありません", 404);
+
+      const exists = await env.DB.prepare("select 1 from fridges where id = ?")
+        .bind(fridgeId).first();
+      if (!exists) return fail("その冷蔵庫はありません", 404);
+
+      if (request.method === "GET") {
+        const since = Number(url.searchParams.get("since") || 0);
+        return readChanges(env, fridgeId, Number.isFinite(since) ? since : 0);
+      }
+
+      if (request.method === "POST") {
+        const raw = await request.text();
+        if (raw.length > MAX_BODY_BYTES) return fail("送る量が多すぎます", 413);
+        let payload = null;
+        try {
+          payload = JSON.parse(raw);
+        } catch {
+          return fail("JSONとして読めませんでした");
+        }
+        return writeChanges(env, fridgeId, payload?.changes);
+      }
+    }
+
+    return fail("そのURLはありません", 404);
+  }
+};

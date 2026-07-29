@@ -3322,6 +3322,58 @@ function markSyncChanges() {
   }
 }
 
+// 二人が同じものを同時に触ったときの決着（→ CLOUDFLARE_SYNC.md の 2.）。
+//
+// ★サーバーは「あなたが見ていた版と違う」と返すだけで、何を採るかは決めない。
+// 何が安全かはアプリの都合だから、ここで決める。
+//
+// 在庫でいちばん困るのは**多く見積もること**。「材料あり」と出て買い物に行かず、
+// 帰ってから足りないと分かる。少なく見積もれば余分に買うだけで済む。
+// だから迷ったら少ないほう・確かでないほう・無いほうを採る。
+function mergeEntity(kind, mine, theirs) {
+  if (!theirs) return mine;
+  if (!mine) return theirs;
+
+  if (kind === "item") {
+    // 片方が「使い切った」と言っているなら、無いものとして扱う
+    const active = mine.active !== false && theirs.active !== false;
+    const merged = { ...theirs, ...mine };
+    merged.active = active;
+    merged.quantity = Math.min(Number(mine.quantity) || 0, Number(theirs.quantity) || 0);
+    merged.quantityConfidence = lessCertain(
+      quantityConfidence(mine),
+      quantityConfidence(theirs)
+    );
+    // 満量は大きいほうを残す。残量の帯（ある／少ない）の目盛りが縮むと、
+    // 同じ量なのに「少ない」に見えてしまう
+    merged.maxQuantity = Math.max(
+      Number(mine.maxQuantity) || 0,
+      Number(theirs.maxQuantity) || 0
+    ) || merged.quantity;
+    if (!active) merged.consumedAt = mine.consumedAt || theirs.consumedAt || todayIso();
+    return merged;
+  }
+
+  if (kind === "shopping") {
+    // 消した（買った）ほうが勝つ。同じものを二度買わないため
+    const checked = Boolean(mine.checked) || Boolean(theirs.checked);
+    return { ...theirs, ...mine, checked };
+  }
+
+  if (kind === "shelves") {
+    // 棚が減ると、そこに乗っていた食材の行き場が無くなる。多いほうを採る
+    const merged = { ...theirs, ...mine };
+    for (const location of Object.keys(STORAGE_SHELF_CAPACITIES)) {
+      const both = [Number(mine[location]), Number(theirs[location])].filter(Number.isFinite);
+      if (both.length) merged[location] = Math.max(...both);
+    }
+    return merged;
+  }
+
+  // 調理履歴は追記だけなので競合しない。万一のときはサーバー側を残す
+  return theirs;
+}
+
 // まだ送っていない変更。サーバーへ渡す形（SUPABASE_SETUP.md の apply_mutation）
 function pendingSyncChanges() {
   return Object.entries(state.syncMeta)
