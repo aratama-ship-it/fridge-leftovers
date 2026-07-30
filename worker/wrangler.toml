@@ -2,8 +2,10 @@ name = "fridge-leftovers"
 main = "src/index.js"
 compatibility_date = "2026-07-30"
 
-# npx wrangler d1 create fridge-leftovers で出た database_id をここへ貼る
+# binding は Worker のコードから見える名前。src/index.js が env.DB を使うので "DB"。
+# wrangler の出力は binding = "fridge_leftovers" を勧めてくるが、そちらに
+# 合わせるならコード側も直す必要があるので、ここは "DB" のままにしている。
 [[d1_databases]]
 binding = "DB"
 database_name = "fridge-leftovers"
-database_id = "ここに database_id を貼る"
+database_id = "891b9b08-0cc1-4c09-a65b-8a426dff946c"
