@@ -3050,6 +3050,8 @@ const state = {
   onboarding: { step: 1, leads: [], extras: [] },
   // 売り場を順番に回って足していく画面。added はこの画面で入れたぶん
   refine: { index: 0, added: [] },
+  // ホームで見せている収納。fridge（冷蔵・冷凍）か pantry（常温）
+  fridgeTab: "fridge",
   // 読み込もうとしているファイルの中身。置き換えるまで在庫には触らない
   pendingBackup: null,
   // 同期の版と「まだ送っていない」印。実体とは別に持つ
@@ -4686,15 +4688,6 @@ function renderFridgeShelf(items, location, shelf, showAdd = false) {
   `;
 }
 
-function renderPantryShelf(items, shelf, showAdd = false) {
-  return `
-    <div class="pantry-foods">
-      ${items.map(renderFridgeFood).join("")}
-      ${showAdd ? renderShelfAddButton("常温", shelf) : ""}
-    </div>
-  `;
-}
-
 function itemsOnShelf(active, location, shelf) {
   return active.filter((item) => item.location === location && item.shelf === shelf);
 }
@@ -4745,7 +4738,26 @@ function renderFridgeScene(active) {
   const hiddenPantryCount = pantryShelves.reduce((count, items, shelf) =>
     count + items.length - visiblePantryShelves[shelf].length, 0);
 
-  elements.fridgeScene.innerHTML = `
+  // パントリーは冷蔵庫と同じ筐体で、色だけ木調にして見分ける（本人の指定）。
+  // 縦に2台並べず、上のタブで切り替える
+  const showPantry = state.fridgeTab === "pantry";
+  const heading = document.querySelector("#fridge-visual-title");
+  if (heading) heading.textContent = showPantry ? "わたしのパントリー" : "わたしの冷蔵庫";
+
+  const applianceHtml = showPantry
+    ? `
+    <div class="fridge-appliance is-pantry">
+      <div class="fridge-chamber pantry-chamber">
+        <span class="fridge-compartment-label">常温ストック</span>
+        ${visiblePantryShelves.map((items, shelf) => `
+          <div class="fridge-shelf" data-drop-location="常温" data-drop-shelf="${shelf}">
+            ${renderFridgeShelf(items, "常温", shelf, shelf === pantryAddShelf)}
+          </div>
+        `).join("")}
+      </div>
+      ${hiddenPantryCount ? `<span class="fridge-overflow">ほか ${hiddenPantryCount}品</span>` : ""}
+    </div>`
+    : `
     <div class="fridge-appliance">
       <div class="fridge-freezer">
         <span class="fridge-compartment-label">冷凍室</span>
@@ -4767,7 +4779,18 @@ function renderFridgeScene(active) {
         ${renderShelfControl("冷蔵")}
       </div>
       ${hiddenFridgeCount ? `<span class="fridge-overflow">ほか ${hiddenFridgeCount}品</span>` : ""}
+    </div>`;
+
+  elements.fridgeScene.innerHTML = `
+    <div class="fridge-unit-tabs" role="group" aria-label="収納を切り替える">
+      <button type="button" data-fridge-tab="fridge" class="${showPantry ? "" : "is-active"}" aria-pressed="${!showPantry}">
+        冷蔵庫
+      </button>
+      <button type="button" data-fridge-tab="pantry" class="is-pantry-tab ${showPantry ? "is-active" : ""}" aria-pressed="${showPantry}">
+        パントリー${pantry.length ? `<small>${pantry.length}</small>` : ""}
+      </button>
     </div>
+    ${applianceHtml}
 
     <section class="food-consume-station" data-consume-drop aria-label="食べて使い切った食材をここへ">
       <div class="food-consume-copy">
@@ -4778,29 +4801,6 @@ function renderFridgeScene(active) {
       <div class="food-child-character" aria-hidden="true">
         <span class="food-child-bubble">ぱくっ</span>
         <img src="assets/food-child-drop-target.png?v=20260724-1" alt="">
-      </div>
-    </section>
-
-    <section class="pantry-visual" aria-labelledby="pantry-title">
-      <div class="pantry-heading">
-        <div>
-          <p class="eyebrow">常温でしまうもの</p>
-          <h3 id="pantry-title">わたしのパントリー</h3>
-        </div>
-        <span>${pantry.length ? `${pantry.length}品` : "空いています"}</span>
-      </div>
-      <div class="pantry-cabinet">
-        <div class="pantry-top" aria-hidden="true"></div>
-        <div class="pantry-compartment" data-drop-location="常温" data-drop-shelf="0">
-          ${renderPantryShelf(visiblePantryShelves[0], 0, pantryAddShelf === 0)}
-        </div>
-        <div class="pantry-compartment" data-drop-location="常温" data-drop-shelf="1">
-          ${renderPantryShelf(visiblePantryShelves[1], 1, pantryAddShelf === 1)}
-        </div>
-        <div class="pantry-base">
-          <span>常温ストック</span>
-          ${hiddenPantryCount ? `<span>ほか ${hiddenPantryCount}品</span>` : '<span aria-hidden="true">●</span>'}
-        </div>
       </div>
     </section>
   `;
@@ -6778,7 +6778,7 @@ function clearFridgeConsumeTarget(drag) {
 }
 
 function shelfFoodElements(dropTarget) {
-  const row = dropTarget?.querySelector(".fridge-foods, .pantry-foods");
+  const row = dropTarget?.querySelector(".fridge-foods");
   if (!row) return { row: null, foods: [] };
   return {
     row,
@@ -6842,7 +6842,7 @@ function updateFridgeReorderPreview(drag, dropTarget, placement) {
   clearFridgeReorderPreview(drag);
   if (!placement.row) return;
 
-  const sourceRow = drag.source.closest(".fridge-foods, .pantry-foods");
+  const sourceRow = drag.source.closest(".fridge-foods");
   const sourceIndex = placement.foods.indexOf(drag.source);
   const sampleRect = drag.source.getBoundingClientRect();
   const columnGap = Number.parseFloat(getComputedStyle(placement.row).columnGap) || 1;
@@ -7632,6 +7632,14 @@ elements.fridgeScene.addEventListener("pointercancel", () => {
 elements.fridgeScene.addEventListener("click", (event) => {
   if (Date.now() < state.suppressFridgeClickUntil) {
     event.preventDefault();
+    return;
+  }
+  const unitTab = event.target.closest("[data-fridge-tab]");
+  if (unitTab) {
+    if (state.fridgeTab !== unitTab.dataset.fridgeTab) {
+      state.fridgeTab = unitTab.dataset.fridgeTab;
+      renderInventory();
+    }
     return;
   }
   const shelfAdd = event.target.closest("[data-shelf-add]");
