@@ -5679,8 +5679,8 @@ function showView(viewName) {
   elements.bottomNav.hidden = viewName === "onboarding" || viewName === "refine";
   elements.onboardingView.hidden = viewName !== "onboarding";
   elements.refineView.hidden = viewName !== "refine";
-  elements.appHeader.hidden = !["inventory", "onboarding", "refine"].includes(viewName);
-  elements.openSettings.hidden = viewName !== "inventory";
+  // ヘッダーはタイトルを持たない細い帯（バージョン＋設定）になったので、
+  // どの画面でも出したままにする。バージョンを常に見せておくため
   elements.inventoryView.hidden = viewName !== "inventory";
   elements.managementView.hidden = viewName !== "management";
   elements.suggestionsView.hidden = viewName !== "suggestions";

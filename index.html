@@ -12,21 +12,19 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="冷蔵庫の現在地">
-  <link rel="stylesheet" href="styles.css?v=1da3a6f5">
+  <link rel="stylesheet" href="styles.css?v=bbf85c9f">
   <script src="vendor/tesseract/tesseract.min.js?v=7.0.0" defer></script>
-  <script src="app.js?v=eea5d2c1" defer></script>
+  <script src="app.js?v=09c0cb52" defer></script>
 </head>
 <body>
   <div class="app-shell">
-    <p class="app-version" id="app-version" aria-label="アプリのバージョン"></p>
+    <!-- タイトルは出さない（本人の指定）。バージョンと設定だけの細い帯にする -->
     <header class="app-header" id="app-header">
-      <p class="eyebrow">台所の在庫帳</p>
-      <div class="header-line">
-        <h1>冷蔵庫の現在地</h1>
-        <button class="header-settings-button" type="button" id="open-settings" aria-label="設定" aria-haspopup="dialog" aria-controls="settings-dialog">
-          <span aria-hidden="true">⚙</span>
-        </button>
-      </div>
+      <h1 class="visually-hidden">冷蔵庫の現在地</h1>
+      <p class="app-version" id="app-version" aria-label="アプリのバージョン"></p>
+      <button class="header-settings-button" type="button" id="open-settings" aria-label="設定" aria-haspopup="dialog" aria-controls="settings-dialog">
+        <span aria-hidden="true">⚙</span>
+      </button>
     </header>
 
     <main>
@@ -91,7 +89,7 @@
         <!-- 初回登録の続き。押すまで何も起きない -->
         <button class="refine-entry" type="button" id="open-refine">
           <span class="refine-entry-copy">
-            <strong>冷蔵庫をもっと正確にする</strong>
+            <strong>一覧から一度に追加する</strong>
             <small id="refine-entry-note"></small>
           </span>
           <span class="refine-entry-mark" aria-hidden="true">→</span>
