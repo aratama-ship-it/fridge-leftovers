@@ -4159,3 +4159,64 @@ input[type="number"] {
 .import-error[hidden] {
   display: none;
 }
+
+/* ---- 二人で共有する ------------------------------------------------------ */
+.share-off[hidden],
+.share-on[hidden],
+.share-message[hidden] {
+  display: none;
+}
+
+.share-start,
+.share-stop {
+  width: 100%;
+  margin-top: 10px;
+}
+
+.share-join {
+  margin-top: 12px;
+}
+
+.share-join summary {
+  color: var(--leaf);
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.share-join .button {
+  width: 100%;
+  margin-top: 10px;
+}
+
+.share-link-label {
+  margin: 10px 0 4px;
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+/* リンクは長いので、折り返さず横に流して選びやすくする */
+.share-link {
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: #fff;
+  color: var(--ink);
+  font-size: 0.78rem;
+}
+
+.share-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.share-actions .button {
+  flex: 1;
+}
+
+.share-message.is-error {
+  color: var(--warm);
+}

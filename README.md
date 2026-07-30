@@ -35,6 +35,7 @@
 - 冷蔵庫画面から「冷蔵庫をもっと正確にする」で、10の売り場を順番に見て食材を足す
 - 昨日つくった料理のあと、使った食材の残りを「ある／少ない／ない」で直す
 - ブラウザ内への在庫・買い物データ保存と、設定からのファイル書き出し・読み込み（機種変更やバックアップ用）
+- 設定から「共有をはじめる」でリンクを発行し、相手がそれを開くだけで同じ冷蔵庫を見られる（登録不要）
 - ホーム画面に追加して全画面で起動し、通信が無くても開ける（アイコンの長押しから「レシピ」「買い物」「在庫」へ直接移動）
 
 レシート認識には、アプリ内へ同梱したTesseract.jsと日本語学習データを使用します。写真を外部OCR APIへ送信せず、解析後の写真も保存しません。第三者ライセンスは[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)を参照してください。
@@ -49,7 +50,7 @@
 
 公開前の初期単位確認は[RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md)にまとめています。
 
-二人で1つの冷蔵庫を共有する同期の設計と、Supabaseの準備手順は[SUPABASE_SETUP.md](SUPABASE_SETUP.md)にまとめています。現在のアプリには未実装です。
+二人で1つの冷蔵庫を共有する仕組みは[CLOUDFLARE_SYNC.md](CLOUDFLARE_SYNC.md)にまとめています（Cloudflare Workers + D1、サーバーは`worker/`）。先に検討したSupabase版は[SUPABASE_SETUP.md](SUPABASE_SETUP.md)に保留として残しています。
 
 将来オプションとして、スーパーの特売と在庫を組み合わせて「いつもより得な料理」を提案する企画を[FUTURE_OPTION_SALE_VALUE_MEALS.md](FUTURE_OPTION_SALE_VALUE_MEALS.md)に保留状態で記録しています。現在のアプリには未実装です。
 

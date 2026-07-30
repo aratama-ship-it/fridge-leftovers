@@ -3054,6 +3054,9 @@ const state = {
   pendingBackup: null,
   // 同期の版と「まだ送っていない」印。実体とは別に持つ
   syncMeta: {},
+  // 共有している冷蔵庫。fridgeId が空なら共有していない
+  share: { fridgeId: "", seq: 0, syncedAt: "" },
+  syncing: false,
   settings: { ...DEFAULT_SETTINGS }
 };
 
@@ -3164,6 +3167,23 @@ const elements = {
   onboardingExtraGrid: document.querySelector("#onboarding-extra-grid"),
   onboardingSkip: document.querySelector("#onboarding-skip"),
   onboardingNext: document.querySelector("#onboarding-next"),
+  shareNote: document.querySelector("#share-note"),
+  privacyNotes: [
+    document.querySelector("#privacy-note-inventory"),
+    document.querySelector("#privacy-note-shopping"),
+    document.querySelector("#privacy-note-history")
+  ],
+  shareOff: document.querySelector("#share-off"),
+  shareOn: document.querySelector("#share-on"),
+  shareCreate: document.querySelector("#share-create"),
+  shareJoinId: document.querySelector("#share-join-id"),
+  shareJoinGo: document.querySelector("#share-join-go"),
+  shareLink: document.querySelector("#share-link"),
+  shareCopy: document.querySelector("#share-copy"),
+  shareNow: document.querySelector("#share-now"),
+  shareStatus: document.querySelector("#share-status"),
+  shareStop: document.querySelector("#share-stop"),
+  shareMessage: document.querySelector("#share-message"),
   exportData: document.querySelector("#export-data"),
   importData: document.querySelector("#import-data"),
   importFile: document.querySelector("#import-file"),
@@ -3391,6 +3411,196 @@ function pendingSyncChanges() {
     });
 }
 
+// ---- 共有サーバーとのやりとり ---------------------------------------------
+// 設計は CLOUDFLARE_SYNC.md。サーバーの中身は worker/src/index.js。
+//
+// ★端末側が主体。冷蔵庫の中身は今までどおり端末に持ち、圏外でも全部動く。
+// つながったときに差分だけをやりとりする。
+const SYNC_API = "https://fridge-leftovers.juggler-arata.workers.dev";
+const SHARE_STORAGE_KEY = "fridge-leftovers-share-v1";
+
+function loadShare() {
+  state.share = { fridgeId: "", seq: 0, syncedAt: "" };
+  try {
+    const saved = localStorage.getItem(SHARE_STORAGE_KEY);
+    if (!saved) return;
+    const parsed = JSON.parse(saved);
+    if (typeof parsed?.fridgeId === "string") {
+      state.share = {
+        fridgeId: parsed.fridgeId,
+        seq: Number(parsed.seq) || 0,
+        syncedAt: typeof parsed.syncedAt === "string" ? parsed.syncedAt : ""
+      };
+    }
+  } catch {
+    markStorageUnavailable();
+  }
+}
+
+function persistShare() {
+  if (!state.storageEnabled) return;
+  try {
+    localStorage.setItem(SHARE_STORAGE_KEY, JSON.stringify(state.share));
+  } catch {
+    markStorageUnavailable();
+  }
+}
+
+async function shareFetch(path, { method = "GET", body } = {}) {
+  const response = await fetch(`${SYNC_API}${path}`, {
+    method,
+    headers: body ? { "Content-Type": "application/json" } : undefined,
+    body: body === undefined ? undefined : JSON.stringify(body)
+  });
+  const text = await response.text();
+  let parsed = null;
+  try {
+    parsed = text ? JSON.parse(text) : null;
+  } catch {
+    parsed = null;
+  }
+  if (!response.ok) {
+    const error = new Error(parsed?.error || `通信に失敗しました（${response.status}）`);
+    error.status = response.status;
+    throw error;
+  }
+  return parsed;
+}
+
+// 受け取った変更を自分の在庫へ入れる。
+// 自分がまだ送っていない行とぶつかったら、決着ルールで混ぜる（→ mergeEntity）。
+function applyIncoming(changes) {
+  const lists = new Map(SYNC_KINDS.map((entry) => [entry.kind, entry]));
+  let touched = false;
+
+  for (const change of changes) {
+    const entry = lists.get(change.kind);
+    if (!entry) continue;
+    const key = `${change.kind}:${change.id}`;
+    const meta = state.syncMeta[key];
+    const list = entry.list();
+
+    if (change.deleted) {
+      // 相手が消したものは消す。自分がまだ送っていない変更があっても、
+      // 「無いほうを採る」の考えに沿って消す側を採る
+      if (change.kind === "item") state.inventory = state.inventory.filter((item) => item.id !== change.id);
+      if (change.kind === "shopping") state.shopping = state.shopping.filter((item) => item.id !== change.id);
+      if (change.kind === "cooking") state.cookingHistory = state.cookingHistory.filter((item) => item.id !== change.id);
+      delete state.syncMeta[key];
+      touched = true;
+      continue;
+    }
+
+    const mineIsDirty = Boolean(meta?.dirty);
+    const current = list.find((item) => String(item.id) === String(change.id)) || null;
+    const merged = mineIsDirty
+      ? mergeEntity(change.kind, current, change.body)
+      : change.body;
+
+    if (change.kind === "shelves") {
+      const { id, ...counts } = merged;
+      void id;
+      state.shelfCounts = { ...state.shelfCounts, ...counts };
+    } else if (current) {
+      Object.assign(current, merged);
+    } else if (change.kind === "item") {
+      state.inventory.push(merged);
+    } else if (change.kind === "shopping") {
+      state.shopping.push(merged);
+    } else if (change.kind === "cooking") {
+      state.cookingHistory.unshift(merged);
+    }
+
+    // 混ぜた結果が相手の中身と違うなら、こちらから送り直す必要がある
+    const settled = JSON.stringify(merged) === JSON.stringify(change.body);
+    state.syncMeta[key] = {
+      version: change.version,
+      body: JSON.stringify(merged),
+      dirty: !settled
+    };
+    touched = true;
+  }
+  return touched;
+}
+
+// 1回の往復。受け取ってから送る（先に受け取らないと、こちらの版が古いまま
+// ぶつかって毎回競合になる）。
+async function syncOnce() {
+  if (!state.share.fridgeId || state.syncing) return { skipped: true };
+  state.syncing = true;
+  try {
+    const pulled = await shareFetch(
+      `/v1/fridges/${state.share.fridgeId}/changes?since=${state.share.seq}`
+    );
+    let touched = applyIncoming(pulled.changes || []);
+    state.share.seq = Number(pulled.seq) || state.share.seq;
+
+    markSyncChanges();
+    const pending = pendingSyncChanges();
+    if (pending.length) {
+      const sent = await shareFetch(
+        `/v1/fridges/${state.share.fridgeId}/changes`,
+        {
+          method: "POST",
+          body: {
+            changes: pending.slice(0, 200).map((change) => ({
+              kind: change.kind,
+              id: change.id,
+              body: change.body,
+              baseVersion: change.baseVersion,
+              deleted: change.deleted
+            }))
+          }
+        }
+      );
+      for (const result of sent.results || []) {
+        const key = `${result.kind}:${result.id}`;
+        if (result.status === "applied") {
+          applySyncResult(key, result.version);
+        } else if (result.status === "conflict") {
+          // 相手が先に変えていた。次の往復で受け取って混ぜる。
+          // ここで自分の変更を捨てないのが大事
+          const meta = state.syncMeta[key];
+          if (meta) meta.version = result.server?.version ?? meta.version;
+        }
+      }
+      state.share.seq = Number(sent.seq) || state.share.seq;
+      touched = true;
+    }
+
+    state.share.syncedAt = new Date().toISOString();
+    persistShare();
+    persistSyncMeta();
+    if (touched) {
+      persistInventory();
+      persistShoppingList();
+      persistCookingHistory();
+      persistShelfCounts();
+      renderAll();
+      renderDayAfterCheck();
+    }
+    return { changed: touched, pending: pendingSyncChanges().length };
+  } finally {
+    state.syncing = false;
+  }
+}
+
+async function createSharedFridge() {
+  const created = await shareFetch("/v1/fridges", { method: "POST" });
+  if (!created?.id) throw new Error("冷蔵庫を作れませんでした");
+  state.share = { fridgeId: created.id, seq: 0, syncedAt: "" };
+  // いま持っているものを全部送る。作った直後はサーバーが空なので、
+  // 版はすべて0から始める
+  for (const meta of Object.values(state.syncMeta)) {
+    meta.version = 0;
+    meta.dirty = true;
+  }
+  persistShare();
+  persistSyncMeta();
+  await syncOnce();
+  return created.id;
+}
+
 // 送信が通ったときに呼ぶ。墓石は通った時点で表から外す（もう伝える用が無い）
 function applySyncResult(key, version) {
   const meta = state.syncMeta[key];
@@ -3420,7 +3630,9 @@ const EXPORT_SECTIONS = [
   { key: "settings", label: "設定", storage: SETTINGS_STORAGE_KEY, get: () => state.settings },
   // 同期の版も一緒に持ち出す。持ち越さないと、読み込んだ先で全部が
   // 「サーバーの知らない新しい行」になり、二重に登録されてしまう
-  { key: "syncMeta", label: "同期の記録", storage: SYNC_STORAGE_KEY, get: () => state.syncMeta }
+  { key: "syncMeta", label: "同期の記録", storage: SYNC_STORAGE_KEY, get: () => state.syncMeta },
+  // 共有している冷蔵庫。機種変更したとき、同じ冷蔵庫へ戻れるように持ち出す
+  { key: "share", label: "共有の設定", storage: SHARE_STORAGE_KEY, get: () => state.share }
 ];
 
 function backupPayload() {
@@ -3504,6 +3716,7 @@ function applyBackup({ found }) {
   // 保存し直したあとは、通常の読み込みをそのまま通す。
   // ここで検証をやり直せるので、壊れた値が state へ入らない
   loadSyncMeta();
+  loadShare();
   loadSettings();
   loadShelfCounts();
   loadRecentIngredients();
@@ -7135,6 +7348,156 @@ elements.onboardingSkip.addEventListener("click", () => {
   showView("inventory");
 });
 
+// ---- 二人で共有する（画面） -----------------------------------------------
+const shareLinkFor = (fridgeId) =>
+  `${location.origin}${location.pathname}#join=${fridgeId}`;
+
+function renderShare() {
+  const shared = Boolean(state.share.fridgeId);
+
+  // ★共有していると「この端末のブラウザ内だけ」は事実と違う。約束を書き換える
+  const notes = {
+    "privacy-note-inventory": ["在庫データは、この端末のブラウザ内だけに保存されます。",
+      "在庫データは、この端末と、共有している相手の端末で見られます。"],
+    "privacy-note-shopping": ["買い物リストも、この端末のブラウザ内だけに保存されます。",
+      "買い物リストも、共有している相手と同じものを見ています。"],
+    "privacy-note-history": ["調理履歴も、この端末のブラウザ内だけに保存されます。",
+      "調理履歴も、共有している相手と同じものを見ています。"]
+  };
+  for (const note of elements.privacyNotes) {
+    if (!note) continue;
+    const pair = notes[note.id];
+    if (pair) note.textContent = shared ? pair[1] : pair[0];
+  }
+
+  elements.shareOff.hidden = shared;
+  elements.shareOn.hidden = !shared;
+  elements.shareNote.textContent = shared
+    ? "この冷蔵庫は共有しています。開いたときと、画面に戻ったときに合わせます。"
+    : "同じ冷蔵庫を、相手のスマホからも見られるようにします。登録は要りません。";
+  if (!shared) return;
+  elements.shareLink.value = shareLinkFor(state.share.fridgeId);
+  const when = state.share.syncedAt
+    ? new Date(state.share.syncedAt).toLocaleString("ja-JP", { hour12: false })
+    : "まだ";
+  const pending = pendingSyncChanges().length;
+  elements.shareStatus.textContent = pending
+    ? `最後に合わせたのは ${when}。送れていない変更が${pending}件あります。`
+    : `最後に合わせたのは ${when}。`;
+}
+
+function showShareMessage(text, tone = "error") {
+  elements.shareMessage.textContent = text;
+  elements.shareMessage.classList.toggle("is-error", tone === "error");
+  elements.shareMessage.hidden = !text;
+}
+
+function shareErrorText(error) {
+  if (!navigator.onLine) return "いまはつながっていません。電波のあるところで試してください。";
+  if (error?.status === 404) return "その冷蔵庫は見つかりませんでした。リンクを確かめてください。";
+  if (!error?.status) return "つながりませんでした。時間をおいて試してください。";
+  return error.message || "うまくいきませんでした。";
+}
+
+// リンクをそのまま貼られても、IDだけ貼られても受け取る
+function fridgeIdFrom(value) {
+  const text = String(value || "").trim();
+  const fromHash = text.match(/#join=([a-z2-9]{22})/);
+  if (fromHash) return fromHash[1];
+  return /^[a-z2-9]{22}$/.test(text) ? text : "";
+}
+
+async function withShareBusy(label, run) {
+  const buttons = [elements.shareCreate, elements.shareJoinGo, elements.shareNow, elements.shareStop];
+  buttons.forEach((button) => { button.disabled = true; });
+  showShareMessage(label, "info");
+  try {
+    await run();
+    return true;
+  } catch (error) {
+    showShareMessage(shareErrorText(error), "error");
+    return false;
+  } finally {
+    buttons.forEach((button) => { button.disabled = false; });
+  }
+}
+
+elements.shareCreate.addEventListener("click", async () => {
+  const done = await withShareBusy("用意しています…", createSharedFridge);
+  renderShare();
+  if (done) showShareMessage("できました。下のリンクを相手に渡してください。", "info");
+});
+
+elements.shareJoinGo.addEventListener("click", async () => {
+  const fridgeId = fridgeIdFrom(elements.shareJoinId.value);
+  if (!fridgeId) {
+    showShareMessage("リンクかIDを貼ってください。", "error");
+    return;
+  }
+  await joinSharedFridge(fridgeId);
+});
+
+// 相手の冷蔵庫に入る。**自分の冷蔵庫の中身は消さない**（相手のものと混ざる）。
+// 消すほうが分かりやすい場面もあるが、消してしまうと戻せない
+async function joinSharedFridge(fridgeId) {
+  const done = await withShareBusy("つないでいます…", async () => {
+    state.share = { fridgeId, seq: 0, syncedAt: "" };
+    for (const meta of Object.values(state.syncMeta)) {
+      meta.version = 0;
+      meta.dirty = true;
+    }
+    persistShare();
+    persistSyncMeta();
+    await syncOnce();
+  });
+  elements.shareJoinId.value = "";
+  renderShare();
+  if (done) {
+    showShareMessage("つながりました。いまの冷蔵庫の中身も相手へ送っています。", "info");
+  } else {
+    // つながらなかったら共有していない状態へ戻す。中途半端に残さない
+    state.share = { fridgeId: "", seq: 0, syncedAt: "" };
+    persistShare();
+    renderShare();
+  }
+}
+
+elements.shareCopy.addEventListener("click", async () => {
+  try {
+    await navigator.clipboard.writeText(elements.shareLink.value);
+    showShareMessage("リンクをコピーしました。", "info");
+  } catch {
+    // 権限が無い端末もある。その場合は選択状態にして手で写してもらう
+    elements.shareLink.select();
+    showShareMessage("コピーできませんでした。選択されているので手で写してください。", "error");
+  }
+});
+
+elements.shareNow.addEventListener("click", async () => {
+  const done = await withShareBusy("合わせています…", syncOnce);
+  renderShare();
+  if (done) showShareMessage("合わせました。", "info");
+});
+
+elements.shareStop.addEventListener("click", () => {
+  state.share = { fridgeId: "", seq: 0, syncedAt: "" };
+  persistShare();
+  renderShare();
+  showShareMessage("この端末の共有をやめました。冷蔵庫の中身は残っています。", "info");
+});
+
+// 開いたとき・画面に戻ったときに合わせる。こまめに送らないのは、
+// 台所で1品ずつ触るたびに通信すると電池と通信量が無駄になるため
+function syncInBackground() {
+  if (!state.share.fridgeId || !navigator.onLine) return;
+  syncOnce().then(() => renderShare()).catch(() => {});
+}
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") syncInBackground();
+});
+window.addEventListener("online", syncInBackground);
+
 elements.exportData.addEventListener("click", downloadBackup);
 
 elements.importData.addEventListener("click", () => {
@@ -7491,6 +7854,7 @@ elements.toastAction.addEventListener("click", () => {
 
 elements.appVersion.textContent = `v${APP_VERSION}`;
 loadSyncMeta();
+loadShare();
 loadSettings();
 elements.settingShowNutrition.checked = state.settings.showNutrition;
 elements.settingsNutritionNote.hidden = !state.settings.showNutrition;
@@ -7510,11 +7874,13 @@ syncQuantityControl(
   elements.shoppingUnit.value
 );
 renderAll();
+renderShare();
 renderRefineEntry();
 renderDayAfterCheck();
 renderSampleNotice();
 
 if (state.needsOnboarding) startOnboarding();
+syncInBackground();
 
 // ホーム画面のアイコンを長押しして選ぶショートカット（manifest.json）から
 // 開いたとき、その画面を最初に出す。履歴は触らない（戻るで画面が増えると
@@ -7526,6 +7892,16 @@ const VIEW_BY_HASH = {
 };
 
 function showViewFromHash() {
+  // 共有リンク（#join=...）で開かれたら、その冷蔵庫へ入る。
+  // リンクを渡すだけで済むのが、この方式にした理由そのもの
+  const invited = fridgeIdFrom(window.location.hash);
+  if (invited && invited !== state.share.fridgeId) {
+    // 履歴からIDを消す。あとで戻るボタンでもう一度参加させない
+    history.replaceState(null, "", window.location.pathname);
+    elements.settingsDialog.showModal();
+    joinSharedFridge(invited);
+    return;
+  }
   // 初回登録の途中は割り込ませない
   if (!elements.onboardingView.hidden) return;
   const viewName = VIEW_BY_HASH[window.location.hash];

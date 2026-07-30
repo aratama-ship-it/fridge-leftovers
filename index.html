@@ -12,9 +12,9 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="冷蔵庫の現在地">
-  <link rel="stylesheet" href="styles.css?v=978f0218">
+  <link rel="stylesheet" href="styles.css?v=cb8bc802">
   <script src="vendor/tesseract/tesseract.min.js?v=7.0.0" defer></script>
-  <script src="app.js?v=fdbfa2f5" defer></script>
+  <script src="app.js?v=eea5d2c1" defer></script>
 </head>
 <body>
   <div class="app-shell">
@@ -143,7 +143,7 @@
           <div id="finished-list"></div>
         </details>
 
-        <p class="privacy-note">在庫データは、この端末のブラウザ内だけに保存されます。</p>
+        <p class="privacy-note" id="privacy-note-inventory">在庫データは、この端末のブラウザ内だけに保存されます。</p>
       </section>
 
       <section class="view" id="suggestions-view" aria-label="レシピ" hidden>
@@ -271,7 +271,7 @@
           <div class="shopping-list" id="shopping-list" aria-live="polite"></div>
         </section>
 
-        <p class="privacy-note">買い物リストも、この端末のブラウザ内だけに保存されます。</p>
+        <p class="privacy-note" id="privacy-note-shopping">買い物リストも、この端末のブラウザ内だけに保存されます。</p>
       </section>
 
       <section class="view history-view" id="history-view" aria-labelledby="history-title" hidden>
@@ -286,7 +286,7 @@
 
         <div class="cooking-history-list" id="cooking-history-list" aria-live="polite"></div>
 
-        <p class="privacy-note">調理履歴も、この端末のブラウザ内だけに保存されます。</p>
+        <p class="privacy-note" id="privacy-note-history">調理履歴も、この端末のブラウザ内だけに保存されます。</p>
       </section>
     </main>
 
@@ -336,6 +336,38 @@
         表示される数値は、食品ごとの一般的な参考値と基本調味料の仮定から丸めた目安です。
         商品表示や医療・栄養指導の代わりにはなりません。
       </p>
+
+      <div class="settings-block">
+        <div class="settings-row-copy">
+          <strong>二人で共有する</strong>
+          <small id="share-note"></small>
+        </div>
+
+        <div class="share-off" id="share-off">
+          <button class="button button-primary share-start" type="button" id="share-create">共有をはじめる</button>
+          <details class="share-join">
+            <summary>相手の冷蔵庫に入る</summary>
+            <label class="account-field" for="share-join-id">
+              もらったリンク、または冷蔵庫のID
+              <input id="share-join-id" type="text" autocomplete="off" spellcheck="false" placeholder="https://… または 22文字のID">
+            </label>
+            <button class="button button-secondary" type="button" id="share-join-go">この冷蔵庫に入る</button>
+          </details>
+        </div>
+
+        <div class="share-on" id="share-on" hidden>
+          <p class="share-link-label">相手にこのリンクを渡してください</p>
+          <input class="share-link" id="share-link" type="text" readonly>
+          <div class="share-actions">
+            <button class="button button-secondary" type="button" id="share-copy">リンクをコピー</button>
+            <button class="button button-primary" type="button" id="share-now">いま同期する</button>
+          </div>
+          <p class="settings-note" id="share-status"></p>
+          <button class="button button-secondary share-stop" type="button" id="share-stop">共有をやめる</button>
+        </div>
+
+        <p class="settings-note share-message" id="share-message" hidden></p>
+      </div>
 
       <div class="settings-block">
         <div class="settings-row-copy">
