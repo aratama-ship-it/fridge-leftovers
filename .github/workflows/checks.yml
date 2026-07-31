@@ -12,7 +12,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          # 共有サーバーの検証が node:sqlite（Node 22から）を使う
+          node-version: "22"
 
       # 食材の初期数量と単位が、一般的な買い方から外れていないか
       - name: 初期単位チェック
