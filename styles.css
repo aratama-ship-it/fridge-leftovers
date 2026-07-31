@@ -1432,6 +1432,12 @@ input[type="number"] {
   gap: 12px;
 }
 
+/* 完成イラストがあるときは、名前の左に置く。無ければ今までどおり */
+.recipe-heading-row > div {
+  flex: 1;
+  min-width: 0;
+}
+
 .recipe-heading-row > div {
   min-width: 0;
 }
@@ -4234,3 +4240,22 @@ input[type="number"] {
   border-bottom-color: #b3946f;
   box-shadow: 0 3px 0 rgb(255 255 255 / 55%);
 }
+
+/* ---- 料理の完成イラスト -------------------------------------------------- */
+/* 食材アトラスと同じ切り出し方（440% 330%）。おすすめは大きく、候補は控えめに */
+.recipe-illustration {
+  flex: none;
+  display: block;
+  width: 76px;
+  height: 76px;
+  background-repeat: no-repeat;
+  background-size: 440% 330%;
+  background-position: var(--atlas-x) var(--atlas-y);
+}
+
+.recipe.is-featured .recipe-illustration {
+  width: 108px;
+  height: 108px;
+}
+
+.recipe-illustration-r01 { background-image: url("assets/recipe-atlas-01.png?v=20260731-1"); }

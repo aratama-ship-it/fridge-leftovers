@@ -2062,6 +2062,23 @@ const SUBSTITUTE_GENERICS = new Map(
   )
 );
 
+// 料理の完成イラスト。[列, 行, シート]。シートは assets/recipe-atlas-NN.png。
+// まだ絵が無いレシピは、この表に無いだけでカードは今までどおり出る
+const RECIPE_ILLUSTRATIONS = {
+  "miso-stir-fry": [0, 0, "r01"],
+  "egg-bowl": [1, 0, "r01"],
+  "cabbage-pancake": [2, 0, "r01"],
+  "mushroom-soup": [3, 0, "r01"],
+  "home-curry": [0, 1, "r01"],
+  nikujaga: [1, 1, "r01"],
+  "hamburger-steak": [2, 1, "r01"],
+  "salmon-meuniere": [3, 1, "r01"],
+  napolitan: [0, 2, "r01"],
+  "tofu-miso-soup": [1, 2, "r01"],
+  "chicken-cabbage-steam": [2, 2, "r01"],
+  "tomato-egg-stir-fry": [3, 2, "r01"]
+};
+
 const INGREDIENT_ILLUSTRATIONS = {
   oatmeal: [0, 0, "s21"],
   granola: [1, 0, "s21"],
@@ -4663,6 +4680,16 @@ function inventoryLevelState(item) {
   return { label: "まだあります", width: 100, className: "" };
 }
 
+// 料理の完成イラスト。食材と同じアトラスの切り出し方で、無ければ空文字
+function renderRecipeIllustration(recipeId) {
+  const illustration = RECIPE_ILLUSTRATIONS[recipeId];
+  if (!illustration) return "";
+  const [column, row, sheet] = illustration;
+  const x = ((4.4 * ((column + 0.5) / 4) - 0.5) / 3.4) * 100;
+  const y = ((3.3 * ((row + 0.5) / 3) - 0.5) / 2.3) * 100;
+  return `<span class="recipe-illustration recipe-illustration-${sheet}" style="--atlas-x:${x}%;--atlas-y:${y}%;" aria-hidden="true"></span>`;
+}
+
 function renderFridgeFood(item) {
   const state3 = inventoryLevelState(item);
   return `
@@ -5404,6 +5431,7 @@ function renderRecipe(recipe, index) {
   return `
     <article class="recipe${featured ? " is-featured" : " is-alternative"}">
       <div class="recipe-heading-row">
+        ${renderRecipeIllustration(recipe.id)}
         <div>
           <p class="recipe-rank">${featured ? "今日のおすすめ" : "ほかの候補"}</p>
           <h3>${escapeHtml(recipe.name)}</h3>
