@@ -339,6 +339,8 @@ const atlas = {
 };
 
 const placements = options.ids.map((id, index) => {
+  // "_" は空のマス。77件のように12で割り切れない一覧の最後のシートで使う
+  if (id === "_") return { id: "(空)", ...gridCell(index), width: 0, height: 0 };
   const input = path.join(options.sourceDirectory, `${id}.png`);
   if (!fs.existsSync(input)) throw new Error(`入力画像がありません: ${input}`);
   const image = decodePng(input);

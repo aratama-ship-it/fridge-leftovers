@@ -4653,13 +4653,21 @@ function inventoryLevel(item) {
   return Math.max(0, Math.min(1, item.quantity / maxQuantity));
 }
 
-function renderFridgeFood(item) {
+// 残量は連続の割合ではなく3段階で見せる（方針書「在庫の見せ方」）。
+// トップ画面の役目は「あるか、少ないか」が一目で分かることで、
+// 78%と74%の違いに意味は無い。境目は翌日の確認と同じ 0.5 / 0.25。
+function inventoryLevelState(item) {
   const level = inventoryLevel(item);
-  const percentage = Math.round(level * 100);
-  const levelClass = level <= 0.25 ? " is-critical" : level <= 0.5 ? " is-warning" : "";
+  if (level <= 0.25) return { label: "残りわずか", width: 25, className: " is-critical" };
+  if (level <= 0.5) return { label: "少なめ", width: 50, className: " is-warning" };
+  return { label: "まだあります", width: 100, className: "" };
+}
+
+function renderFridgeFood(item) {
+  const state3 = inventoryLevelState(item);
   return `
-    <button class="fridge-food${item.priority ? " is-priority" : ""}" type="button" data-fridge-edit="${escapeHtml(item.id)}" data-drag-item="${escapeHtml(item.id)}" aria-label="${escapeHtml(item.name)}、残量約${percentage}パーセント。タップで在庫を編集、長押しで棚を移動">
-      <span class="food-hp-gauge${levelClass}" aria-hidden="true"><span style="--food-level:${percentage}%"></span></span>
+    <button class="fridge-food${item.priority ? " is-priority" : ""}" type="button" data-fridge-edit="${escapeHtml(item.id)}" data-drag-item="${escapeHtml(item.id)}" aria-label="${escapeHtml(item.name)}、${state3.label}。タップで在庫を編集、長押しで棚を移動">
+      <span class="food-hp-gauge${state3.className}" aria-hidden="true"><span style="--food-level:${state3.width}%"></span></span>
       ${renderIngredientIllustration(item.id, item.name)}
     </button>
   `;

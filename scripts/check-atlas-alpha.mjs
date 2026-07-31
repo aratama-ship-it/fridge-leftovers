@@ -8,6 +8,7 @@
 // もたないので数えて出す。
 //
 //   node scripts/check-atlas-alpha.mjs 18 19 20
+//   node scripts/check-atlas-alpha.mjs r01 r02      ← 料理の完成イラスト用シート
 //   node scripts/check-atlas-alpha.mjs all
 //
 // 判定：
@@ -49,18 +50,23 @@ const { decodePng } = new Function(
   + "; return { decodePng };"
 )(fs, zlib, Buffer, Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
 
-// app.js のイラスト定義から、どのシートのどのマスに何が入っているかを読む
+// app.js のイラスト定義から、どのシートのどのマスに何が入っているかを読む。
+// 料理の完成イラスト（RECIPE_ILLUSTRATIONS）はまだ無いことがあるので、
+// 見つからなくても落とさない（マスの名前が「未登録」になるだけ）
 function illustrationMap() {
   const app = fs.readFileSync(path.join(ROOT, "app.js"), "utf8");
-  const start = app.indexOf("const INGREDIENT_ILLUSTRATIONS =");
-  const end = app.indexOf("\nconst RECEIPT_RULES", start);
-  const segment = app.slice(app.indexOf("=", start) + 1, end);
-  const table = Function(`"use strict"; return (${segment.slice(0, segment.lastIndexOf(";"))});`)();
   const byAtlas = new Map();
-  for (const [id, value] of Object.entries(table)) {
-    const [column, row, atlas = "base"] = value;
-    if (!byAtlas.has(atlas)) byAtlas.set(atlas, new Map());
-    byAtlas.get(atlas).set(row * COLUMNS + column, id);
+  for (const constant of ["INGREDIENT_ILLUSTRATIONS", "RECIPE_ILLUSTRATIONS"]) {
+    const start = app.indexOf(`const ${constant} =`);
+    if (start < 0) continue;
+    const end = app.indexOf("\nconst ", start + 1);
+    const segment = app.slice(app.indexOf("=", start) + 1, end);
+    const table = Function(`"use strict"; return (${segment.slice(0, segment.lastIndexOf(";"))});`)();
+    for (const [id, value] of Object.entries(table)) {
+      const [column, row, atlas = "base"] = value;
+      if (!byAtlas.has(atlas)) byAtlas.set(atlas, new Map());
+      byAtlas.get(atlas).set(row * COLUMNS + column, id);
+    }
   }
   return byAtlas;
 }
@@ -118,18 +124,24 @@ if (!requested.length) {
 }
 
 const names = illustrationMap();
+// r01 のような指定は料理の完成イラスト（assets/recipe-atlas-01.png）を見る
 const sheets = requested.includes("all")
   ? fs.readdirSync(path.join(ROOT, "assets"))
-    .filter((file) => /^ingredient-atlas-\d\d\.png$/.test(file))
-    .map((file) => file.slice(-6, -4))
+    .filter((file) => /^(?:ingredient|recipe)-atlas-\d\d\.png$/.test(file))
+    .map((file) => (file.startsWith("recipe") ? "r" : "") + file.slice(-6, -4))
     .sort()
-  : requested.map((value) => String(value).padStart(2, "0"));
+  : requested.map((value) =>
+    /^r\d+$/i.test(value)
+      ? `r${value.slice(1).padStart(2, "0")}`
+      : String(value).padStart(2, "0"));
 
 let failures = 0;
 let warnings = 0;
 
 for (const sheet of sheets) {
-  const file = `assets/ingredient-atlas-${sheet}.png`;
+  const file = sheet.startsWith("r")
+    ? `assets/recipe-atlas-${sheet.slice(1)}.png`
+    : `assets/ingredient-atlas-${sheet}.png`;
   const full = path.join(ROOT, file);
   if (!fs.existsSync(full)) {
     console.log(`${file}: ありません`);
@@ -137,7 +149,7 @@ for (const sheet of sheets) {
     continue;
   }
   const image = decodePng(full);
-  const ids = names.get(`s${sheet}`) || new Map();
+  const ids = names.get(sheet.startsWith("r") ? sheet : `s${sheet}`) || new Map();
   const lines = [];
   let sheetFailures = 0;
   for (let index = 0; index < COLUMNS * ROWS; index += 1) {
