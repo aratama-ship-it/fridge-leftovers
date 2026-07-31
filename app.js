@@ -4829,8 +4829,8 @@ function renderInventoryRow(item) {
       <div class="row-actions">
         <button class="row-action" type="button" data-action="confirm" data-id="${escapeHtml(item.id)}">まだある</button>
         <button class="row-action${item.priority ? " is-priority" : ""}" type="button" data-action="priority" data-id="${escapeHtml(item.id)}">${item.priority ? "優先を解除" : "先に使う"}</button>
-        <button class="row-action" type="button" data-action="consume" data-id="${escapeHtml(item.id)}">使い切った</button>
-        <button class="row-action is-delete" type="button" data-action="delete" data-id="${escapeHtml(item.id)}">削除</button>
+        <button class="row-action" type="button" data-action="consume" data-id="${escapeHtml(item.id)}">履歴あり削除</button>
+        <button class="row-action is-delete" type="button" data-action="delete" data-id="${escapeHtml(item.id)}">完全削除</button>
       </div>
     </article>
   `;
@@ -6307,7 +6307,7 @@ function updateItem(id, updater) {
   renderAll();
 }
 
-function consumeItem(item, message = `${item.name}を使い切りにしました`) {
+function consumeItem(item, message = `${item.name}を履歴へ移しました`) {
   const snapshot = { ...item };
   item.active = false;
   item.consumedAt = todayIso();
@@ -6336,7 +6336,7 @@ function deleteItem(item) {
   };
   persistInventory();
   renderAll();
-  showToast(`${item.name}を在庫から削除しました`, true);
+  showToast(`${item.name}を完全に削除しました（履歴には残りません）`, true);
 }
 
 function deleteCurrentIngredient() {

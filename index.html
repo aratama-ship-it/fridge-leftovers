@@ -14,7 +14,7 @@
   <meta name="apple-mobile-web-app-title" content="冷蔵庫の現在地">
   <link rel="stylesheet" href="styles.css?v=3a6983dd">
   <script src="vendor/tesseract/tesseract.min.js?v=7.0.0" defer></script>
-  <script src="app.js?v=d28cea76" defer></script>
+  <script src="app.js?v=a462eab1" defer></script>
 </head>
 <body>
   <div class="app-shell">
@@ -111,7 +111,7 @@
           <div>
             <p class="eyebrow">残量を正しく保つ</p>
             <h2 id="management-title">在庫管理</h2>
-            <p class="overview-copy">残量変更・使い切り・削除</p>
+            <p class="overview-copy">残量変更・履歴あり削除・完全削除</p>
           </div>
           <div class="management-actions">
             <button class="button button-secondary receipt-scan-button" type="button" id="scan-receipt">
@@ -135,7 +135,7 @@
 
         <details class="finished-section" id="finished-section">
           <summary>
-            <span>最近使い切ったもの</span>
+            <span>削除の履歴（戻せます）</span>
             <span class="finished-count" id="finished-count">0品</span>
           </summary>
           <div id="finished-list"></div>
@@ -517,8 +517,8 @@
         </label>
 
         <div class="dialog-actions">
-          <button class="button button-consume" type="button" id="consume-ingredient" hidden>この食材を使い切った</button>
-          <button class="button button-danger" type="button" id="delete-ingredient" hidden>在庫から削除</button>
+          <button class="button button-consume" type="button" id="consume-ingredient" hidden>履歴あり削除（使い切った）</button>
+          <button class="button button-danger" type="button" id="delete-ingredient" hidden>完全削除（履歴に残さない）</button>
           <button class="button button-secondary" type="button" id="cancel-dialog">キャンセル</button>
           <button class="button button-primary" type="submit">保存</button>
         </div>
