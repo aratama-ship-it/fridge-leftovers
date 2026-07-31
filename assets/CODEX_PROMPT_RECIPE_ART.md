@@ -49,6 +49,7 @@ node scripts/build-atlas.mjs 07 cheese-toast pizza-toast tuna-toast french-toast
 ### 1枚ごとに通す確認
 
 ```bash
+node scripts/despill-magenta.mjs assets/recipe-atlas-NN.png
 node scripts/check-atlas-alpha.mjs r01
 ```
 
@@ -205,3 +206,19 @@ node scripts/check-atlas-alpha.mjs r01
 
 残り7マスは**空のまま**にする（build-atlas に `_` を渡す。下の手順を見る）。
 
+## ★マゼンタの縁を必ず消すこと（r01〜r03で見つかった）
+
+マゼンタ地で描いて抜くと、**不透明度は正しく抜けるのに色が残る。** 被写体と地の
+境目は両方が混ざった色なので、抜いたあとも幅1〜2pxのピンクの縁になる。
+r01〜r03では1シートあたり600〜1400px出ていて、白い器の縁がうっすら桃色に見えた。
+`check-atlas-alpha` の3つの判定（不透明率・緑・充填率）はすべて素通りする。
+
+**シートを作ったら、alpha検査の前に必ずこれを通す。**
+
+```bash
+node scripts/despill-magenta.mjs assets/recipe-atlas-NN.png
+```
+
+不透明度は触らず、縁の色だけを内側の色で塗り直す。通したあと
+`check-atlas-alpha` が「マゼンタ○px」で止めなければ済んでいる
+（この判定は2026-07-31に追加した。忘れれば止まる）。

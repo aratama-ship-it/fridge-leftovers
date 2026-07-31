@@ -4258,4 +4258,6 @@ input[type="number"] {
   height: 108px;
 }
 
-.recipe-illustration-r01 { background-image: url("assets/recipe-atlas-01.png?v=20260731-1"); }
+.recipe-illustration-r01 { background-image: url("assets/recipe-atlas-01.png?v=20260731-2"); }
+.recipe-illustration-r02 { background-image: url("assets/recipe-atlas-02.png?v=20260731-2"); }
+.recipe-illustration-r03 { background-image: url("assets/recipe-atlas-03.png?v=20260731-2"); }

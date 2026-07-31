@@ -2076,7 +2076,31 @@ const RECIPE_ILLUSTRATIONS = {
   napolitan: [0, 2, "r01"],
   "tofu-miso-soup": [1, 2, "r01"],
   "chicken-cabbage-steam": [2, 2, "r01"],
-  "tomato-egg-stir-fry": [3, 2, "r01"]
+  "tomato-egg-stir-fry": [3, 2, "r01"],
+  "mapo-tofu-style": [0, 0, "r02"],
+  "natto-rice": [1, 0, "r02"],
+  "eggplant-mince-stir-fry": [2, 0, "r02"],
+  "chicken-broccoli-pan": [3, 0, "r02"],
+  oyakodon: [0, 1, "r02"],
+  gyudon: [1, 1, "r02"],
+  "fried-rice": [2, 1, "r02"],
+  omurice: [3, 1, "r02"],
+  "soboro-bowl": [0, 2, "r02"],
+  "ginger-pork": [1, 2, "r02"],
+  "chicken-teriyaki": [2, 2, "r02"],
+  "chicken-karaage": [3, 2, "r02"],
+  "beef-pepper-stir-fry": [0, 0, "r03"],
+  "meat-tofu": [1, 0, "r03"],
+  "pork-cabbage-millefeuille": [2, 0, "r03"],
+  "salmon-foil-yaki": [3, 0, "r03"],
+  "salmon-teriyaki": [0, 1, "r03"],
+  "dashimaki-egg": [1, 1, "r03"],
+  "agedashi-tofu": [2, 1, "r03"],
+  "tofu-steak": [3, 1, "r03"],
+  "cheese-omelet": [0, 2, "r03"],
+  "potato-salad": [1, 2, "r03"],
+  "spinach-sesame": [2, 2, "r03"],
+  "eggplant-miso": [3, 2, "r03"]
 };
 
 const INGREDIENT_ILLUSTRATIONS = {

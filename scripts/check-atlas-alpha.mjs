@@ -17,11 +17,15 @@
 //   ・外接矩形が隙間なく埋まっている＝背景の矩形がそのまま入っている
 //     （★シート23の野沢菜がマゼンタ背景のまま入っていたのを、緑しか見て
 //       いなかったせいで取り逃がした。色に依らない判定として足した）
+//   ・マゼンタの縁が残っている＝抜いたが色が残っている（料理シートのみ）
+//     （★r01〜r03で、白い器の縁がうっすら桃色になっていた。背景は抜けている
+//       ので上の3つはすべて素通りする。scripts/despill-magenta.mjs で直す）
 //
 // バジル・絹さや・小ねぎ・ライム・ピーマンのように被写体そのものが緑の
 // ものは緑ピクセルが多く出る。緑が多いマスは「要確認」として出すだけで、
 // 失敗と断定はしない。不透明率と併せて見る。
 
+import { isMagenta } from "./despill-magenta.mjs";
 import fs from "node:fs";
 import zlib from "node:zlib";
 import path from "node:path";
@@ -77,6 +81,9 @@ const OPAQUE_LIMIT = 0.6;
 const GREEN_LIMIT = 0.05;
 // 外接矩形の充填率。ここまで埋まるのは矩形そのものだけ（実測の最大は器の97.7%）
 const FILL_LIMIT = 0.995;
+// 1マスに残ってよいマゼンタの画素数。抜き残しは実測で1マス60〜140px出るので、
+// 20px あれば「たまたま数点」と「抜き残し」を分けられる
+const MAGENTA_LIMIT = 20;
 
 function inspectCell(image, index) {
   const cellWidth = image.width / COLUMNS;
@@ -89,6 +96,7 @@ function inspectCell(image, index) {
   const bottom = Math.min(image.height, Math.round((row + 1) * cellHeight));
   let opaque = 0;
   let green = 0;
+  let magenta = 0;
   let total = 0;
   let minX = Infinity;
   let minY = Infinity;
@@ -104,9 +112,11 @@ function inspectCell(image, index) {
       if (x > maxX) maxX = x;
       if (y < minY) minY = y;
       if (y > maxY) maxY = y;
+      const r = image.pixels[offset];
       const g = image.pixels[offset + 1];
-      const rest = Math.max(image.pixels[offset], image.pixels[offset + 2]);
-      if (g - rest > 60) green += 1;
+      const b = image.pixels[offset + 2];
+      if (g - Math.max(r, b) > 60) green += 1;
+      if (isMagenta(r, g, b)) magenta += 1;
     }
   }
   // 被写体の外接矩形が隙間なく埋まっていたら、それは絵ではなく背景の矩形。
@@ -114,7 +124,7 @@ function inspectCell(image, index) {
   // 抜き忘れた背景はちょうど100%になる。
   const boxArea = maxX < 0 ? 0 : (maxX - minX + 1) * (maxY - minY + 1);
   const fill = boxArea ? opaque / boxArea : 0;
-  return { opaque: opaque / total, green: green / total, fill };
+  return { opaque: opaque / total, green: green / total, fill, magenta };
 }
 
 const requested = process.argv.slice(2);
@@ -149,11 +159,12 @@ for (const sheet of sheets) {
     continue;
   }
   const image = decodePng(full);
-  const ids = names.get(sheet.startsWith("r") ? sheet : `s${sheet}`) || new Map();
+  const recipeSheet = sheet.startsWith("r");
+  const ids = names.get(recipeSheet ? sheet : `s${sheet}`) || new Map();
   const lines = [];
   let sheetFailures = 0;
   for (let index = 0; index < COLUMNS * ROWS; index += 1) {
-    const { opaque, green, fill } = inspectCell(image, index);
+    const { opaque, green, fill, magenta } = inspectCell(image, index);
     const id = ids.get(index) || `(未登録 ${index})`;
     const opaqueText = `不透明${(opaque * 100).toFixed(0)}%`;
     const greenText = `緑${(green * 100).toFixed(1)}%`;
@@ -163,6 +174,12 @@ for (const sheet of sheets) {
     } else if (fill >= FILL_LIMIT) {
       sheetFailures += 1;
       lines.push(`  ★${id}: ${opaqueText} 充填${(fill * 100).toFixed(1)}% ← 背景の矩形が残っている（緑以外の色でも起きる）`);
+    } else if (recipeSheet && magenta > MAGENTA_LIMIT) {
+      // ★食材シートは対象外。みょうが・赤かぶ・さくらんぼ・しょうがの新芽など
+      // 本当にマゼンタ寄りの食材があるので、ここで止めると誤検出になる。
+      // 料理シートには今のところそういう料理が無い
+      sheetFailures += 1;
+      lines.push(`  ★${id}: ${opaqueText} マゼンタ${magenta}px ← 抜いた縁に色が残っている（node scripts/despill-magenta.mjs で直す）`);
     } else if (green > GREEN_LIMIT) {
       warnings += 1;
       lines.push(`  ?${id}: ${opaqueText} ${greenText} ← 緑が多い（被写体が緑なら問題なし）`);
@@ -179,7 +196,8 @@ for (const sheet of sheets) {
 
 console.log(
   failures
-    ? `\n★${failures}マスで背景が抜けていません。scripts/key-green.mjs で抜き直してからシートを作り直してください`
+    ? `\n★${failures}マスに問題があります。背景が残っているなら scripts/key-green.mjs で抜き直し、`
+      + "マゼンタの縁なら scripts/despill-magenta.mjs を通してください"
     : `\n背景抜け OK（${sheets.length}枚${warnings ? `・要確認 ${warnings}マス` : ""}）`
 );
 process.exit(failures ? 1 : 0);
