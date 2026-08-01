@@ -2100,7 +2100,31 @@ const RECIPE_ILLUSTRATIONS = {
   "cheese-omelet": [0, 2, "r03"],
   "potato-salad": [1, 2, "r03"],
   "spinach-sesame": [2, 2, "r03"],
-  "eggplant-miso": [3, 2, "r03"]
+  "eggplant-miso": [3, 2, "r03"],
+  "cucumber-wakame-vinegar": [0, 0, "r04"],
+  coleslaw: [1, 0, "r04"],
+  "carbonara-style": [2, 0, "r04"],
+  "mushroom-butter-pasta": [3, 0, "r04"],
+  "pork-miso-soup": [0, 1, "r04"],
+  "vegetable-consomme": [1, 1, "r04"],
+  "kake-udon": [2, 1, "r04"],
+  "curry-udon": [3, 1, "r04"],
+  "kake-soba": [0, 2, "r04"],
+  "sauce-yakisoba": [1, 2, "r04"],
+  "macaroni-gratin": [2, 2, "r04"],
+  "mackerel-miso": [3, 2, "r04"],
+  "mackerel-salt-grill": [0, 0, "r05"],
+  "yellowtail-teriyaki": [1, 0, "r05"],
+  "yellowtail-daikon": [2, 0, "r05"],
+  "shrimp-chili": [3, 0, "r05"],
+  "shrimp-fried-rice": [0, 1, "r05"],
+  "tuna-mayo-rice": [1, 1, "r05"],
+  "bean-sprout-namul": [2, 1, "r05"],
+  "nira-tama": [3, 1, "r05"],
+  "pumpkin-simmer": [0, 2, "r05"],
+  "pumpkin-salad": [1, 2, "r05"],
+  "konnyaku-piquant": [2, 2, "r05"],
+  "cream-stew": [3, 2, "r05"]
 };
 
 const INGREDIENT_ILLUSTRATIONS = {
