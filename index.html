@@ -12,11 +12,71 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="冷蔵庫の現在地">
-  <link rel="stylesheet" href="styles.css?v=f803963d">
+  <link rel="stylesheet" href="styles.css?v=7b690d21">
   <script src="vendor/tesseract/tesseract.min.js?v=7.0.0" defer></script>
-  <script src="app.js?v=0ed1d7b6" defer></script>
+  <script src="app.js?v=03cfc82c" defer></script>
+  <!--
+    起動の読み込み画面は、外部CSS（styles.css）が届く前から出したいので、
+    ここだけ色を直書きしている（:root の変数に頼らない）。回線が細いときほど
+    このCSSが要るのに、それ自体が同じ回線でまだ届いていない、という
+    ねじれを避けるため。
+  -->
+  <style>
+    #boot-loading {
+      position: fixed;
+      inset: 0;
+      z-index: 999;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      background: #f3f0e6;
+      color: #667067;
+      font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic UI", sans-serif;
+    }
+    #boot-loading[hidden] {
+      display: none;
+    }
+    #boot-loading .boot-loading-mark {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      border: 3px solid #dce8df;
+      border-top-color: #2f644b;
+      animation: boot-loading-spin 0.9s linear infinite;
+    }
+    #boot-loading p {
+      margin: 0;
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+    @keyframes boot-loading-spin {
+      to { transform: rotate(360deg); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      #boot-loading .boot-loading-mark {
+        animation: none;
+      }
+    }
+  </style>
+  <script>
+    // ★app.js は素通しの逐次実行で、途中で例外が起きると最後の
+    // 「読み込み画面を消す」行まで届かない。読み込み画面が消えないまま
+    // 固まって見えるのを避けるため、ここだけは app.js を待たずに
+    // 一定時間で強制的に消す安全弁を置いておく。
+    window.setTimeout(() => {
+      const el = document.getElementById("boot-loading");
+      if (el) el.hidden = true;
+    }, 8000);
+  </script>
 </head>
 <body>
+  <div id="boot-loading" role="status" aria-live="polite">
+    <span class="boot-loading-mark" aria-hidden="true"></span>
+    <p>読み込んでいます…</p>
+  </div>
   <div class="app-shell">
     <!-- タイトルは出さない（本人の指定）。バージョンと設定だけの細い帯にする -->
     <header class="app-header" id="app-header">

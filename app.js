@@ -8021,6 +8021,11 @@ function showViewFromHash() {
 showViewFromHash();
 window.addEventListener("hashchange", showViewFromHash);
 
+// ここまでで最初の画面が組み上がっているので、起動の読み込み画面を消す。
+// index.html 側にも時間切れで消す安全弁があるので、ここが例外で
+// 実行されなくても読み込み画面が残り続けることはない。
+document.getElementById("boot-loading")?.setAttribute("hidden", "");
+
 // 通信が無くても起動できるようにする。index.html を file:// で直接開いた
 // ときは Service Worker を登録できないので、その場合は何もしない。
 if ("serviceWorker" in navigator && window.location.protocol.startsWith("http")) {

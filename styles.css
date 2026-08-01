@@ -54,11 +54,24 @@ summary:focus-visible {
 }
 
 .app-shell {
+  /* ★縦に伸びる箱にして、main に余りを全部持たせる。こうしないと、在庫が
+     少ない画面（在庫管理・調理履歴）で中身が短いときに、下のメニューが
+     内容のすぐ下＝画面の途中まで上がってくる。sticky は「はみ出したときに
+     貼り付く」だけなので、短いときは効かない */
+  display: flex;
+  flex-direction: column;
   min-height: 100dvh;
   max-width: 540px;
   margin: 0 auto;
   background: var(--paper);
   border-inline: 1px solid var(--line);
+}
+
+.app-shell > main {
+  flex: 1;
+  /* 中身が短くても main が画面の下まで伸びるので、メニューは常に最下段。
+     長いときは今までどおり sticky で画面下に貼り付く */
+  min-height: 0;
 }
 
 .app-version {
