@@ -2124,7 +2124,25 @@ const RECIPE_ILLUSTRATIONS = {
   "pumpkin-simmer": [0, 2, "r05"],
   "pumpkin-salad": [1, 2, "r05"],
   "konnyaku-piquant": [2, 2, "r05"],
-  "cream-stew": [3, 2, "r05"]
+  "cream-stew": [3, 2, "r05"],
+  gyoza: [0, 0, "r06"],
+  croquette: [1, 0, "r06"],
+  "rolled-cabbage": [2, 0, "r06"],
+  "menchi-katsu": [3, 0, "r06"],
+  "yaki-udon": [0, 1, "r06"],
+  "tuna-tomato-pasta": [1, 1, "r06"],
+  "chicken-cream-pasta": [2, 1, "r06"],
+  "tofu-champuru": [3, 1, "r06"],
+  "salmon-fried-rice": [0, 2, "r06"],
+  "cabbage-tuna-simmer": [1, 2, "r06"],
+  "potato-cheese-bake": [2, 2, "r06"],
+  "tomato-cheese-bake": [3, 2, "r06"],
+  // r07は5品だけ。行1列1以降の7マスは空けてある
+  "cheese-toast": [0, 0, "r07"],
+  "pizza-toast": [1, 0, "r07"],
+  "tuna-toast": [2, 0, "r07"],
+  "french-toast": [3, 0, "r07"],
+  "egg-sandwich": [0, 1, "r07"]
 };
 
 const INGREDIENT_ILLUSTRATIONS = {

@@ -44,7 +44,7 @@ const CONSTANTS = [
   "DAY_AFTER_LEVELS", "DAY_AFTER_LIMIT", "SYNC_KINDS", "STORAGE_SHELF_CAPACITIES",
   "CONFIDENCE_ORDER", "quantityConfidence", "quantityUnknown", "lessCertain",
   "RECIPES", "RECEIPT_RULES", "INGREDIENT_SUBSTITUTES", "UNIT_CONVERSIONS",
-  "SUBSTITUTE_GENERICS", "RECIPE_LIST_SERVINGS"
+  "SUBSTITUTE_GENERICS", "RECIPE_LIST_SERVINGS", "RECIPE_ILLUSTRATIONS"
 ];
 const FUNCTIONS = [
   "normalizedSubstitute", "conversionRatio", "stockForRequirement",
@@ -63,7 +63,7 @@ const inventoryMap = () => new Map(state.inventory.filter((item) => item.active 
 ${CONSTANTS.map(takeConst).join("\n")}
 ${FUNCTIONS.map(takeFunction).join("\n")}
 return {
-  state, RECIPES, RECEIPT_RULES, INGREDIENT_SUBSTITUTES, UNIT_CONVERSIONS,
+  state, RECIPES, RECEIPT_RULES, RECIPE_ILLUSTRATIONS, INGREDIENT_SUBSTITUTES, UNIT_CONVERSIONS,
   QUANTITY_CONFIRMED, QUANTITY_ESTIMATED, QUANTITY_UNKNOWN,
   quantityConfidence, lessCertain, conversionRatio, stockForRequirement,
   availableForRequirement, shortageFor, unconfirmedFor, cookBlockers,
@@ -75,7 +75,7 @@ return {
 
 const app_ = new Function(harness)();
 const {
-  state, RECIPES, RECEIPT_RULES,
+  state, RECIPES, RECEIPT_RULES, RECIPE_ILLUSTRATIONS,
   QUANTITY_CONFIRMED, QUANTITY_ESTIMATED, QUANTITY_UNKNOWN,
   quantityConfidence, lessCertain, stockForRequirement,
   shortageFor, unconfirmedFor, cookBlockers, confirmUnknownAmounts,
@@ -458,6 +458,34 @@ check("片方しか無ければそれを採る", [
   mergeEntity("item", null, item({ quantity: 1 })).quantity,
   mergeEntity("item", item({ quantity: 5 }), null).quantity
 ], [1, 5]);
+
+// ---- 料理の完成イラストの割り当て --------------------------------------
+//
+// ★2026-08-01に77品すべてへ絵が付いた。ここが崩れる壊れ方は静かで、
+// レシピを足したり id を打ち間違えたりしても、カードは絵が無いだけで
+// 普通に出てしまう（RECIPE_ILLUSTRATIONS に無いレシピは従来表示、という
+// 作りにしてあるため）。目で気づけないので数えて止める。
+const illustrated = Object.keys(RECIPE_ILLUSTRATIONS);
+const recipeIds = RECIPES.map((recipe) => recipe.id);
+
+check("全てのレシピに完成イラストがある",
+  recipeIds.filter((id) => !RECIPE_ILLUSTRATIONS[id]), []);
+check("レシピに無いidが混ざっていない",
+  illustrated.filter((id) => !recipeIds.includes(id)), []);
+check("同じマスを2品が使っていない", (() => {
+  const seen = new Map();
+  const clashes = [];
+  for (const [id, [column, row, sheet]] of Object.entries(RECIPE_ILLUSTRATIONS)) {
+    const cell = `${sheet}:${row}:${column}`;
+    if (seen.has(cell)) clashes.push(`${cell}=${seen.get(cell)}/${id}`);
+    seen.set(cell, id);
+  }
+  return clashes;
+})(), []);
+check("マスの位置が4列3行に収まっている",
+  Object.entries(RECIPE_ILLUSTRATIONS)
+    .filter(([, [column, row]]) => !(column >= 0 && column < 4 && row >= 0 && row < 3))
+    .map(([id]) => id), []);
 
 console.log(failures
   ? `\n★${failures}件が期待と違います`
