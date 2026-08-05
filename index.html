@@ -12,9 +12,9 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="冷蔵庫の現在地">
-  <link rel="stylesheet" href="styles.css?v=7b690d21">
+  <link rel="stylesheet" href="styles.css?v=8c8a737b">
   <script src="vendor/tesseract/tesseract.min.js?v=7.0.0" defer></script>
-  <script src="app.js?v=03cfc82c" defer></script>
+  <script src="app.js?v=cf321f12" defer></script>
   <!--
     起動の読み込み画面は、外部CSS（styles.css）が届く前から出したいので、
     ここだけ色を直書きしている（:root の変数に頼らない）。回線が細いときほど
@@ -450,6 +450,36 @@
       </div>
 
       <p class="privacy-note">設定は、この端末のブラウザ内だけに保存されます。</p>
+    </section>
+  </dialog>
+
+  <dialog class="share-join-dialog" id="share-join-dialog" aria-labelledby="share-join-dialog-title">
+    <section class="share-join-dialog-shell">
+      <div class="dialog-head">
+        <div>
+          <p class="eyebrow">共有する前に確認</p>
+          <h2 id="share-join-dialog-title">この冷蔵庫に入りますか？</h2>
+        </div>
+        <button class="icon-button" type="button" id="share-join-cancel-icon" aria-label="閉じる">×</button>
+      </div>
+
+      <p class="share-join-intro" id="share-join-intro"></p>
+      <ul class="share-join-counts" id="share-join-counts" aria-label="この端末にあるデータ"></ul>
+
+      <div class="share-join-options">
+        <button class="share-join-option is-recommended" type="button" id="share-join-replace">
+          <strong>共有の内容に入れ替える</strong>
+          <small>この端末の在庫・買い物・履歴は共有先へ送りません</small>
+        </button>
+        <button class="share-join-option" type="button" id="share-join-merge">
+          <strong>今の内容も合わせる</strong>
+          <small>この端末にある内容も相手の冷蔵庫へ送って統合します</small>
+        </button>
+      </div>
+
+      <p class="settings-note share-join-warning" id="share-join-warning"></p>
+      <p class="settings-note share-join-status" id="share-join-status" hidden></p>
+      <button class="button button-secondary share-join-cancel" type="button" id="share-join-cancel">やめる</button>
     </section>
   </dialog>
 

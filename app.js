@@ -3141,6 +3141,9 @@ const state = {
   syncMeta: {},
   // 共有している冷蔵庫。fridgeId が空なら共有していない
   share: { fridgeId: "", seq: 0, syncedAt: "" },
+  // 招待リンクを開いただけでは参加しない。確認画面で選ぶまでIDだけ預かる
+  pendingShareJoinId: "",
+  shareJoinReturnToSettings: false,
   syncing: false,
   settings: { ...DEFAULT_SETTINGS }
 };
@@ -3263,6 +3266,15 @@ const elements = {
   shareCreate: document.querySelector("#share-create"),
   shareJoinId: document.querySelector("#share-join-id"),
   shareJoinGo: document.querySelector("#share-join-go"),
+  shareJoinDialog: document.querySelector("#share-join-dialog"),
+  shareJoinIntro: document.querySelector("#share-join-intro"),
+  shareJoinCounts: document.querySelector("#share-join-counts"),
+  shareJoinReplace: document.querySelector("#share-join-replace"),
+  shareJoinMerge: document.querySelector("#share-join-merge"),
+  shareJoinWarning: document.querySelector("#share-join-warning"),
+  shareJoinStatus: document.querySelector("#share-join-status"),
+  shareJoinCancel: document.querySelector("#share-join-cancel"),
+  shareJoinCancelIcon: document.querySelector("#share-join-cancel-icon"),
   shareLink: document.querySelector("#share-link"),
   shareCopy: document.querySelector("#share-copy"),
   shareNow: document.querySelector("#share-now"),
@@ -7536,33 +7548,211 @@ elements.shareJoinGo.addEventListener("click", async () => {
     showShareMessage("リンクかIDを貼ってください。", "error");
     return;
   }
-  await joinSharedFridge(fridgeId);
+  requestShareJoin(fridgeId, { returnToSettings: true });
 });
 
-// 相手の冷蔵庫に入る。**自分の冷蔵庫の中身は消さない**（相手のものと混ざる）。
-// 消すほうが分かりやすい場面もあるが、消してしまうと戻せない
-async function joinSharedFridge(fridgeId) {
-  const done = await withShareBusy("つないでいます…", async () => {
-    state.share = { fridgeId, seq: 0, syncedAt: "" };
-    for (const meta of Object.values(state.syncMeta)) {
-      meta.version = 0;
-      meta.dirty = true;
+function copyForShareJoin(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+const SHARE_JOIN_STORAGE_KEYS = [
+  STORAGE_KEY,
+  SHOPPING_STORAGE_KEY,
+  COOKING_HISTORY_STORAGE_KEY,
+  SHELF_COUNTS_STORAGE_KEY,
+  SYNC_STORAGE_KEY,
+  SHARE_STORAGE_KEY
+];
+
+function shareJoinStoredValues() {
+  if (!state.storageEnabled) return null;
+  try {
+    return Object.fromEntries(SHARE_JOIN_STORAGE_KEYS.map((key) => [key, localStorage.getItem(key)]));
+  } catch {
+    return null;
+  }
+}
+
+function shareJoinSnapshot() {
+  return {
+    inventory: copyForShareJoin(state.inventory),
+    shopping: copyForShareJoin(state.shopping),
+    cookingHistory: copyForShareJoin(state.cookingHistory),
+    shelfCounts: copyForShareJoin(state.shelfCounts),
+    syncMeta: copyForShareJoin(state.syncMeta),
+    share: copyForShareJoin(state.share),
+    needsOnboarding: Boolean(state.needsOnboarding),
+    lastUndo: state.lastUndo ? copyForShareJoin(state.lastUndo) : null,
+    // 初回利用者は保存キー自体がまだ無い。「空配列を保存した状態」と区別し、
+    // 失敗後の次回起動でも初回案内が正しく出るよう、キーの有無まで覚える
+    storedValues: shareJoinStoredValues()
+  };
+}
+
+// 参加時の通信が途中で失敗したら、受信途中の内容も残さず参加前へ戻す。
+// persistInventory() 等は同期印を付け直すため、ここは元のスナップショットを
+// localStorageへ直接戻して完全に同じ状態へ復元する。
+function restoreShareJoinSnapshot(snapshot) {
+  state.inventory = snapshot.inventory;
+  state.shopping = snapshot.shopping;
+  state.cookingHistory = snapshot.cookingHistory;
+  state.shelfCounts = snapshot.shelfCounts;
+  state.syncMeta = snapshot.syncMeta;
+  state.share = snapshot.share;
+  state.needsOnboarding = snapshot.needsOnboarding;
+  state.lastUndo = snapshot.lastUndo;
+
+  if (state.storageEnabled && snapshot.storedValues) {
+    try {
+      for (const [key, value] of Object.entries(snapshot.storedValues)) {
+        if (value === null) localStorage.removeItem(key);
+        else localStorage.setItem(key, value);
+      }
+    } catch {
+      markStorageUnavailable();
     }
+  }
+  renderAll();
+  renderShare();
+  renderDayAfterCheck();
+}
+
+function shareJoinCounts() {
+  return [
+    { label: "在庫", count: state.inventory.length },
+    { label: "買い物", count: state.shopping.length },
+    { label: "履歴", count: state.cookingHistory.length }
+  ];
+}
+
+function renderShareJoinConfirmation() {
+  const counts = shareJoinCounts();
+  const hasLocalData = counts.some(({ count }) => count > 0);
+  elements.shareJoinIntro.textContent = hasLocalData
+    ? "この端末には、まだ共有していない内容があります。相手へ送るか、この端末だけ入れ替えるかを選んでください。"
+    : "この端末には、相手へ送る在庫・買い物・履歴はありません。共有されている冷蔵庫の内容を受け取ります。";
+
+  elements.shareJoinCounts.replaceChildren(...counts.map(({ label, count }) => {
+    const item = document.createElement("li");
+    item.textContent = `${label} ${count}件`;
+    return item;
+  }));
+
+  const replaceStrong = elements.shareJoinReplace.querySelector("strong");
+  const replaceSmall = elements.shareJoinReplace.querySelector("small");
+  replaceStrong.textContent = hasLocalData ? "共有の内容に入れ替える" : "この冷蔵庫に入る";
+  replaceSmall.textContent = hasLocalData
+    ? "この端末の在庫・買い物・履歴は共有先へ送りません"
+    : "共有されている内容をこの端末へ受け取ります";
+  elements.shareJoinMerge.hidden = !hasLocalData;
+  elements.shareJoinWarning.textContent = hasLocalData
+    ? "入れ替えると、この端末の現在の内容はアプリから外れます。残したい場合は、いったんやめて設定の「書き出す」で保存してください。"
+    : "リンクを知っている人は、この冷蔵庫の内容を見たり変更したりできます。";
+  elements.shareJoinStatus.hidden = true;
+  elements.shareJoinStatus.classList.remove("is-error");
+}
+
+function requestShareJoin(fridgeId, { returnToSettings = false } = {}) {
+  if (!fridgeId || state.syncing) return;
+  state.pendingShareJoinId = fridgeId;
+  state.shareJoinReturnToSettings = returnToSettings;
+  elements.shareJoinId.value = "";
+  if (elements.settingsDialog.open) elements.settingsDialog.close();
+  renderShareJoinConfirmation();
+  elements.shareJoinDialog.showModal();
+  requestAnimationFrame(() => elements.shareJoinReplace.focus());
+}
+
+function cancelShareJoin() {
+  const returnToSettings = state.shareJoinReturnToSettings;
+  state.pendingShareJoinId = "";
+  state.shareJoinReturnToSettings = false;
+  if (elements.shareJoinDialog.open) elements.shareJoinDialog.close();
+  if (returnToSettings && !elements.settingsDialog.open) {
+    elements.settingsDialog.showModal();
+  }
+}
+
+function setShareJoinBusy(busy, text = null) {
+  [elements.shareJoinReplace, elements.shareJoinMerge, elements.shareJoinCancel,
+    elements.shareJoinCancelIcon].forEach((button) => { button.disabled = busy; });
+  if (text !== null) {
+    elements.shareJoinStatus.textContent = text;
+    elements.shareJoinStatus.hidden = !text;
+    elements.shareJoinStatus.classList.remove("is-error");
+  }
+}
+
+// mode=replace は相手の内容だけを採り、mode=merge はこの端末の内容も送る。
+// どちらも、GET/POSTの途中で失敗した場合は参加前の状態へ戻す。
+async function joinSharedFridge(fridgeId, mode) {
+  const snapshot = shareJoinSnapshot();
+  try {
+    if (mode === "replace") {
+      state.inventory = [];
+      state.shopping = [];
+      state.cookingHistory = [];
+      state.shelfCounts = { ...DEFAULT_STORAGE_SHELF_COUNTS };
+      state.syncMeta = {};
+      state.lastUndo = null;
+      state.needsOnboarding = false;
+    } else {
+      markSyncChanges();
+      for (const meta of Object.values(state.syncMeta)) {
+        meta.version = 0;
+        meta.dirty = true;
+      }
+    }
+
+    state.share = { fridgeId, seq: 0, syncedAt: "" };
     persistShare();
     persistSyncMeta();
     await syncOnce();
-  });
-  elements.shareJoinId.value = "";
-  renderShare();
-  if (done) {
-    showShareMessage("つながりました。いまの冷蔵庫の中身も相手へ送っています。", "info");
-  } else {
-    // つながらなかったら共有していない状態へ戻す。中途半端に残さない
-    state.share = { fridgeId: "", seq: 0, syncedAt: "" };
-    persistShare();
-    renderShare();
+    return { wasOnboarding: snapshot.needsOnboarding };
+  } catch (error) {
+    restoreShareJoinSnapshot(snapshot);
+    throw error;
   }
 }
+
+async function completeShareJoin(mode) {
+  const fridgeId = state.pendingShareJoinId;
+  if (!fridgeId) return;
+  setShareJoinBusy(true, mode === "merge" ? "今の内容も合わせています…" : "共有の内容を受け取っています…");
+  try {
+    const { wasOnboarding } = await joinSharedFridge(fridgeId, mode);
+    state.pendingShareJoinId = "";
+    state.shareJoinReturnToSettings = false;
+    elements.shareJoinDialog.close();
+    if (wasOnboarding) showView("inventory");
+    renderShare();
+    if (!elements.settingsDialog.open) elements.settingsDialog.showModal();
+    showShareMessage(
+      mode === "merge"
+        ? "つながりました。この端末にあった内容も相手へ送りました。"
+        : "つながりました。共有されている内容へ入れ替えました。",
+      "info"
+    );
+  } catch (error) {
+    elements.shareJoinStatus.textContent = `${shareErrorText(error)} この端末の内容は元に戻しました。`;
+    elements.shareJoinStatus.hidden = false;
+    elements.shareJoinStatus.classList.add("is-error");
+  } finally {
+    setShareJoinBusy(false);
+  }
+}
+
+elements.shareJoinReplace.addEventListener("click", () => completeShareJoin("replace"));
+elements.shareJoinMerge.addEventListener("click", () => completeShareJoin("merge"));
+elements.shareJoinCancel.addEventListener("click", cancelShareJoin);
+elements.shareJoinCancelIcon.addEventListener("click", cancelShareJoin);
+elements.shareJoinDialog.addEventListener("cancel", (event) => {
+  event.preventDefault();
+  cancelShareJoin();
+});
+elements.shareJoinDialog.addEventListener("click", (event) => {
+  if (event.target === elements.shareJoinDialog) cancelShareJoin();
+});
 
 elements.shareCopy.addEventListener("click", async () => {
   try {
@@ -8006,10 +8196,10 @@ function showViewFromHash() {
   // リンクを渡すだけで済むのが、この方式にした理由そのもの
   const invited = fridgeIdFrom(window.location.hash);
   if (invited && invited !== state.share.fridgeId) {
-    // 履歴からIDを消す。あとで戻るボタンでもう一度参加させない
+    // 履歴からIDを消す。あとで戻るボタンでもう一度確認を出さない。
+    // リンクを開いただけでは同期せず、確認画面で本人が選んでから参加する。
     history.replaceState(null, "", window.location.pathname);
-    elements.settingsDialog.showModal();
-    joinSharedFridge(invited);
+    requestShareJoin(invited);
     return;
   }
   // 初回登録の途中は割り込ませない
