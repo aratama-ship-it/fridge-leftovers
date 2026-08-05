@@ -55,7 +55,8 @@ async function createFridge(env) {
 
 async function readChanges(env, fridgeId, since) {
   const rows = await env.DB.prepare(
-    `select kind, id, body, version, change_seq, deleted_at
+    `select kind, id, body, version, change_seq, deleted_at,
+            changed_at, device_id, device_name, updated_at
        from entities
       where fridge_id = ? and change_seq > ?
       order by change_seq
@@ -73,9 +74,26 @@ async function readChanges(env, fridgeId, since) {
       body: row.body ? JSON.parse(row.body) : null,
       version: row.version,
       changeSeq: row.change_seq,
-      deleted: Boolean(row.deleted_at)
+      deleted: Boolean(row.deleted_at),
+      changedAt: new Date(row.changed_at || row.updated_at).toISOString(),
+      changedBy: row.device_id || row.device_name
+        ? { id: row.device_id || "", name: row.device_name || "" }
+        : null,
+      receivedAt: new Date(row.updated_at).toISOString()
     }))
   });
+}
+
+function changeAttribution(change, now) {
+  const parsedAt = Date.parse(change?.changedAt);
+  const source = change?.changedBy;
+  const id = typeof source?.id === "string" ? source.id.trim().slice(0, 100) : "";
+  const name = typeof source?.name === "string" ? source.name.trim().slice(0, 30) : "";
+  return {
+    changedAt: Number.isFinite(parsedAt) ? parsedAt : now,
+    deviceId: id || null,
+    deviceName: name || null
+  };
 }
 
 // 1件を適用する。端末が申告した版と食い違えば、書き換えずにサーバー側を返す。
@@ -89,7 +107,9 @@ async function applyOne(env, fridgeId, change) {
   }
 
   const current = await env.DB.prepare(
-    "select body, version, change_seq, deleted_at from entities where fridge_id = ? and kind = ? and id = ?"
+    `select body, version, change_seq, deleted_at,
+            changed_at, device_id, device_name, updated_at
+       from entities where fridge_id = ? and kind = ? and id = ?`
   ).bind(fridgeId, kind, id).first();
 
   if (current && current.version !== baseVersion) {
@@ -101,7 +121,12 @@ async function applyOne(env, fridgeId, change) {
         body: current.body ? JSON.parse(current.body) : null,
         version: current.version,
         changeSeq: current.change_seq,
-        deleted: Boolean(current.deleted_at)
+        deleted: Boolean(current.deleted_at),
+        changedAt: new Date(current.changed_at || current.updated_at).toISOString(),
+        changedBy: current.device_id || current.device_name
+          ? { id: current.device_id || "", name: current.device_name || "" }
+          : null,
+        receivedAt: new Date(current.updated_at).toISOString()
       }
     };
   }
@@ -118,21 +143,42 @@ async function applyOne(env, fridgeId, change) {
   if (!seq) return { kind, id, status: "rejected", reason: "fridge" };
 
   const now = Date.now();
+  const attribution = changeAttribution(change, now);
   const text = deleted ? null : JSON.stringify(body);
   const version = (current?.version || 0) + 1;
 
   await env.DB.prepare(
-    `insert into entities (fridge_id, kind, id, body, version, change_seq, deleted_at, updated_at)
-     values (?, ?, ?, ?, ?, ?, ?, ?)
+    `insert into entities (
+       fridge_id, kind, id, body, version, change_seq, deleted_at,
+       changed_at, device_id, device_name, updated_at
+     )
+     values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      on conflict (fridge_id, kind, id) do update set
        body = excluded.body,
        version = excluded.version,
        change_seq = excluded.change_seq,
        deleted_at = excluded.deleted_at,
+       changed_at = excluded.changed_at,
+       device_id = excluded.device_id,
+       device_name = excluded.device_name,
        updated_at = excluded.updated_at`
-  ).bind(fridgeId, kind, id, text, version, seq, deleted ? now : null, now).run();
+  ).bind(
+    fridgeId, kind, id, text, version, seq, deleted ? now : null,
+    attribution.changedAt, attribution.deviceId, attribution.deviceName, now
+  ).run();
 
-  return { kind, id, status: "applied", version, changeSeq: seq };
+  return {
+    kind,
+    id,
+    status: "applied",
+    version,
+    changeSeq: seq,
+    changedAt: new Date(attribution.changedAt).toISOString(),
+    changedBy: attribution.deviceId || attribution.deviceName
+      ? { id: attribution.deviceId || "", name: attribution.deviceName || "" }
+      : null,
+    receivedAt: new Date(now).toISOString()
+  };
 }
 
 async function writeChanges(env, fridgeId, changes) {

@@ -4,7 +4,8 @@ const COOKING_HISTORY_STORAGE_KEY = "fridge-leftovers-cooking-history-v1";
 const SHELF_COUNTS_STORAGE_KEY = "fridge-leftovers-shelf-counts-v1";
 const RECENT_INGREDIENTS_STORAGE_KEY = "fridge-leftovers-recent-ingredients-v1";
 const SETTINGS_STORAGE_KEY = "fridge-leftovers-settings-v1";
-const APP_VERSION = "0.9.0";
+const DEVICE_STORAGE_KEY = "fridge-leftovers-device-v1";
+const APP_VERSION = "0.10.0";
 const RECIPE_PAGE_SIZE = 3;
 const RECIPE_LIST_SERVINGS = 1;
 
@@ -3145,6 +3146,9 @@ const state = {
   pendingShareJoinId: "",
   shareJoinReturnToSettings: false,
   syncing: false,
+  // 端末名は本人が付ける表示名。deviceId は同名の端末を区別するためだけに使い、
+  // アカウントや認証の代わりにはしない
+  device: { id: "", name: "" },
   settings: { ...DEFAULT_SETTINGS }
 };
 
@@ -3156,6 +3160,7 @@ const elements = {
   closeSettings: document.querySelector("#close-settings"),
   settingShowNutrition: document.querySelector("#setting-show-nutrition"),
   settingsNutritionNote: document.querySelector("#settings-nutrition-note"),
+  deviceName: document.querySelector("#device-name"),
   fridgeScene: document.querySelector("#fridge-scene"),
   inventoryList: document.querySelector("#inventory-list"),
   finishedSection: document.querySelector("#finished-section"),
@@ -3358,13 +3363,57 @@ function untouchedSampleItems() {
   });
 }
 
+// ---- この端末の名前 ------------------------------------------------------
+// 自動取得した機種名はブラウザから安定して得られないため、本人が分かる名前を
+// 付ける。未設定でも区別できるよう、ランダムIDの末尾を短い既定名にする。
+function makeDeviceId() {
+  if (globalThis.crypto?.randomUUID) return crypto.randomUUID();
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function defaultDeviceName(id) {
+  const suffix = String(id).replaceAll("-", "").slice(-4).toUpperCase() || "0000";
+  return `端末 ${suffix}`;
+}
+
+function loadDevice() {
+  let saved = null;
+  try {
+    saved = JSON.parse(localStorage.getItem(DEVICE_STORAGE_KEY) || "null");
+  } catch {
+    saved = null;
+  }
+  const id = typeof saved?.id === "string" && saved.id ? saved.id : makeDeviceId();
+  const name = typeof saved?.name === "string" && saved.name.trim()
+    ? saved.name.trim().slice(0, 30)
+    : defaultDeviceName(id);
+  state.device = { id, name };
+  persistDevice();
+}
+
+function persistDevice() {
+  if (!state.storageEnabled) return;
+  try {
+    localStorage.setItem(DEVICE_STORAGE_KEY, JSON.stringify(state.device));
+  } catch {
+    markStorageUnavailable();
+  }
+}
+
+function currentChangeAttribution() {
+  return {
+    changedAt: new Date().toISOString(),
+    changedBy: { id: state.device.id, name: state.device.name }
+  };
+}
+
 // ---- 同期の下ごしらえ（1品1行として扱う） ---------------------------------
 // 二人で1つの冷蔵庫を共有する仕組み（SUPABASE_SETUP.md）は、食材1品ごとに
 // 1行を持ち、行ごとに「サーバーで何版か」を申告して送る。いまの保存は配列を
 // 丸ごと1件として書いているので、その形へ寄せる必要がある。
 //
-// ★実体（在庫アイテムなど）には項目を足さない。版と印は別の表で持つ。
-// こうすれば、在庫の判定・描画・書き出しのコードを一切触らずに済む。
+// ★実体（在庫アイテムなど）には同期用の項目を足さない。版・印・最終変更端末は
+// 別の表で持つ。食材やレシピの判定へ同期情報を混ぜないため。
 //
 // ★どこで何が変わったかを、変更のたびに記録しない。保存のたびに前回の内容と
 // 比べて差分を出す。在庫を消す場所がアプリ内に7箇所あり、全部へ印を付ける
@@ -3413,7 +3462,7 @@ function markSyncChanges() {
       const body = JSON.stringify(entity);
       const meta = state.syncMeta[key];
       if (!meta) {
-        state.syncMeta[key] = { version: 0, body, dirty: true };
+        state.syncMeta[key] = { version: 0, body, dirty: true, ...currentChangeAttribution() };
         continue;
       }
       // 一度消したものが同じidで戻ってきたら、墓石を取り消す
@@ -3422,6 +3471,7 @@ function markSyncChanges() {
       if (meta.body !== body) {
         meta.body = body;
         meta.dirty = true;
+        Object.assign(meta, currentChangeAttribution());
       }
     }
   }
@@ -3436,6 +3486,7 @@ function markSyncChanges() {
     }
     meta.deletedAt = new Date().toISOString();
     meta.dirty = true;
+    Object.assign(meta, currentChangeAttribution());
   }
 }
 
@@ -3503,7 +3554,9 @@ function pendingSyncChanges() {
         id: key.slice(at + 1),
         baseVersion: meta.version,
         deleted: Boolean(meta.deletedAt),
-        body: meta.deletedAt ? null : JSON.parse(meta.body)
+        body: meta.deletedAt ? null : JSON.parse(meta.body),
+        changedAt: meta.changedAt || meta.deletedAt || new Date().toISOString(),
+        changedBy: meta.changedBy || null
       };
     });
 }
@@ -3610,10 +3663,28 @@ function applyIncoming(changes) {
 
     // 混ぜた結果が相手の中身と違うなら、こちらから送り直す必要がある
     const settled = JSON.stringify(merged) === JSON.stringify(change.body);
+    const remoteAttribution = {
+      changedAt: typeof change.changedAt === "string" ? change.changedAt : "",
+      changedBy: change.changedBy && typeof change.changedBy === "object"
+        ? {
+            id: typeof change.changedBy.id === "string" ? change.changedBy.id : "",
+            name: typeof change.changedBy.name === "string" ? change.changedBy.name : ""
+          }
+        : null
+    };
+    // 競合を混ぜてこちらから送り直すなら、この端末の変更として残す。
+    // 相手の内容をそのまま採った場合だけ、相手の端末・時刻を引き継ぐ。
+    const attribution = settled
+      ? remoteAttribution
+      : {
+          changedAt: meta?.changedAt || new Date().toISOString(),
+          changedBy: meta?.changedBy || { ...state.device }
+        };
     state.syncMeta[key] = {
       version: change.version,
       body: JSON.stringify(merged),
-      dirty: !settled
+      dirty: !settled,
+      ...attribution
     };
     touched = true;
   }
@@ -3645,7 +3716,9 @@ async function syncOnce() {
               id: change.id,
               body: change.body,
               baseVersion: change.baseVersion,
-              deleted: change.deleted
+              deleted: change.deleted,
+              changedAt: change.changedAt,
+              changedBy: change.changedBy
             }))
           }
         }
@@ -4736,6 +4809,7 @@ function renderInventory() {
       <span>
         <strong>${escapeHtml(item.name)}</strong>
         <span class="item-meta">${escapeHtml(item.location)}・${escapeHtml(item.consumedAt || "")}</span>
+        ${renderChangeAttribution("item", item.id)}
       </span>
       <button class="restore-button" type="button" data-action="restore" data-id="${escapeHtml(item.id)}">戻す</button>
     </div>
@@ -4930,6 +5004,7 @@ function renderInventoryRow(item) {
           <span class="item-meta${confirmation.stale ? " is-stale" : ""}">
             ${escapeHtml(item.location)}・${confirmation.text}${item.priority ? '<strong>・先に使う</strong>' : ""}
           </span>
+          ${renderChangeAttribution("item", item.id)}
         </button>
       </div>
 
@@ -5245,6 +5320,7 @@ function renderShoppingItem(item) {
       <div class="shopping-item-copy">
         <strong>${escapeHtml(item.name)} <span>${formatQuantity(item.quantity, item.unit)}</span></strong>
         <small>${item.reason ? escapeHtml(item.reason) : "自分で追加"}</small>
+        ${renderChangeAttribution("shopping", item.id)}
       </div>
       <div class="shopping-item-actions">
         ${item.checked ? `<button type="button" data-shopping-stock="${escapeHtml(item.id)}">在庫へ</button>` : ""}
@@ -5573,6 +5649,32 @@ function formatCookingTime(value) {
   }).format(date);
 }
 
+function formatChangedTime(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat("ja-JP", {
+    month: "numeric",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit"
+  }).format(date);
+}
+
+function changeAttributionText(kind, id) {
+  const meta = state.syncMeta[`${kind}:${id}`];
+  const when = formatChangedTime(meta?.changedAt);
+  if (!when) return "";
+  const device = typeof meta?.changedBy?.name === "string" && meta.changedBy.name.trim()
+    ? meta.changedBy.name.trim()
+    : "端末不明";
+  return `最終変更 ${when}・${device}`;
+}
+
+function renderChangeAttribution(kind, id) {
+  const text = changeAttributionText(kind, id);
+  return text ? `<span class="change-attribution">${escapeHtml(text)}</span>` : "";
+}
+
 function renderCookingHistory() {
   if (!state.cookingHistory.length) {
     elements.cookingHistoryList.innerHTML = `
@@ -5600,6 +5702,7 @@ function renderCookingHistory() {
           <div>
             <p class="history-time">${escapeHtml(formatCookingTime(entry.cookedAt))}・${Number(entry.servings) || 1}人分</p>
             <h3>${escapeHtml(entry.recipeName)}</h3>
+            ${renderChangeAttribution("cooking", entry.id)}
           </div>
           <span class="history-state">${undone ? "取り消し済み" : "在庫に反映済み"}</span>
         </div>
@@ -7173,6 +7276,16 @@ elements.settingShowNutrition.addEventListener("change", () => {
   renderRecipes();
   if (state.pendingCookRecipeId) updateCookConfirmation();
 });
+elements.deviceName.addEventListener("input", () => {
+  state.device.name = elements.deviceName.value.slice(0, 30);
+  persistDevice();
+});
+elements.deviceName.addEventListener("change", () => {
+  const name = elements.deviceName.value.trim().slice(0, 30) || defaultDeviceName(state.device.id);
+  state.device.name = name;
+  elements.deviceName.value = name;
+  persistDevice();
+});
 document.querySelector("#scan-receipt").addEventListener("click", startReceiptScanFromDevice);
 elements.ingredientReceiptShortcut.addEventListener("click", startReceiptScanFromDevice);
 document.querySelector("#close-dialog").addEventListener("click", closeIngredientDialog);
@@ -8153,6 +8266,8 @@ elements.toastAction.addEventListener("click", () => {
 });
 
 elements.appVersion.textContent = `v${APP_VERSION}`;
+loadDevice();
+elements.deviceName.value = state.device.name;
 loadSyncMeta();
 loadShare();
 loadSettings();
