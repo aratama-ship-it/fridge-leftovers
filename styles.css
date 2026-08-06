@@ -29,6 +29,11 @@ body {
   min-width: 320px;
 }
 
+html,
+body {
+  overscroll-behavior-y: none;
+}
+
 button,
 input,
 select {
@@ -54,10 +59,7 @@ summary:focus-visible {
 }
 
 .app-shell {
-  /* ★縦に伸びる箱にして、main に余りを全部持たせる。こうしないと、在庫が
-     少ない画面（在庫管理・調理履歴）で中身が短いときに、下のメニューが
-     内容のすぐ下＝画面の途中まで上がってくる。sticky は「はみ出したときに
-     貼り付く」だけなので、短いときは効かない */
+  /* ナビはfixedで画面に固定する。ここは短い画面でも背景を最下段まで伸ばす。 */
   display: flex;
   flex-direction: column;
   min-height: 100dvh;
@@ -69,9 +71,22 @@ summary:focus-visible {
 
 .app-shell > main {
   flex: 1;
-  /* 中身が短くても main が画面の下まで伸びるので、メニューは常に最下段。
-     長いときは今までどおり sticky で画面下に貼り付く */
   min-height: 0;
+  padding-bottom: calc(55px + env(safe-area-inset-bottom));
+}
+
+/* 冷蔵庫／パントリーの全体が画面に収まるときだけJSで付く。
+   touch-actionまで止めることで、iOSの画面端の小さな縦揺れも起こさない。 */
+html.is-inventory-fit,
+body.is-inventory-fit {
+  height: 100dvh;
+  overflow: hidden;
+}
+
+body.is-inventory-fit .app-shell {
+  height: 100dvh;
+  overflow: hidden;
+  touch-action: none;
 }
 
 .app-version {
@@ -2564,15 +2579,19 @@ input[type="number"] {
 }
 
 .bottom-nav {
-  position: sticky;
+  position: fixed;
   z-index: 5;
+  right: auto;
   bottom: 0;
+  left: 50%;
   display: grid;
   grid-template-columns: repeat(5, 1fr);
+  width: min(100%, 540px);
   padding-bottom: env(safe-area-inset-bottom);
   border-top: 1px solid var(--line-strong);
   background: rgb(251 250 245 / 96%);
   box-shadow: 0 -5px 16px var(--shadow);
+  transform: translateX(-50%);
 }
 
 .nav-button {
@@ -4655,6 +4674,10 @@ input[type="number"] {
     padding: max(8px, env(safe-area-inset-top)) 24px 8px 28px;
   }
 
+  .bottom-nav {
+    width: min(100%, 900px);
+  }
+
   .view {
     padding: 20px 28px 38px;
   }
@@ -4823,23 +4846,28 @@ input[type="number"] {
   .app-shell > main {
     grid-column: 2;
     grid-row: 2;
+    padding-bottom: 0;
   }
 
   .bottom-nav {
-    position: sticky;
-    top: 0;
-    bottom: auto;
+    position: fixed;
+    top: max(55px, calc(47px + env(safe-area-inset-top)));
+    right: auto;
+    bottom: 0;
+    left: max(0px, calc(50% - 590px));
     grid-column: 1;
     grid-row: 2;
     grid-template-columns: 1fr;
     grid-template-rows: repeat(5, minmax(78px, auto));
     align-self: start;
-    height: calc(100dvh - 55px);
+    width: 112px;
+    height: calc(100dvh - max(55px, calc(47px + env(safe-area-inset-top))));
     padding: 12px 0 env(safe-area-inset-bottom);
     border-top: 0;
     border-right: 1px solid var(--line-strong);
     background: rgb(251 250 245 / 92%);
     box-shadow: 5px 0 16px var(--shadow);
+    transform: none;
   }
 
   .nav-button {

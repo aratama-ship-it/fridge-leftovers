@@ -5,7 +5,7 @@ const SHELF_COUNTS_STORAGE_KEY = "fridge-leftovers-shelf-counts-v1";
 const RECENT_INGREDIENTS_STORAGE_KEY = "fridge-leftovers-recent-ingredients-v1";
 const SETTINGS_STORAGE_KEY = "fridge-leftovers-settings-v1";
 const DEVICE_STORAGE_KEY = "fridge-leftovers-device-v1";
-const APP_VERSION = "0.13.0";
+const APP_VERSION = "0.13.1";
 const RECIPE_PAGE_SIZE = 3;
 const RECIPE_LIST_SERVINGS = 1;
 
@@ -4863,6 +4863,7 @@ function renderInventory() {
       <button class="restore-button" type="button" data-action="restore" data-id="${escapeHtml(item.id)}">戻す</button>
     </div>
   `).join("");
+  scheduleInventoryScrollLock();
 }
 
 function inventoryLevel(item) {
@@ -6013,6 +6014,32 @@ function showView(viewName) {
   if (viewName === "shopping") renderShopping();
   if (viewName === "history") renderCookingHistory();
   window.scrollTo({ top: 0, behavior: "auto" });
+  scheduleInventoryScrollLock();
+}
+
+let inventoryScrollLockFrame = 0;
+
+function updateInventoryScrollLock() {
+  inventoryScrollLockFrame = 0;
+  const shell = document.querySelector(".app-shell");
+  const inventoryIsVisible = !elements.inventoryView.hidden && !elements.bottomNav.hidden;
+  const viewportHeight = Math.floor(window.visualViewport?.height || window.innerHeight);
+  // fixed のナビは文書高に入らないが、main の余白で同じ高さを確保している。
+  // scrollHeight が表示領域以下なら、縦パン自体を止めてiOSの端の揺れも出さない。
+  const fits = Boolean(
+    shell
+    && inventoryIsVisible
+    && Math.ceil(shell.scrollHeight) <= viewportHeight + 2
+  );
+
+  if (fits && window.scrollY) window.scrollTo({ top: 0, behavior: "auto" });
+  document.documentElement.classList.toggle("is-inventory-fit", fits);
+  document.body.classList.toggle("is-inventory-fit", fits);
+}
+
+function scheduleInventoryScrollLock() {
+  if (inventoryScrollLockFrame) cancelAnimationFrame(inventoryScrollLockFrame);
+  inventoryScrollLockFrame = requestAnimationFrame(updateInventoryScrollLock);
 }
 
 function normalizedReceiptLine(value) {
@@ -8915,6 +8942,13 @@ function showViewFromHash() {
 
 showViewFromHash();
 window.addEventListener("hashchange", showViewFromHash);
+window.addEventListener("resize", scheduleInventoryScrollLock);
+window.visualViewport?.addEventListener("resize", scheduleInventoryScrollLock);
+if ("ResizeObserver" in window) {
+  const inventoryFitObserver = new ResizeObserver(scheduleInventoryScrollLock);
+  inventoryFitObserver.observe(elements.inventoryView);
+}
+scheduleInventoryScrollLock();
 
 // ここまでで最初の画面が組み上がっているので、起動の読み込み画面を消す。
 // index.html 側にも時間切れで消す安全弁があるので、ここが例外で
