@@ -12,9 +12,9 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="冷蔵庫の現在地">
-  <link rel="stylesheet" href="styles.css?v=9b9fa900">
+  <link rel="stylesheet" href="styles.css?v=0949f31e">
   <script src="vendor/tesseract/tesseract.min.js?v=7.0.0" defer></script>
-  <script src="app.js?v=a7d5b2ae" defer></script>
+  <script src="app.js?v=60032526" defer></script>
   <!--
     起動の読み込み画面は、外部CSS（styles.css）が届く前から出したいので、
     ここだけ色を直書きしている（:root の変数に頼らない）。回線が細いときほど
@@ -138,6 +138,19 @@
           <p class="day-after-lead" id="day-after-lead"></p>
           <ul class="day-after-list" id="day-after-list"></ul>
           <button class="button button-secondary day-after-skip" type="button" id="day-after-skip">あとで</button>
+        </section>
+
+        <!-- 期限が今日まで・3日以内・期限切れの食材だけを、操作を止めずに知らせる -->
+        <section class="expiry-alert" id="expiry-alert" aria-labelledby="expiry-alert-title" hidden>
+          <div class="expiry-alert-heading">
+            <div>
+              <p class="eyebrow">賞味期限のお知らせ</p>
+              <h3 id="expiry-alert-title">賞味期限が近い食材があります</h3>
+            </div>
+            <span id="expiry-alert-summary"></span>
+          </div>
+          <div class="expiry-alert-list" id="expiry-alert-list"></div>
+          <p class="expiry-alert-note">食材をタップすると、期限を変更できます。</p>
         </section>
 
         <!-- 保存済みデータにサンプルの5品が残っている人へ、一度だけ出す -->
@@ -611,6 +624,12 @@
             <option value="冷凍">冷凍</option>
             <option value="常温">常温</option>
           </select>
+        </label>
+
+        <label class="ingredient-expiry-field" for="ingredient-expiry">
+          <span class="ingredient-expiry-label">賞味期限 <em>任意</em></span>
+          <input id="ingredient-expiry" name="expiry" type="date">
+          <small>未入力でも保存できます。日付部分をタップするとカレンダーが開きます。</small>
         </label>
 
         <label class="check-row" for="ingredient-priority">

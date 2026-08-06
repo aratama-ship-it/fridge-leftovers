@@ -5,7 +5,7 @@ const SHELF_COUNTS_STORAGE_KEY = "fridge-leftovers-shelf-counts-v1";
 const RECENT_INGREDIENTS_STORAGE_KEY = "fridge-leftovers-recent-ingredients-v1";
 const SETTINGS_STORAGE_KEY = "fridge-leftovers-settings-v1";
 const DEVICE_STORAGE_KEY = "fridge-leftovers-device-v1";
-const APP_VERSION = "0.13.1";
+const APP_VERSION = "0.14.0";
 const RECIPE_PAGE_SIZE = 3;
 const RECIPE_LIST_SERVINGS = 1;
 
@@ -19,6 +19,60 @@ const DEFAULT_SETTINGS = {
 };
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
+
+// 賞味期限は時刻ではなく、その端末のカレンダー上の日付として扱う。
+// Date.parse("YYYY-MM-DD") はUTCになるため、日付だけを分解して比較する。
+function normalizedExpiryDate(value) {
+  const text = typeof value === "string" ? value.trim() : "";
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text);
+  if (!match) return "";
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(year, month - 1, day);
+  return date.getFullYear() === year
+    && date.getMonth() === month - 1
+    && date.getDate() === day
+    ? text
+    : "";
+}
+
+function localDateIso(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function expiryDayDifference(value, today = localDateIso()) {
+  const expiry = normalizedExpiryDate(value);
+  const base = normalizedExpiryDate(today);
+  if (!expiry || !base) return null;
+  const toUtcDay = (text) => {
+    const [year, month, day] = text.split("-").map(Number);
+    return Date.UTC(year, month - 1, day);
+  };
+  return Math.round((toUtcDay(expiry) - toUtcDay(base)) / 86400000);
+}
+
+function expiryAlertState(value, today = localDateIso()) {
+  const days = expiryDayDifference(value, today);
+  if (days === null || days > 3) return null;
+  if (days < 0) return { days, kind: "expired", label: `${Math.abs(days)}日超過` };
+  if (days === 0) return { days, kind: "today", label: "今日まで" };
+  return { days, kind: "soon", label: `あと${days}日` };
+}
+
+function formatExpiryDate(value) {
+  const normalized = normalizedExpiryDate(value);
+  if (!normalized) return "";
+  const [year, month, day] = normalized.split("-").map(Number);
+  return new Intl.DateTimeFormat("ja-JP", {
+    month: "numeric",
+    day: "numeric",
+    weekday: "short"
+  }).format(new Date(year, month - 1, day));
+}
 
 // 在庫の数量をどれだけ信じてよいか（方針書「数量は捨てるのでも盛るのでもなく、
 // 確信度を持たせる」）。数量を持たない状態を作ると残量ゲージ・調理後の減算・
@@ -3167,6 +3221,10 @@ const elements = {
   settingsNutritionNote: document.querySelector("#settings-nutrition-note"),
   deviceName: document.querySelector("#device-name"),
   fridgeScene: document.querySelector("#fridge-scene"),
+  expiryAlert: document.querySelector("#expiry-alert"),
+  expiryAlertTitle: document.querySelector("#expiry-alert-title"),
+  expiryAlertSummary: document.querySelector("#expiry-alert-summary"),
+  expiryAlertList: document.querySelector("#expiry-alert-list"),
   inventoryList: document.querySelector("#inventory-list"),
   finishedSection: document.querySelector("#finished-section"),
   finishedCount: document.querySelector("#finished-count"),
@@ -3230,6 +3288,7 @@ const elements = {
   ingredientQuantityRange: document.querySelector("#ingredient-quantity-range"),
   ingredientUnit: document.querySelector("#ingredient-unit"),
   ingredientLocation: document.querySelector("#ingredient-location"),
+  ingredientExpiry: document.querySelector("#ingredient-expiry"),
   ingredientPriority: document.querySelector("#ingredient-priority"),
   consumeIngredient: document.querySelector("#consume-ingredient"),
   discardIngredient: document.querySelector("#discard-ingredient"),
@@ -4840,6 +4899,7 @@ function renderInventory() {
   ensureInventoryShelves();
   const active = activeInventory();
   const filtered = active.filter((item) => state.location === "すべて" || item.location === state.location);
+  renderExpiryAlerts(active);
   renderFridgeScene(active);
 
   if (!filtered.length) {
@@ -4864,6 +4924,35 @@ function renderInventory() {
     </div>
   `).join("");
   scheduleInventoryScrollLock();
+}
+
+function renderExpiryAlerts(active) {
+  const alerts = active
+    .map((item) => ({ item, status: expiryAlertState(item.expiryDate) }))
+    .filter(({ status }) => status)
+    .sort((a, b) => a.status.days - b.status.days || a.item.name.localeCompare(b.item.name, "ja"));
+
+  elements.expiryAlert.hidden = alerts.length === 0;
+  if (!alerts.length) {
+    elements.expiryAlertList.innerHTML = "";
+    return;
+  }
+
+  const expiredCount = alerts.filter(({ status }) => status.kind === "expired").length;
+  elements.expiryAlertTitle.textContent = expiredCount
+    ? "期限を過ぎた食材があります"
+    : "賞味期限が近い食材があります";
+  elements.expiryAlertSummary.textContent = `${alerts.length}品`;
+  elements.expiryAlertList.innerHTML = alerts.map(({ item, status }) => `
+    <button class="expiry-alert-item is-${status.kind}" type="button" data-expiry-edit="${escapeHtml(item.id)}">
+      ${renderIngredientIllustration(item.id, item.name)}
+      <span class="expiry-alert-copy">
+        <strong>${escapeHtml(item.name)}</strong>
+        <small>賞味期限 ${escapeHtml(formatExpiryDate(item.expiryDate))}</small>
+      </span>
+      <span class="expiry-alert-state">${escapeHtml(status.label)}</span>
+    </button>
+  `).join("");
 }
 
 function inventoryLevel(item) {
@@ -4894,10 +4983,13 @@ function renderRecipeIllustration(recipeId) {
 
 function renderFridgeFood(item) {
   const state3 = inventoryLevelState(item);
+  const expiry = expiryAlertState(item.expiryDate);
+  const expiryLabel = expiry ? `、賞味期限${expiry.label}` : "";
   return `
-    <button class="fridge-food${item.priority ? " is-priority" : ""}" type="button" data-fridge-edit="${escapeHtml(item.id)}" data-drag-item="${escapeHtml(item.id)}" aria-label="${escapeHtml(item.name)}、${state3.label}。タップで在庫を編集、長押しで棚を移動">
+    <button class="fridge-food${item.priority ? " is-priority" : ""}${expiry ? ` is-expiry-${expiry.kind}` : ""}" type="button" data-fridge-edit="${escapeHtml(item.id)}" data-drag-item="${escapeHtml(item.id)}" aria-label="${escapeHtml(item.name)}、${state3.label}${expiryLabel}。タップで在庫を編集、長押しで棚を移動">
       <span class="food-hp-gauge${state3.className}" aria-hidden="true"><span style="--food-level:${state3.width}%"></span></span>
       ${renderIngredientIllustration(item.id, item.name)}
+      ${expiry ? `<span class="food-expiry-badge is-${expiry.kind}" aria-hidden="true">${expiry.kind === "expired" ? "!" : expiry.days}</span>` : ""}
     </button>
   `;
 }
@@ -5045,6 +5137,10 @@ function renderFridgeScene(active) {
 
 function renderInventoryRow(item) {
   const confirmation = confirmationLabel(item);
+  const expiry = expiryAlertState(item.expiryDate);
+  const expiryText = normalizedExpiryDate(item.expiryDate)
+    ? `賞味期限 ${formatExpiryDate(item.expiryDate)}${expiry ? `・${expiry.label}` : ""}`
+    : "賞味期限 未設定";
   return `
     <article class="inventory-row${item.priority ? " is-priority" : ""}">
       <div class="item-identity">
@@ -5054,6 +5150,7 @@ function renderInventoryRow(item) {
           <span class="item-meta${confirmation.stale ? " is-stale" : ""}">
             ${escapeHtml(item.location)}・${confirmation.text}${item.priority ? '<strong>・先に使う</strong>' : ""}
           </span>
+          <span class="item-expiry${expiry ? ` is-${expiry.kind}` : ""}">${escapeHtml(expiryText)}</span>
           ${renderChangeAttribution("item", item.id)}
         </button>
       </div>
@@ -5742,6 +5839,11 @@ function adjustmentSummary(change) {
     parts.push(`${formatQuantity(before.quantity, before.unit)} → ${formatQuantity(after.quantity, after.unit)}`);
   }
   if (before.location !== after.location) parts.push(`${before.location || "場所不明"} → ${after.location || "場所不明"}`);
+  if (before.expiryDate !== after.expiryDate) {
+    const beforeDate = before.expiryDate ? formatExpiryDate(before.expiryDate) : "未設定";
+    const afterDate = after.expiryDate ? formatExpiryDate(after.expiryDate) : "未設定";
+    parts.push(`賞味期限 ${beforeDate} → ${afterDate}`);
+  }
   if (before.active !== after.active) parts.push(after.active === false ? "在庫から外した" : "在庫へ戻した");
   return parts.join("・") || "在庫情報を確認";
 }
@@ -6403,6 +6505,7 @@ function addOrMergeInventoryItem({
   unit,
   location,
   priority = false,
+  expiryDate = null,
   shelf = null,
   confidence = QUANTITY_CONFIRMED
 }) {
@@ -6424,6 +6527,7 @@ function addOrMergeInventoryItem({
     existing.unit = unit;
     existing.location = location;
     existing.priority = existing.priority || priority;
+    if (expiryDate !== null) existing.expiryDate = normalizedExpiryDate(expiryDate);
     existing.active = true;
     existing.confirmedAt = todayIso();
     existing.step = stepForUnit(unit);
@@ -6450,6 +6554,7 @@ function addOrMergeInventoryItem({
     maxQuantity: quantity,
     quantityConfidence: confidence
   };
+  item.expiryDate = expiryDate === null ? "" : normalizedExpiryDate(expiryDate);
   if (Number.isInteger(shelf)) item.shelf = shelf;
   state.inventory.push(item);
   return "added";
@@ -6525,6 +6630,7 @@ function openIngredientDialog(item = null, preferredLocation = null, preferredSh
     elements.ingredientQuantity.value = item.quantity;
     elements.ingredientUnit.value = item.unit;
     elements.ingredientLocation.value = item.location;
+    elements.ingredientExpiry.value = normalizedExpiryDate(item.expiryDate);
     elements.ingredientPriority.checked = item.priority;
     elements.consumeIngredient.hidden = false;
     elements.discardIngredient.hidden = false;
@@ -6554,6 +6660,7 @@ function openIngredientDialog(item = null, preferredLocation = null, preferredSh
     elements.ingredientQuantity.value = 1;
     elements.ingredientUnit.value = "個";
     elements.ingredientLocation.value = preferredLocation || (state.location === "すべて" ? "冷蔵" : state.location);
+    elements.ingredientExpiry.value = "";
     elements.consumeIngredient.hidden = true;
     elements.discardIngredient.hidden = true;
     elements.deleteIngredient.hidden = true;
@@ -6591,6 +6698,7 @@ function saveIngredient(event) {
   const quantity = Number(elements.ingredientQuantity.value);
   const unit = elements.ingredientUnit.value;
   const location = elements.ingredientLocation.value;
+  const expiryDate = normalizedExpiryDate(elements.ingredientExpiry.value);
   if (!name || !Number.isFinite(quantity) || quantity <= 0) return;
   if (updateIngredientNameSuggestion()) {
     elements.acceptIngredientName.focus();
@@ -6611,6 +6719,7 @@ function saveIngredient(event) {
         quantity,
         unit,
         location,
+        expiryDate,
         priority: elements.ingredientPriority.checked,
         active: true,
         confirmedAt: todayIso(),
@@ -6632,6 +6741,9 @@ function saveIngredient(event) {
       quantity,
       unit,
       location,
+      // 既存品への追加で空欄なら、登録済みの期限を消さない。
+      // 期限を解除するときは、その食材を編集して空欄で保存する。
+      expiryDate: expiryDate || null,
       priority: elements.ingredientPriority.checked,
       shelf: targetShelf
     });
@@ -6745,6 +6857,7 @@ function inventoryHistoryComparable(item) {
     quantity: Number(item?.quantity) || 0,
     unit: item?.unit || "",
     location: item?.location || "",
+    expiryDate: normalizedExpiryDate(item?.expiryDate),
     active: item?.active !== false
   };
 }
@@ -8511,7 +8624,10 @@ function syncInBackground() {
 }
 
 document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible") syncInBackground();
+  if (document.visibilityState !== "visible") return;
+  // 日をまたいで開きっぱなしだった場合も、期限の残り日数を現在日に更新する。
+  renderInventory();
+  syncInBackground();
 });
 window.addEventListener("online", syncInBackground);
 
@@ -8597,6 +8713,15 @@ elements.sampleNoticeKeep.addEventListener("click", () => {
   state.settings.sampleNoticeDone = true;
   persistSettings();
   renderSampleNotice();
+});
+
+elements.expiryAlertList.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-expiry-edit]");
+  if (!button) return;
+  const item = state.inventory.find((candidate) => candidate.id === button.dataset.expiryEdit);
+  if (!item) return;
+  openIngredientDialog(item);
+  requestAnimationFrame(() => elements.ingredientExpiry.focus());
 });
 
 // 量が足りないと分かったときの逃げ道

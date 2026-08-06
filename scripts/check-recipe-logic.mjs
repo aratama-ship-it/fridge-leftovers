@@ -47,6 +47,7 @@ const CONSTANTS = [
   "SUBSTITUTE_GENERICS", "RECIPE_LIST_SERVINGS", "RECIPE_ILLUSTRATIONS"
 ];
 const FUNCTIONS = [
+  "normalizedExpiryDate", "localDateIso", "expiryDayDifference", "expiryAlertState",
   "normalizedSubstitute", "conversionRatio", "stockForRequirement",
   "availableForRequirement", "requiredAmount", "shortageFor", "unconfirmedFor",
   "cookBlockers", "confirmUnknownAmounts", "optionalReady",
@@ -70,6 +71,7 @@ return {
   availableForRequirement, shortageFor, unconfirmedFor, cookBlockers,
   confirmUnknownAmounts, optionalReady, requiredAmount,
   pendingDayAfterItems, dayAfterCorrection, DAY_AFTER_LEVELS,
+  normalizedExpiryDate, expiryDayDifference, expiryAlertState,
   markSyncChanges, pendingSyncChanges, applySyncResult, mergeEntity
 };
 `;
@@ -81,6 +83,7 @@ const {
   quantityConfidence, lessCertain, stockForRequirement,
   shortageFor, unconfirmedFor, cookBlockers, confirmUnknownAmounts,
   pendingDayAfterItems, dayAfterCorrection, DAY_AFTER_LEVELS,
+  normalizedExpiryDate, expiryDayDifference, expiryAlertState,
   markSyncChanges, pendingSyncChanges, applySyncResult, mergeEntity
 } = app_;
 
@@ -110,6 +113,16 @@ function check(label, actual, expected) {
     console.log(`✗ ${label}\n    実際: ${JSON.stringify(actual)}\n    期待: ${JSON.stringify(expected)}`);
   }
 }
+
+// ---- 賞味期限 ------------------------------------------------------------
+check("正しい賞味期限の日付を保存できる", normalizedExpiryDate("2026-08-10"), "2026-08-10");
+check("存在しない日付は保存しない", normalizedExpiryDate("2026-02-30"), "");
+check("賞味期限の前日差を時刻なしで計算する", expiryDayDifference("2026-08-10", "2026-08-07"), 3);
+check("期限切れは超過日数を返す", expiryAlertState("2026-08-06", "2026-08-07"), { days: -1, kind: "expired", label: "1日超過" });
+check("当日は今日までと知らせる", expiryAlertState("2026-08-07", "2026-08-07"), { days: 0, kind: "today", label: "今日まで" });
+check("3日以内は残り日数を知らせる", expiryAlertState("2026-08-10", "2026-08-07"), { days: 3, kind: "soon", label: "あと3日" });
+check("4日以上先はアラートに出さない", expiryAlertState("2026-08-11", "2026-08-07"), null);
+check("未設定はアラートに出さない", expiryAlertState("", "2026-08-07"), null);
 
 // ---- 確信度そのもの ------------------------------------------------------
 check("項目が無い在庫は確認済みとして扱う", quantityConfidence({ quantity: 1 }), QUANTITY_CONFIRMED);

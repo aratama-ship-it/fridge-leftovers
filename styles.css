@@ -624,6 +624,15 @@ h3 {
   background: rgb(255 255 255 / 28%);
 }
 
+.fridge-food.is-expiry-soon::after,
+.fridge-food.is-expiry-today::after {
+  border-color: #c88b2e;
+}
+
+.fridge-food.is-expiry-expired::after {
+  border-color: var(--warm);
+}
+
 .fridge-food.is-priority::before {
   position: absolute;
   z-index: 3;
@@ -667,6 +676,32 @@ h3 {
 
 .food-hp-gauge.is-critical > span {
   background: linear-gradient(180deg, #df735f, #ae4037);
+}
+
+.food-expiry-badge {
+  position: absolute;
+  z-index: 4;
+  right: 1px;
+  bottom: 2px;
+  display: grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding-inline: 4px;
+  border: 1px solid #fff9e7;
+  border-radius: 9px;
+  background: #c88b2e;
+  color: white;
+  font-family: sans-serif;
+  font-size: 0.62rem;
+  font-weight: 900;
+  line-height: 1;
+  box-shadow: 0 1px 3px rgb(50 36 20 / 25%);
+  pointer-events: none;
+}
+
+.food-expiry-badge.is-expired {
+  background: var(--warm);
 }
 
 .fridge-food .ingredient-illustration,
@@ -1198,6 +1233,25 @@ body.is-fridge-dragging .food-consume-station {
   color: var(--warm);
 }
 
+.item-expiry {
+  display: block;
+  margin-top: 2px;
+  color: #78827c;
+  font-size: 0.62rem;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.item-expiry.is-soon,
+.item-expiry.is-today {
+  color: #996819;
+}
+
+.item-expiry.is-expired {
+  color: var(--warm);
+  font-weight: 800;
+}
+
 .change-attribution {
   display: block;
   overflow: hidden;
@@ -1448,7 +1502,8 @@ body.is-fridge-dragging .food-consume-station {
 
 select,
 input[type="text"],
-input[type="number"] {
+input[type="number"],
+input[type="date"] {
   width: 100%;
   padding: 10px 11px;
   border: 1px solid var(--line-strong);
@@ -3631,6 +3686,29 @@ input[type="number"] {
   gap: 10px;
 }
 
+.ingredient-expiry-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ingredient-expiry-label em {
+  padding: 2px 7px;
+  border-radius: 10px;
+  background: var(--leaf-soft);
+  color: var(--leaf-dark);
+  font-size: 0.62rem;
+  font-style: normal;
+  line-height: 1.2;
+}
+
+.ingredient-expiry-field small {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
 .check-row {
   grid-template-columns: auto minmax(0, 1fr);
   align-items: start;
@@ -4154,6 +4232,119 @@ input[type="number"] {
 
 .sample-notice-actions .button {
   flex: 1;
+}
+
+/* ---- 賞味期限のお知らせ -------------------------------------------------- */
+.expiry-alert {
+  margin-bottom: 18px;
+  padding: 14px;
+  border: 1px solid rgb(184 107 36 / 32%);
+  border-left: 5px solid #c17a2a;
+  border-radius: 6px;
+  background: #fff8e7;
+}
+
+.expiry-alert[hidden] {
+  display: none;
+}
+
+.expiry-alert-heading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.expiry-alert-heading h3 {
+  margin: 2px 0 0;
+  font-size: 0.96rem;
+  line-height: 1.45;
+}
+
+.expiry-alert-heading > span {
+  flex: none;
+  padding: 3px 8px;
+  border-radius: 12px;
+  background: #f0d6a2;
+  color: #704814;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.expiry-alert-list {
+  display: grid;
+  gap: 6px;
+  margin-top: 11px;
+}
+
+.expiry-alert-item {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 50px;
+  padding: 5px 8px;
+  border: 1px solid rgb(174 120 55 / 25%);
+  border-radius: 5px;
+  background: rgb(255 255 255 / 72%);
+  color: var(--ink);
+  text-align: left;
+}
+
+.expiry-alert-item:hover,
+.expiry-alert-item:focus-visible {
+  border-color: #aa6c25;
+  outline: 2px solid rgb(193 122 42 / 24%);
+  outline-offset: 1px;
+}
+
+.expiry-alert-item.is-expired {
+  border-color: rgb(168 73 45 / 34%);
+  background: #fff3ef;
+}
+
+.expiry-alert-item .ingredient-illustration,
+.expiry-alert-item .ingredient-initial {
+  width: 38px;
+  height: 38px;
+}
+
+.expiry-alert-copy {
+  min-width: 0;
+}
+
+.expiry-alert-copy strong,
+.expiry-alert-copy small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.expiry-alert-copy strong {
+  font-size: 0.82rem;
+}
+
+.expiry-alert-copy small {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 0.65rem;
+}
+
+.expiry-alert-state {
+  color: #996819;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.expiry-alert-item.is-expired .expiry-alert-state {
+  color: var(--warm);
+}
+
+.expiry-alert-note {
+  margin: 8px 0 0;
+  color: #775c33;
+  font-size: 0.68rem;
 }
 
 /* ---- 翌日の在庫確認 ------------------------------------------------------ */
@@ -4758,6 +4949,10 @@ input[type="number"] {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     column-gap: 24px;
     border-bottom: 0;
+  }
+
+  .expiry-alert-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .inventory-list > .empty-state {
