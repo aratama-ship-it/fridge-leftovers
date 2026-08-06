@@ -5,7 +5,7 @@ const SHELF_COUNTS_STORAGE_KEY = "fridge-leftovers-shelf-counts-v1";
 const RECENT_INGREDIENTS_STORAGE_KEY = "fridge-leftovers-recent-ingredients-v1";
 const SETTINGS_STORAGE_KEY = "fridge-leftovers-settings-v1";
 const DEVICE_STORAGE_KEY = "fridge-leftovers-device-v1";
-const APP_VERSION = "0.10.0";
+const APP_VERSION = "0.11.0";
 const RECIPE_PAGE_SIZE = 3;
 const RECIPE_LIST_SERVINGS = 1;
 
@@ -3155,6 +3155,8 @@ const state = {
 const elements = {
   appVersion: document.querySelector("#app-version"),
   appHeader: document.querySelector("#app-header"),
+  headerSync: document.querySelector("#header-sync"),
+  headerSyncLabel: document.querySelector("#header-sync-label"),
   openSettings: document.querySelector("#open-settings"),
   settingsDialog: document.querySelector("#settings-dialog"),
   closeSettings: document.querySelector("#close-settings"),
@@ -3419,6 +3421,8 @@ function currentChangeAttribution() {
 // 比べて差分を出す。在庫を消す場所がアプリ内に7箇所あり、全部へ印を付ける
 // 細工を入れると、足し忘れが必ず起きるため。
 const SYNC_STORAGE_KEY = "fridge-leftovers-sync-v1";
+const AUTO_SYNC_DELAY_MS = 600;
+let autoSyncTimer = null;
 
 const SYNC_KINDS = [
   { kind: "item", list: () => state.inventory },
@@ -3696,6 +3700,8 @@ function applyIncoming(changes) {
 async function syncOnce() {
   if (!state.share.fridgeId || state.syncing) return { skipped: true };
   state.syncing = true;
+  renderHeaderSync();
+  let completed = false;
   try {
     const pulled = await shareFetch(
       `/v1/fridges/${state.share.fridgeId}/changes?since=${state.share.seq}`
@@ -3749,9 +3755,15 @@ async function syncOnce() {
       renderAll();
       renderDayAfterCheck();
     }
-    return { changed: touched, pending: pendingSyncChanges().length };
+    const result = { changed: touched, pending: pendingSyncChanges().length };
+    completed = true;
+    return result;
   } finally {
     state.syncing = false;
+    renderHeaderSync();
+    // 通信中に新しい操作が入った場合や競合が起きた場合は、残った変更だけを
+    // もう一度送る。通信失敗時は連続再試行せず、上部の「未同期」から手で戻せる。
+    if (completed && pendingSyncChanges().length) scheduleAutoSync();
   }
 }
 
@@ -4149,6 +4161,7 @@ function persistInventory() {
   }
   markSyncChanges();
   persistSyncMeta();
+  scheduleAutoSync();
 }
 
 function loadRecentIngredients() {
@@ -4242,6 +4255,7 @@ function persistShelfCounts() {
   }
   markSyncChanges();
   persistSyncMeta();
+  scheduleAutoSync();
 }
 
 function loadShoppingList() {
@@ -4267,6 +4281,7 @@ function persistShoppingList() {
   }
   markSyncChanges();
   persistSyncMeta();
+  scheduleAutoSync();
 }
 
 function loadCookingHistory() {
@@ -4294,6 +4309,7 @@ function persistCookingHistory() {
   }
   markSyncChanges();
   persistSyncMeta();
+  scheduleAutoSync();
 }
 
 function escapeHtml(value) {
@@ -7579,8 +7595,33 @@ elements.onboardingSkip.addEventListener("click", () => {
 const shareLinkFor = (fridgeId) =>
   `${location.origin}${location.pathname}#join=${fridgeId}`;
 
+function renderHeaderSync() {
+  const shared = Boolean(state.share.fridgeId);
+  elements.headerSync.hidden = !shared;
+  if (!shared) return;
+
+  const pending = pendingSyncChanges().length;
+  elements.headerSync.disabled = state.syncing;
+  elements.headerSync.classList.toggle("is-syncing", state.syncing);
+  elements.headerSync.classList.toggle("is-pending", !state.syncing && pending > 0);
+  elements.headerSyncLabel.textContent = state.syncing
+    ? "同期中"
+    : pending
+      ? "未同期"
+      : "同期";
+  elements.headerSync.setAttribute(
+    "aria-label",
+    state.syncing
+      ? "共有データを同期しています"
+      : pending
+        ? `未同期の変更が${pending}件あります。今すぐ同期する`
+        : "共有データを今すぐ同期する"
+  );
+}
+
 function renderShare() {
   const shared = Boolean(state.share.fridgeId);
+  renderHeaderSync();
 
   // ★共有していると「この端末のブラウザ内だけ」は事実と違う。約束を書き換える
   const notes = {
@@ -7600,7 +7641,7 @@ function renderShare() {
   elements.shareOff.hidden = shared;
   elements.shareOn.hidden = !shared;
   elements.shareNote.textContent = shared
-    ? "この冷蔵庫は共有しています。開いたときと、画面に戻ったときに合わせます。"
+    ? "この冷蔵庫は共有しています。変更したあとと、画面に戻ったときに自動で合わせます。"
     : "同じ冷蔵庫を、相手のスマホからも見られるようにします。登録は要りません。";
   if (!shared) return;
   elements.shareLink.value = shareLinkFor(state.share.fridgeId);
@@ -7635,7 +7676,8 @@ function fridgeIdFrom(value) {
 }
 
 async function withShareBusy(label, run) {
-  const buttons = [elements.shareCreate, elements.shareJoinGo, elements.shareNow, elements.shareStop];
+  const buttons = [elements.shareCreate, elements.shareJoinGo, elements.shareNow,
+    elements.headerSync, elements.shareStop];
   buttons.forEach((button) => { button.disabled = true; });
   showShareMessage(label, "info");
   try {
@@ -7879,23 +7921,49 @@ elements.shareCopy.addEventListener("click", async () => {
 });
 
 elements.shareNow.addEventListener("click", async () => {
+  cancelScheduledAutoSync();
   const done = await withShareBusy("合わせています…", syncOnce);
   renderShare();
   if (done) showShareMessage("合わせました。", "info");
 });
 
+elements.headerSync.addEventListener("click", async () => {
+  cancelScheduledAutoSync();
+  const done = await withShareBusy("合わせています…", syncOnce);
+  renderShare();
+  showToast(done ? "同期しました" : elements.shareMessage.textContent);
+});
+
 elements.shareStop.addEventListener("click", () => {
+  cancelScheduledAutoSync();
   state.share = { fridgeId: "", seq: 0, syncedAt: "" };
   persistShare();
   renderShare();
   showShareMessage("この端末の共有をやめました。冷蔵庫の中身は残っています。", "info");
 });
 
-// 開いたとき・画面に戻ったときに合わせる。こまめに送らないのは、
-// 台所で1品ずつ触るたびに通信すると電池と通信量が無駄になるため
+function cancelScheduledAutoSync() {
+  if (autoSyncTimer === null) return;
+  clearTimeout(autoSyncTimer);
+  autoSyncTimer = null;
+}
+
+// 保存操作が連続したときは最後の操作から少し待ち、1回の通信へまとめる。
+// 同期で受け取った内容を保存している間は state.syncing が true なので再送しない。
+function scheduleAutoSync() {
+  if (!state.share.fridgeId || state.syncing) return;
+  cancelScheduledAutoSync();
+  renderHeaderSync();
+  autoSyncTimer = setTimeout(() => {
+    autoSyncTimer = null;
+    syncInBackground();
+  }, AUTO_SYNC_DELAY_MS);
+}
+
+// 開いたとき・画面に戻ったとき・保存操作のあとに合わせる。
 function syncInBackground() {
   if (!state.share.fridgeId || !navigator.onLine) return;
-  syncOnce().then(() => renderShare()).catch(() => {});
+  syncOnce().then(() => renderShare()).catch(() => renderHeaderSync());
 }
 
 document.addEventListener("visibilitychange", () => {

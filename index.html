@@ -12,9 +12,9 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="冷蔵庫の現在地">
-  <link rel="stylesheet" href="styles.css?v=1a106711">
+  <link rel="stylesheet" href="styles.css?v=860dfb3f">
   <script src="vendor/tesseract/tesseract.min.js?v=7.0.0" defer></script>
-  <script src="app.js?v=9c5a493e" defer></script>
+  <script src="app.js?v=f959e01b" defer></script>
   <!--
     起動の読み込み画面は、外部CSS（styles.css）が届く前から出したいので、
     ここだけ色を直書きしている（:root の変数に頼らない）。回線が細いときほど
@@ -78,13 +78,19 @@
     <p>読み込んでいます…</p>
   </div>
   <div class="app-shell">
-    <!-- タイトルは出さない（本人の指定）。バージョンと設定だけの細い帯にする -->
+    <!-- タイトルは出さない（本人の指定）。共有中は同期をすぐ押せる細い帯にする -->
     <header class="app-header" id="app-header">
       <h1 class="visually-hidden">冷蔵庫の現在地</h1>
       <p class="app-version" id="app-version" aria-label="アプリのバージョン"></p>
-      <button class="header-settings-button" type="button" id="open-settings" aria-label="設定" aria-haspopup="dialog" aria-controls="settings-dialog">
-        <span aria-hidden="true">⚙</span>
-      </button>
+      <div class="header-actions">
+        <button class="header-sync-button" type="button" id="header-sync" aria-label="共有データを今すぐ同期する" hidden>
+          <span class="header-sync-icon" aria-hidden="true">↻</span>
+          <span id="header-sync-label">同期</span>
+        </button>
+        <button class="header-settings-button" type="button" id="open-settings" aria-label="設定" aria-haspopup="dialog" aria-controls="settings-dialog">
+          <span aria-hidden="true">⚙</span>
+        </button>
+      </div>
     </header>
 
     <main>

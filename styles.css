@@ -84,7 +84,7 @@ summary:focus-visible {
   line-height: 1;
 }
 
-/* タイトルを持たない細い帯。バージョンが左、設定が右。
+/* タイトルを持たない細い帯。バージョンが左、同期と設定が右。
    読み上げにはタイトルを残す（.visually-hidden の h1） */
 .app-header {
   display: flex;
@@ -94,6 +94,50 @@ summary:focus-visible {
   padding: max(6px, env(safe-area-inset-top)) 12px 6px 16px;
   border-bottom: 1px solid var(--line-strong);
   background: var(--paper-raised);
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.header-sync-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 38px;
+  padding: 0 10px;
+  border: 1px solid rgb(47 100 75 / 30%);
+  border-radius: 3px;
+  background: #f5faf6;
+  color: var(--leaf);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.header-sync-button[hidden] {
+  display: none;
+}
+
+.header-sync-button.is-pending {
+  border-color: rgb(164 105 42 / 35%);
+  background: #fff8e9;
+  color: #80551f;
+}
+
+.header-sync-button:disabled {
+  opacity: 0.7;
+}
+
+.header-sync-icon {
+  font-size: 1rem;
+}
+
+.header-sync-button.is-syncing .header-sync-icon {
+  animation: boot-loading-spin 0.9s linear infinite;
 }
 
 .visually-hidden {
