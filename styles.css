@@ -266,6 +266,51 @@ h3 {
   font-size: 0.92rem;
 }
 
+.settings-row-copy {
+  min-width: 0;
+}
+
+.nutrition-settings-row {
+  padding-block: 8px;
+}
+
+.settings-title-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.settings-title-line label {
+  cursor: pointer;
+}
+
+.settings-help-button {
+  display: grid;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  min-height: 28px;
+  place-items: center;
+  padding: 0;
+  border: 1px solid #87958b;
+  border-radius: 50%;
+  background: var(--paper-raised);
+  color: var(--leaf-dark);
+  font-size: 0.78rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.settings-help-button[aria-expanded="true"] {
+  border-color: var(--leaf);
+  background: var(--leaf-soft);
+}
+
+.settings-help-button:focus-visible {
+  outline: 3px solid rgb(47 100 75 / 35%);
+  outline-offset: 2px;
+}
+
 .settings-row-copy small {
   display: block;
   margin-top: 3px;
@@ -326,6 +371,19 @@ h3 {
   font-size: 0.76rem;
   line-height: 1.6;
   color: #6d7a6f;
+}
+
+.nutrition-settings-note {
+  margin-top: 6px;
+  padding: 8px 10px;
+  border-left: 3px solid var(--leaf);
+  background: var(--leaf-soft);
+  font-size: 0.72rem;
+  line-height: 1.5;
+}
+
+.nutrition-settings-note[hidden] {
+  display: none;
 }
 
 .device-settings {

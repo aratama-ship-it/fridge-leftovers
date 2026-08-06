@@ -12,9 +12,9 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="冷蔵庫の現在地">
-  <link rel="stylesheet" href="styles.css?v=52263ef3">
+  <link rel="stylesheet" href="styles.css?v=c8583cc7">
   <script src="vendor/tesseract/tesseract.min.js?v=7.0.0" defer></script>
-  <script src="app.js?v=fbfcfb58" defer></script>
+  <script src="app.js?v=3b492ab3" defer></script>
   <!--
     起動の読み込み画面は、外部CSS（styles.css）が届く前から出したいので、
     ここだけ色を直書きしている（:root の変数に頼らない）。回線が細いときほど
@@ -392,15 +392,18 @@
         <button class="icon-button" type="button" id="close-settings" aria-label="閉じる">×</button>
       </div>
 
-      <label class="settings-row" for="setting-show-nutrition">
+      <div class="settings-row nutrition-settings-row">
         <span class="settings-row-copy">
-          <strong>カロリーとPFCを表示する</strong>
+          <span class="settings-title-line">
+            <label for="setting-show-nutrition"><strong>カロリーとPFCを表示する</strong></label>
+            <button class="settings-help-button" type="button" id="nutrition-help" aria-expanded="false" aria-controls="settings-nutrition-note" aria-label="カロリーとPFCの数値について">?</button>
+          </span>
           <small>料理の候補と、作る前の確認画面に出します</small>
         </span>
-        <input id="setting-show-nutrition" type="checkbox" role="switch">
-      </label>
+        <input id="setting-show-nutrition" type="checkbox" role="switch" aria-label="カロリーとPFCを表示する">
+      </div>
 
-      <p class="settings-note" id="settings-nutrition-note">
+      <p class="settings-note nutrition-settings-note" id="settings-nutrition-note" hidden>
         表示される数値は、食品ごとの一般的な参考値と基本調味料の仮定から丸めた目安です。
         商品表示や医療・栄養指導の代わりにはなりません。
       </p>

@@ -5,7 +5,7 @@ const SHELF_COUNTS_STORAGE_KEY = "fridge-leftovers-shelf-counts-v1";
 const RECENT_INGREDIENTS_STORAGE_KEY = "fridge-leftovers-recent-ingredients-v1";
 const SETTINGS_STORAGE_KEY = "fridge-leftovers-settings-v1";
 const DEVICE_STORAGE_KEY = "fridge-leftovers-device-v1";
-const APP_VERSION = "0.14.2";
+const APP_VERSION = "0.14.3";
 const RECIPE_PAGE_SIZE = 3;
 const RECIPE_LIST_SERVINGS = 1;
 
@@ -3218,6 +3218,7 @@ const elements = {
   settingsDialog: document.querySelector("#settings-dialog"),
   closeSettings: document.querySelector("#close-settings"),
   settingShowNutrition: document.querySelector("#setting-show-nutrition"),
+  nutritionHelp: document.querySelector("#nutrition-help"),
   settingsNutritionNote: document.querySelector("#settings-nutrition-note"),
   deviceName: document.querySelector("#device-name"),
   fridgeScene: document.querySelector("#fridge-scene"),
@@ -3995,7 +3996,7 @@ function applyBackup({ found }) {
   loadCookingHistory();
   state.needsOnboarding = false;
   elements.settingShowNutrition.checked = state.settings.showNutrition;
-  elements.settingsNutritionNote.hidden = !state.settings.showNutrition;
+  setNutritionHelpExpanded(false);
   renderAll();
   renderRefineEntry();
   renderDayAfterCheck();
@@ -4320,6 +4321,11 @@ function persistSettings() {
   } catch {
     markStorageUnavailable();
   }
+}
+
+function setNutritionHelpExpanded(expanded) {
+  elements.nutritionHelp.setAttribute("aria-expanded", String(expanded));
+  elements.settingsNutritionNote.hidden = !expanded;
 }
 
 function loadShelfCounts() {
@@ -7858,6 +7864,7 @@ function startReceiptScanFromDevice() {
 
 document.querySelector("#add-ingredient").addEventListener("click", () => openIngredientDialog());
 elements.openSettings.addEventListener("click", () => {
+  setNutritionHelpExpanded(false);
   elements.settingsDialog.showModal();
   requestAnimationFrame(() => elements.settingShowNutrition.focus());
 });
@@ -7866,10 +7873,13 @@ elements.closeSettings.addEventListener("click", () => elements.settingsDialog.c
 
 elements.settingShowNutrition.addEventListener("change", () => {
   state.settings.showNutrition = elements.settingShowNutrition.checked;
-  elements.settingsNutritionNote.hidden = !state.settings.showNutrition;
   persistSettings();
   renderRecipes();
   if (state.pendingCookRecipeId) updateCookConfirmation();
+});
+elements.nutritionHelp.addEventListener("click", () => {
+  const expanded = elements.nutritionHelp.getAttribute("aria-expanded") === "true";
+  setNutritionHelpExpanded(!expanded);
 });
 elements.deviceName.addEventListener("input", () => {
   state.device.name = elements.deviceName.value.slice(0, 30);
@@ -9018,7 +9028,7 @@ loadSyncMeta();
 loadShare();
 loadSettings();
 elements.settingShowNutrition.checked = state.settings.showNutrition;
-elements.settingsNutritionNote.hidden = !state.settings.showNutrition;
+setNutritionHelpExpanded(false);
 loadShelfCounts();
 loadRecentIngredients();
 loadInventory();
