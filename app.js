@@ -5,7 +5,7 @@ const SHELF_COUNTS_STORAGE_KEY = "fridge-leftovers-shelf-counts-v1";
 const RECENT_INGREDIENTS_STORAGE_KEY = "fridge-leftovers-recent-ingredients-v1";
 const SETTINGS_STORAGE_KEY = "fridge-leftovers-settings-v1";
 const DEVICE_STORAGE_KEY = "fridge-leftovers-device-v1";
-const APP_VERSION = "0.14.0";
+const APP_VERSION = "0.14.1";
 const RECIPE_PAGE_SIZE = 3;
 const RECIPE_LIST_SERVINGS = 1;
 
@@ -3277,6 +3277,7 @@ const elements = {
   ingredientPickerReselect: document.querySelector("#ingredient-picker-reselect"),
   ingredientDetails: document.querySelector("#ingredient-details"),
   selectedIngredientPreview: document.querySelector("#selected-ingredient-preview"),
+  ingredientAddShortcuts: document.querySelector("#ingredient-add-shortcuts"),
   ingredientReceiptShortcut: document.querySelector("#ingredient-receipt-shortcut"),
   ingredientNameField: document.querySelector("#ingredient-name-field"),
   ingredientName: document.querySelector("#ingredient-name"),
@@ -6621,7 +6622,7 @@ function openIngredientDialog(item = null, preferredLocation = null, preferredSh
   elements.ingredientDetails.hidden = true;
   elements.selectedIngredientPreview.hidden = true;
   elements.ingredientNameField.hidden = false;
-  elements.ingredientReceiptShortcut.hidden = Boolean(item);
+  elements.ingredientAddShortcuts.hidden = Boolean(item);
   if (item) {
     showIngredientDetails({ editing: true });
     elements.dialogTitle.textContent = `${item.name}の在庫`;
@@ -8672,7 +8673,10 @@ elements.importApply.addEventListener("click", () => {
   }
 });
 
-elements.openRefine.addEventListener("click", startRefine);
+elements.openRefine.addEventListener("click", () => {
+  if (elements.dialog.open) closeIngredientDialog();
+  startRefine();
+});
 
 elements.refineGrid.addEventListener("click", (event) => {
   const button = event.target.closest("[data-refine-pick]");
