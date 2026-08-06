@@ -5,7 +5,7 @@ const SHELF_COUNTS_STORAGE_KEY = "fridge-leftovers-shelf-counts-v1";
 const RECENT_INGREDIENTS_STORAGE_KEY = "fridge-leftovers-recent-ingredients-v1";
 const SETTINGS_STORAGE_KEY = "fridge-leftovers-settings-v1";
 const DEVICE_STORAGE_KEY = "fridge-leftovers-device-v1";
-const APP_VERSION = "0.14.1";
+const APP_VERSION = "0.14.2";
 const RECIPE_PAGE_SIZE = 3;
 const RECIPE_LIST_SERVINGS = 1;
 
@@ -5740,10 +5740,10 @@ function renderRecipe(recipe, index) {
         </div>
         <nav class="recipe-search-links" aria-label="${escapeHtml(recipe.name)}を外部サイトで検索">
           <a class="recipe-search-link is-google" href="${googleSearchUrl}" target="_blank" rel="noopener noreferrer" aria-label="${escapeHtml(recipe.name)}をGoogleで検索" title="Googleで検索">
-            <span aria-hidden="true">G</span>
+            <span class="recipe-search-icon is-magnifier" aria-hidden="true"></span>
           </a>
           <a class="recipe-search-link is-youtube" href="${youtubeSearchUrl}" target="_blank" rel="noopener noreferrer" aria-label="${escapeHtml(recipe.name)}をYouTubeで検索" title="YouTubeで検索">
-            <span aria-hidden="true">▶</span>
+            <span class="recipe-search-icon is-youtube-play" aria-hidden="true"></span>
           </a>
         </nav>
       </div>
