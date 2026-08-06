@@ -51,6 +51,7 @@ const FUNCTIONS = [
   "availableForRequirement", "requiredAmount", "shortageFor", "unconfirmedFor",
   "cookBlockers", "confirmUnknownAmounts", "optionalReady",
   "inventoryLevel", "pendingDayAfterItems", "dayAfterCorrection",
+  "historyEntryType", "historyEntryTime",
   "currentChangeAttribution", "markSyncChanges", "pendingSyncChanges", "applySyncResult", "mergeEntity"
 ];
 
@@ -255,6 +256,25 @@ check("使い切った在庫は不足を埋めない", (() => {
   return shortageFor(eggRecipe, 1).map((item) => item.id);
 })(), ["eggs"]);
 
+check("同じ調理履歴を両端末で直した場合は新しい修正を採る",
+  mergeEntity("cooking",
+    { id: "h1", recipeName: "料理", editedAt: "2026-01-01T12:00:00.000Z", changes: [{ quantity: 2 }] },
+    { id: "h1", recipeName: "料理", editedAt: "2026-01-01T11:00:00.000Z", changes: [{ quantity: 1 }] }
+  ).changes[0].quantity,
+  2);
+check("修正後に取り消した履歴は取り消し時刻を最新操作として採る",
+  mergeEntity("cooking",
+    {
+      id: "h2",
+      recipeName: "料理",
+      editedAt: "2026-01-01T11:00:00.000Z",
+      undoneAt: "2026-01-01T13:00:00.000Z",
+      changes: [{ quantity: 2 }]
+    },
+    { id: "h2", recipeName: "料理", editedAt: "2026-01-01T12:00:00.000Z", changes: [{ quantity: 1 }] }
+  ).undoneAt,
+  "2026-01-01T13:00:00.000Z");
+
 // ---- 使い切り優先の在庫を先に使う ----------------------------------------
 check("使い切り優先の代用を先に選ぶ", (() => {
   const need = { id: "pork", name: "豚こま", quantity: 100, unit: "g" };
@@ -291,6 +311,16 @@ check("取り消した調理は聞かない", (() => {
   const result = dayAfterSetup("2025-12-31T19:00:00.000Z", [estimated("eggs", 1)]);
   void result;
   state.cookingHistory[0].undoneAt = "2026-01-01T00:00:00.000Z";
+  return pendingDayAfterItems().items.length;
+})(), 0);
+check("在庫修正の履歴は翌日の調理確認に混ぜない", (() => {
+  state.settings.dayAfterSkippedOn = "";
+  state.inventory = [estimated("eggs", 1)];
+  state.cookingHistory = [{
+    id: "adjustment-1", type: "adjustment", occurredAt: "2025-12-31T19:00:00.000Z",
+    title: "卵を修正", undoneAt: null,
+    changes: [{ itemId: "eggs", name: "卵", before: { quantity: 2 }, after: { quantity: 1 } }]
+  }];
   return pendingDayAfterItems().items.length;
 })(), 0);
 check("「あとで」を押した日は聞かない", (() => {

@@ -5,7 +5,7 @@ const SHELF_COUNTS_STORAGE_KEY = "fridge-leftovers-shelf-counts-v1";
 const RECENT_INGREDIENTS_STORAGE_KEY = "fridge-leftovers-recent-ingredients-v1";
 const SETTINGS_STORAGE_KEY = "fridge-leftovers-settings-v1";
 const DEVICE_STORAGE_KEY = "fridge-leftovers-device-v1";
-const APP_VERSION = "0.11.0";
+const APP_VERSION = "0.12.0";
 const RECIPE_PAGE_SIZE = 3;
 const RECIPE_LIST_SERVINGS = 1;
 
@@ -3127,9 +3127,12 @@ const state = {
   recentIngredientIds: [],
   pendingCookRecipeId: null,
   pendingCookServings: 1,
+  pendingCookExtras: [],
   // 作る前に量を確認した結果。{ 食材id: true（ある）/ false（足りない）}。
   // ダイアログを開くたびに空へ戻す（前回の答えを持ち回らない）
   cookAmountAnswers: {},
+  editingHistoryId: null,
+  historyEditChanges: [],
   // 初回登録。step 1 は主役選び、step 2 は候補の分かれ目を聞く
   onboarding: { step: 1, leads: [], extras: [] },
   // 売り場を順番に回って足していく画面。added はこの画面で入れたぶん
@@ -3229,6 +3232,7 @@ const elements = {
   ingredientLocation: document.querySelector("#ingredient-location"),
   ingredientPriority: document.querySelector("#ingredient-priority"),
   consumeIngredient: document.querySelector("#consume-ingredient"),
+  discardIngredient: document.querySelector("#discard-ingredient"),
   deleteIngredient: document.querySelector("#delete-ingredient"),
   receiptInput: document.querySelector("#receipt-input"),
   receiptDialog: document.querySelector("#receipt-dialog"),
@@ -3251,6 +3255,21 @@ const elements = {
   cookServingOptions: document.querySelector("#cook-serving-options"),
   cookConfirmIngredients: document.querySelector("#cook-confirm-ingredients"),
   cookConfirmNutrition: document.querySelector("#cook-confirm-nutrition"),
+  cookExtraItem: document.querySelector("#cook-extra-item"),
+  cookExtraQuantity: document.querySelector("#cook-extra-quantity"),
+  cookExtraUnit: document.querySelector("#cook-extra-unit"),
+  cookExtraAdd: document.querySelector("#cook-extra-add"),
+  cookExtraList: document.querySelector("#cook-extra-list"),
+  historyEditDialog: document.querySelector("#history-edit-dialog"),
+  historyEditForm: document.querySelector("#history-edit-form"),
+  historyEditRecipe: document.querySelector("#history-edit-recipe"),
+  historyEditIngredients: document.querySelector("#history-edit-ingredients"),
+  historyEditAddItem: document.querySelector("#history-edit-add-item"),
+  historyEditAddQuantity: document.querySelector("#history-edit-add-quantity"),
+  historyEditAddUnit: document.querySelector("#history-edit-add-unit"),
+  historyEditAdd: document.querySelector("#history-edit-add"),
+  historyEditMessage: document.querySelector("#history-edit-message"),
+  saveHistoryEdit: document.querySelector("#save-history-edit"),
   bottomNav: document.querySelector(".bottom-nav"),
   onboardingView: document.querySelector("#onboarding-view"),
   onboardingStepLabel: document.querySelector("#onboarding-step-label"),
@@ -3542,7 +3561,16 @@ function mergeEntity(kind, mine, theirs) {
     return merged;
   }
 
-  // 調理履歴は追記だけなので競合しない。万一のときはサーバー側を残す
+  if (kind === "cooking") {
+    // 履歴は通常別IDで追記する。調理内容を両端末で直したときだけ同じIDが
+    // ぶつかるので、修正・取り消しの日時が新しいほうを採る。
+    const changedAt = (entry) => Math.max(
+      ...[entry.editedAt, entry.undoneAt, entry.occurredAt, entry.cookedAt]
+        .map((value) => Date.parse(value || "") || 0)
+    );
+    return changedAt(mine) >= changedAt(theirs) ? mine : theirs;
+  }
+
   return theirs;
 }
 
@@ -3806,7 +3834,7 @@ const EXPORT_APP = "fridge-leftovers";
 const EXPORT_SECTIONS = [
   { key: "inventory", label: "冷蔵庫の中身", storage: STORAGE_KEY, get: () => state.inventory },
   { key: "shopping", label: "買い物リスト", storage: SHOPPING_STORAGE_KEY, get: () => state.shopping },
-  { key: "cookingHistory", label: "調理履歴", storage: COOKING_HISTORY_STORAGE_KEY, get: () => state.cookingHistory },
+  { key: "cookingHistory", label: "履歴", storage: COOKING_HISTORY_STORAGE_KEY, get: () => state.cookingHistory },
   { key: "shelfCounts", label: "棚の数", storage: SHELF_COUNTS_STORAGE_KEY, get: () => state.shelfCounts },
   { key: "recentIngredientIds", label: "最近追加した食材", storage: RECENT_INGREDIENTS_STORAGE_KEY, get: () => state.recentIngredientIds },
   { key: "settings", label: "設定", storage: SETTINGS_STORAGE_KEY, get: () => state.settings },
@@ -3937,7 +3965,9 @@ function pendingDayAfterItems() {
 
   const today = todayIso();
   const entries = state.cookingHistory.filter((entry) =>
-    !entry.undoneAt && String(entry.cookedAt).slice(0, 10) < today);
+    historyEntryType(entry) === "cooking"
+    && !entry.undoneAt
+    && String(historyEntryTime(entry)).slice(0, 10) < today);
   if (!entries.length) return { recipeName: "", items: [] };
 
   const seen = new Set();
@@ -4010,8 +4040,11 @@ function dayAfterCorrection(item, answer) {
 function answerDayAfter(id, answer) {
   const item = state.inventory.find((candidate) => candidate.id === id);
   if (!item) return;
+  const before = { ...item };
   dayAfterCorrection(item, answer);
+  recordInventoryAdjustment(before, item);
   persistInventory();
+  persistCookingHistory();
   renderAll();
   renderDayAfterCheck();
 }
@@ -5033,7 +5066,7 @@ function renderInventoryRow(item) {
       <div class="row-actions">
         <button class="row-action" type="button" data-action="confirm" data-id="${escapeHtml(item.id)}">まだある</button>
         <button class="row-action${item.priority ? " is-priority" : ""}" type="button" data-action="priority" data-id="${escapeHtml(item.id)}">${item.priority ? "優先を解除" : "先に使う"}</button>
-        <button class="row-action" type="button" data-action="consume" data-id="${escapeHtml(item.id)}">履歴あり削除</button>
+        <button class="row-action" type="button" data-action="consume" data-id="${escapeHtml(item.id)}">使い切った</button>
         <button class="row-action is-delete" type="button" data-action="delete" data-id="${escapeHtml(item.id)}">完全削除</button>
       </div>
     </article>
@@ -5691,41 +5724,89 @@ function renderChangeAttribution(kind, id) {
   return text ? `<span class="change-attribution">${escapeHtml(text)}</span>` : "";
 }
 
+function historyEntryType(entry) {
+  return entry?.type || "cooking";
+}
+
+function historyEntryTime(entry) {
+  return entry?.occurredAt || entry?.cookedAt;
+}
+
+function adjustmentSummary(change) {
+  const before = change.before || {};
+  const after = change.after || {};
+  const parts = [];
+  if (before.name !== after.name) parts.push(`${before.name || "名称なし"} → ${after.name || "名称なし"}`);
+  if (before.quantity !== after.quantity || before.unit !== after.unit) {
+    parts.push(`${formatQuantity(before.quantity, before.unit)} → ${formatQuantity(after.quantity, after.unit)}`);
+  }
+  if (before.location !== after.location) parts.push(`${before.location || "場所不明"} → ${after.location || "場所不明"}`);
+  if (before.active !== after.active) parts.push(after.active === false ? "在庫から外した" : "在庫へ戻した");
+  return parts.join("・") || "在庫情報を確認";
+}
+
 function renderCookingHistory() {
   if (!state.cookingHistory.length) {
     elements.cookingHistoryList.innerHTML = `
       <div class="history-empty">
         <span aria-hidden="true">♨</span>
-        <p><strong>まだ調理履歴はありません</strong><br>おすすめから料理を作ると、ここに記録されます。</p>
+        <p><strong>まだ履歴はありません</strong><br>調理・使い切り・廃棄・在庫の修正がここに記録されます。</p>
       </div>
     `;
     return;
   }
 
   elements.cookingHistoryList.innerHTML = state.cookingHistory.map((entry) => {
+    const type = historyEntryType(entry);
     const undone = Boolean(entry.undoneAt);
-    const changes = entry.changes.map((change) => `
-      <li>
-        ${renderIngredientIllustration(change.itemId, change.name, true)}
-        <span>${escapeHtml(change.name)}</span>
-        <strong>−${formatQuantity(change.quantity, change.unit)}</strong>
-      </li>
-    `).join("");
+    const isCooking = type === "cooking";
+    const isAdjustment = type === "adjustment";
+    const changes = isAdjustment
+      ? ""
+      : entry.changes.map((change) => `
+        <li>
+          ${renderIngredientIllustration(change.itemId, change.name, true)}
+          <span>${escapeHtml(change.name)}</span>
+          <strong>−${formatQuantity(change.quantity, change.unit)}</strong>
+        </li>
+      `).join("");
+    const title = isCooking
+      ? entry.recipeName
+      : entry.title || entry.changes?.[0]?.name || "在庫の変更";
+    const stateLabel = undone
+      ? "取り消し済み"
+      : isCooking
+        ? (entry.editedAt ? "修正済み" : "在庫に反映済み")
+        : type === "discard"
+          ? "廃棄"
+          : type === "consume"
+            ? "使い切り"
+            : "在庫修正";
+    const timeSuffix = isCooking ? `・${Number(entry.servings) || 1}人分` : "";
+    const adjustment = isAdjustment
+      ? `<p class="history-summary">${escapeHtml(adjustmentSummary(entry.changes[0] || {}))}</p>`
+      : `<ul class="history-changes" aria-label="減った食材">${changes}</ul>`;
+    const actions = isCooking
+      ? `<div class="history-entry-actions">
+          <button class="history-edit-button" type="button" data-history-edit="${escapeHtml(entry.id)}"${undone ? " disabled" : ""}>使った食材を修正</button>
+          <button class="history-undo-button" type="button" data-history-undo="${escapeHtml(entry.id)}"${undone ? " disabled" : ""}>
+            ${undone ? "取り消しました" : "この調理を取り消す"}
+          </button>
+        </div>`
+      : "";
 
     return `
-      <article class="history-entry${undone ? " is-undone" : ""}">
+      <article class="history-entry is-${escapeHtml(type)}${undone ? " is-undone" : ""}">
         <div class="history-entry-heading">
           <div>
-            <p class="history-time">${escapeHtml(formatCookingTime(entry.cookedAt))}・${Number(entry.servings) || 1}人分</p>
-            <h3>${escapeHtml(entry.recipeName)}</h3>
+            <p class="history-time">${escapeHtml(formatCookingTime(historyEntryTime(entry)))}${timeSuffix}</p>
+            <h3>${escapeHtml(title)}</h3>
             ${renderChangeAttribution("cooking", entry.id)}
           </div>
-          <span class="history-state">${undone ? "取り消し済み" : "在庫に反映済み"}</span>
+          <span class="history-state">${stateLabel}</span>
         </div>
-        <ul class="history-changes" aria-label="減った食材">${changes}</ul>
-        <button class="history-undo-button" type="button" data-history-undo="${escapeHtml(entry.id)}"${undone ? " disabled" : ""}>
-          ${undone ? "取り消しました" : "この調理を取り消す"}
-        </button>
+        ${adjustment}
+        ${actions}
       </article>
     `;
   }).join("");
@@ -6419,6 +6500,7 @@ function openIngredientDialog(item = null, preferredLocation = null, preferredSh
     elements.ingredientLocation.value = item.location;
     elements.ingredientPriority.checked = item.priority;
     elements.consumeIngredient.hidden = false;
+    elements.discardIngredient.hidden = false;
     elements.deleteIngredient.hidden = false;
   } else {
     const hasShelfTarget = (
@@ -6446,6 +6528,7 @@ function openIngredientDialog(item = null, preferredLocation = null, preferredSh
     elements.ingredientUnit.value = "個";
     elements.ingredientLocation.value = preferredLocation || (state.location === "すべて" ? "冷蔵" : state.location);
     elements.consumeIngredient.hidden = true;
+    elements.discardIngredient.hidden = true;
     elements.deleteIngredient.hidden = true;
     showIngredientCategoryLayer();
   }
@@ -6491,6 +6574,7 @@ function saveIngredient(event) {
   if (editingId) {
     const item = state.inventory.find((candidate) => candidate.id === editingId);
     if (item) {
+      const before = { ...item };
       const maxQuantity = item.unit === unit
         ? Math.max(Number(item.maxQuantity) || 0, quantity)
         : quantity;
@@ -6508,6 +6592,7 @@ function saveIngredient(event) {
         // 本人が数量欄を見て保存したので、量は確認済みになる
         quantityConfidence: QUANTITY_CONFIRMED
       });
+      recordInventoryAdjustment(before, item);
       showToast(`${name}を更新しました`);
     }
   } else {
@@ -6528,33 +6613,49 @@ function saveIngredient(event) {
   }
 
   persistInventory();
+  persistCookingHistory();
   renderAll();
   closeIngredientDialog();
 }
 
-function updateItem(id, updater) {
+function updateItem(id, updater, { recordHistory = false } = {}) {
   const item = state.inventory.find((candidate) => candidate.id === id);
   if (!item) return;
+  const before = { ...item };
   updater(item);
+  if (recordHistory) recordInventoryAdjustment(before, item);
   persistInventory();
+  if (recordHistory) persistCookingHistory();
   renderAll();
 }
 
-function consumeItem(item, message = `${item.name}を履歴へ移しました`) {
+function removeInventoryItemWithHistory(item, type, message) {
   const snapshot = { ...item };
   item.active = false;
   item.consumedAt = todayIso();
+  const entry = recordDepletionHistory(item, snapshot, type);
   state.lastUndo = () => {
     Object.keys(item).forEach((key) => {
       if (!(key in snapshot)) delete item[key];
     });
     Object.assign(item, snapshot);
+    entry.undoneAt = new Date().toISOString();
     persistInventory();
+    persistCookingHistory();
     renderAll();
   };
   persistInventory();
+  persistCookingHistory();
   renderAll();
   showToast(message, true);
+}
+
+function consumeItem(item, message = `${item.name}を使い切りとして履歴へ記録しました`) {
+  removeInventoryItemWithHistory(item, "consume", message);
+}
+
+function discardItem(item) {
+  removeInventoryItemWithHistory(item, "discard", `${item.name}を廃棄として履歴へ記録しました`);
 }
 
 function deleteItem(item) {
@@ -6585,17 +6686,81 @@ function consumeCurrentIngredient() {
   consumeItem(item);
 }
 
+function discardCurrentIngredient() {
+  const item = state.inventory.find((candidate) => candidate.id === elements.ingredientId.value);
+  if (!item) return;
+  closeIngredientDialog();
+  discardItem(item);
+}
+
 function restoreItem(id) {
   updateItem(id, (item) => {
     item.active = true;
     item.confirmedAt = todayIso();
     delete item.consumedAt;
+  }, { recordHistory: true });
+}
+
+function makeCookingHistoryId(type = "cooking") {
+  if (globalThis.crypto?.randomUUID) return `${type}-${crypto.randomUUID()}`;
+  return `${type}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function addHistoryEntry(entry) {
+  state.cookingHistory.unshift(entry);
+  state.cookingHistory = state.cookingHistory.slice(0, 50);
+  return entry;
+}
+
+function inventoryHistoryComparable(item) {
+  return {
+    name: item?.name || "",
+    quantity: Number(item?.quantity) || 0,
+    unit: item?.unit || "",
+    location: item?.location || "",
+    active: item?.active !== false
+  };
+}
+
+function recordInventoryAdjustment(before, after) {
+  const beforeComparable = inventoryHistoryComparable(before);
+  const afterComparable = inventoryHistoryComparable(after);
+  if (JSON.stringify(beforeComparable) === JSON.stringify(afterComparable)) return null;
+  const occurredAt = new Date().toISOString();
+  return addHistoryEntry({
+    id: makeCookingHistoryId("adjustment"),
+    type: "adjustment",
+    title: `${afterComparable.name || beforeComparable.name}を修正`,
+    occurredAt,
+    cookedAt: occurredAt,
+    undoneAt: null,
+    changes: [{
+      itemId: after?.id || before?.id,
+      name: afterComparable.name || beforeComparable.name,
+      before: beforeComparable,
+      after: afterComparable
+    }]
   });
 }
 
-function makeCookingHistoryId() {
-  if (globalThis.crypto?.randomUUID) return `cooking-${crypto.randomUUID()}`;
-  return `cooking-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+function recordDepletionHistory(item, snapshot, type) {
+  const occurredAt = new Date().toISOString();
+  const label = type === "discard" ? "廃棄" : "使い切り";
+  return addHistoryEntry({
+    id: makeCookingHistoryId(type),
+    type,
+    title: `${snapshot.name}を${label}`,
+    occurredAt,
+    cookedAt: occurredAt,
+    undoneAt: null,
+    changes: [{
+      itemId: item.id,
+      name: snapshot.name,
+      unit: snapshot.unit,
+      quantity: Number(snapshot.quantity) || 0,
+      snapshot
+    }]
+  });
 }
 
 function undoCookingHistoryEntry(historyId) {
@@ -6647,6 +6812,92 @@ function setServings(servings, { render = true } = {}) {
   state.servings = next;
   if (render) renderRecipes();
   return true;
+}
+
+function baseCookUsage(recipe, servings) {
+  const ingredients = [...recipe.required];
+  recipe.optional.forEach((option) => {
+    const key = `${recipe.id}:${option.id}`;
+    if (optionalReady(option, servings) && state.selectedOptionals[key] !== false) ingredients.push(option);
+  });
+
+  const usage = new Map();
+  ingredients.forEach((ingredient) => {
+    const stock = stockForRequirement(ingredient);
+    if (!stock) return;
+    const quantity = Number(((ingredient.quantity * servings) / stock.ratio).toFixed(2));
+    const existing = usage.get(stock.item.id);
+    if (existing) existing.quantity = Number((existing.quantity + quantity).toFixed(2));
+    else usage.set(stock.item.id, { item: stock.item, quantity });
+  });
+  return usage;
+}
+
+function cookExtraAvailable(itemId, recipe, servings) {
+  const item = state.inventory.find((candidate) => candidate.id === itemId && candidate.active !== false);
+  if (!item) return 0;
+  const base = baseCookUsage(recipe, servings).get(itemId)?.quantity || 0;
+  return Number(Math.max(0, (Number(item.quantity) || 0) - base).toFixed(2));
+}
+
+function syncCookExtraPicker(recipe, servings) {
+  const selected = new Set(state.pendingCookExtras.map((extra) => extra.itemId));
+  const choices = activeInventory().filter((item) => !selected.has(item.id));
+  const current = elements.cookExtraItem.value;
+  elements.cookExtraItem.innerHTML = choices.length
+    ? choices.map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.name)}</option>`).join("")
+    : '<option value="">追加できる在庫はありません</option>';
+  if (choices.some((item) => item.id === current)) elements.cookExtraItem.value = current;
+  const item = choices.find((candidate) => candidate.id === elements.cookExtraItem.value) || choices[0];
+  elements.cookExtraAdd.disabled = !item;
+  elements.cookExtraQuantity.disabled = !item;
+  if (!item) {
+    elements.cookExtraQuantity.value = "";
+    elements.cookExtraUnit.textContent = "";
+    return;
+  }
+  const available = cookExtraAvailable(item.id, recipe, servings);
+  const step = stepForUnit(item.unit);
+  elements.cookExtraQuantity.max = String(available);
+  if (!Number(elements.cookExtraQuantity.value) || current !== item.id) {
+    elements.cookExtraQuantity.value = String(Math.min(step, available));
+  }
+  elements.cookExtraUnit.textContent = item.unit;
+}
+
+function cookExtraIssues(recipe, servings) {
+  return state.pendingCookExtras.filter((extra) => {
+    const quantity = Number(extra.quantity);
+    return !Number.isFinite(quantity)
+      || quantity <= 0
+      || quantity > cookExtraAvailable(extra.itemId, recipe, servings);
+  });
+}
+
+function captureCookExtraQuantities() {
+  elements.cookExtraList.querySelectorAll("[data-cook-extra-quantity]").forEach((input) => {
+    const extra = state.pendingCookExtras.find((candidate) =>
+      candidate.itemId === input.dataset.cookExtraQuantity);
+    if (extra) extra.quantity = Number(input.value);
+  });
+}
+
+function renderCookExtras(recipe, servings) {
+  elements.cookExtraList.innerHTML = state.pendingCookExtras.map((extra) => {
+    const item = state.inventory.find((candidate) => candidate.id === extra.itemId);
+    const maximum = cookExtraAvailable(extra.itemId, recipe, servings);
+    return `
+      <li class="cook-extra-row">
+        <span>${escapeHtml(item?.name || extra.name)}</span>
+        <span class="quantity-with-unit">
+          <input type="number" min="0.01" max="${maximum}" step="any" value="${Number(extra.quantity)}" data-cook-extra-quantity="${escapeHtml(extra.itemId)}" aria-label="${escapeHtml(item?.name || extra.name)}を追加で使う量">
+          <span>${escapeHtml(extra.unit)}</span>
+        </span>
+        <button class="cook-extra-remove" type="button" data-cook-extra-remove="${escapeHtml(extra.itemId)}" aria-label="${escapeHtml(item?.name || extra.name)}を追加分から外す">×</button>
+      </li>
+    `;
+  }).join("");
+  syncCookExtraPicker(recipe, servings);
 }
 
 function updateCookConfirmation() {
@@ -6728,17 +6979,32 @@ function updateCookConfirmation() {
     <ul>${requiredRows}</ul>
     ${optionalRows ? `<h4>あるとより良い <small>使うものを選択</small></h4><ul>${optionalRows}</ul>` : ""}
   `;
-  const nutrition = estimateRecipeNutrition(recipe, servings, selectedIngredients);
+  renderCookExtras(recipe, servings);
+  const nutritionIngredients = [...selectedIngredients];
+  state.pendingCookExtras.forEach((extra) => {
+    const item = state.inventory.find((candidate) => candidate.id === extra.itemId);
+    if (item) nutritionIngredients.push({
+      id: item.id,
+      name: item.name,
+      quantity: Number(extra.quantity) / servings,
+      unit: item.unit
+    });
+  });
+  const nutrition = estimateRecipeNutrition(recipe, servings, nutritionIngredients);
   elements.cookConfirmNutrition.hidden = !state.settings.showNutrition;
   elements.cookConfirmNutrition.textContent = state.settings.showNutrition
     ? `合計目安 ${nutrition.kcal} kcal・P ${nutrition.p}g・F ${nutrition.f}g・C ${nutrition.c}g`
     : "";
 
-  const { shortages, unconfirmed, denied, canCook } =
+  const { shortages, unconfirmed, denied, canCook: baseCanCook } =
     cookBlockers(recipe, servings, state.cookAmountAnswers);
+  const extraIssues = cookExtraIssues(recipe, servings);
+  const canCook = baseCanCook && !extraIssues.length;
 
   elements.cookConfirmMessage.classList.toggle("is-missing", !canCook);
-  if (shortages.length) {
+  if (extraIssues.length) {
+    elements.cookConfirmMessage.textContent = `${extraIssues.map((extra) => extra.name).join("、")}の追加量が在庫を超えています。`;
+  } else if (shortages.length) {
     const missingText = shortages.map((requirement) => {
       const missing = Math.max(
         0,
@@ -6783,6 +7049,7 @@ function openCookConfirmation(recipeId) {
 
   state.pendingCookRecipeId = recipe.id;
   state.pendingCookServings = state.servings;
+  state.pendingCookExtras = [];
   state.cookAmountAnswers = {};
   elements.cookConfirmRecipe.textContent = recipe.name;
   updateCookConfirmation();
@@ -6797,6 +7064,7 @@ function openCookConfirmation(recipeId) {
 function closeCookConfirmation() {
   state.pendingCookRecipeId = null;
   state.pendingCookServings = state.servings;
+  state.pendingCookExtras = [];
   state.cookAmountAnswers = {};
   if (elements.cookConfirmDialog.open) elements.cookConfirmDialog.close();
 }
@@ -6810,10 +7078,12 @@ function confirmCookRecipe(event, { ignoreAmounts = false } = {}) {
   const recipe = RECIPES.find((candidate) => candidate.id === recipeId);
   if (!recipe) return;
 
+  captureCookExtraQuantities();
   const { shortages, denied } = cookBlockers(recipe, servings, state.cookAmountAnswers);
+  const extraIssues = cookExtraIssues(recipe, servings);
   // 「このまま作る」は足りないという答えを押し通す。数値で不足しているもの
   // （持っていない・明らかに足りない）は押し通せない
-  if (shortages.length || (!ignoreAmounts && denied.length)) {
+  if (shortages.length || extraIssues.length || (!ignoreAmounts && denied.length)) {
     updateCookConfirmation();
     return;
   }
@@ -6823,35 +7093,35 @@ function confirmCookRecipe(event, { ignoreAmounts = false } = {}) {
   // 「足りない」と答えたものは上げないので、不明のまま次回また確認する
   confirmUnknownAmounts(recipe, servings, state.cookAmountAnswers);
   setServings(servings, { render: false });
+  const extras = state.pendingCookExtras.map((extra) => ({ ...extra }));
   closeCookConfirmation();
-  cookRecipe(recipeId, servings);
+  cookRecipe(recipeId, servings, extras);
 }
 
-function cookRecipe(recipeId, servings = state.servings) {
+function cookRecipe(recipeId, servings = state.servings, extras = []) {
   const recipe = RECIPES.find((candidate) => candidate.id === recipeId);
   if (!recipe || shortageFor(recipe, servings).length) return;
 
-  const used = [...recipe.required];
-  recipe.optional.forEach((option) => {
-    const key = `${recipe.id}:${option.id}`;
-    if (optionalReady(option, servings) && state.selectedOptionals[key] !== false) used.push(option);
+  const usage = baseCookUsage(recipe, servings);
+  extras.forEach((extra) => {
+    const item = state.inventory.find((candidate) => candidate.id === extra.itemId);
+    if (!item || item.active === false || item.unit !== extra.unit) return;
+    const existing = usage.get(item.id);
+    if (existing) existing.quantity = Number((existing.quantity + Number(extra.quantity)).toFixed(2));
+    else usage.set(item.id, { item, quantity: Number(extra.quantity) });
   });
-
   const changes = [];
-  used.forEach((ingredient) => {
-    const stock = stockForRequirement(ingredient);
-    if (!stock) return;
-    const { item, ratio } = stock;
-    // レシピの単位で必要な量を、在庫側の単位へ戻してから引く
-    const quantity = Number(((ingredient.quantity * servings) / ratio).toFixed(2));
+  usage.forEach(({ item, quantity }) => {
+    const usedQuantity = Number(Math.min(Number(item.quantity) || 0, quantity).toFixed(2));
+    if (usedQuantity <= 0) return;
     changes.push({
       itemId: item.id,
       name: item.name,
       unit: item.unit,
-      quantity,
+      quantity: usedQuantity,
       snapshot: { ...item }
     });
-    item.quantity = Number(Math.max(0, item.quantity - quantity).toFixed(2));
+    item.quantity = Number(Math.max(0, item.quantity - usedQuantity).toFixed(2));
     // 引いたのはレシピ上の分量。実際に使った量とは違うので、残りは推定になる。
     // 翌日の確認でここを実物に合わせる（→ pendingDayAfterItems）
     item.quantityConfidence = QUANTITY_ESTIMATED;
@@ -6861,23 +7131,191 @@ function cookRecipe(recipeId, servings = state.servings) {
     }
   });
 
-  const historyEntry = {
+  const historyEntry = addHistoryEntry({
     id: makeCookingHistoryId(),
+    type: "cooking",
     recipeId: recipe.id,
     recipeName: recipe.name,
     servings,
     cookedAt: new Date().toISOString(),
     undoneAt: null,
     changes
-  };
-  state.cookingHistory.unshift(historyEntry);
-  state.cookingHistory = state.cookingHistory.slice(0, 50);
+  });
   state.lastUndo = () => undoCookingHistoryEntry(historyEntry.id);
   persistInventory();
   persistCookingHistory();
   renderAll();
   showView("inventory");
   showToast(`${recipe.name}を作った分だけ在庫を更新しました`, true);
+}
+
+function editableHistoryEntry() {
+  return state.cookingHistory.find((entry) => entry.id === state.editingHistoryId);
+}
+
+function historyEditMaximum(change) {
+  const item = state.inventory.find((candidate) => candidate.id === change.itemId);
+  const current = item && item.unit === change.unit ? Number(item.quantity) || 0 : 0;
+  const original = Number(change.originalQuantity ?? change.quantity) || 0;
+  return Number((original + current).toFixed(2));
+}
+
+function historyEditIssues() {
+  return state.historyEditChanges.filter((change) => {
+    const item = state.inventory.find((candidate) => candidate.id === change.itemId);
+    const quantity = Number(change.quantity);
+    return !Number.isFinite(quantity)
+      || quantity < 0
+      || quantity > historyEditMaximum(change)
+      || (item && item.unit !== change.unit);
+  });
+}
+
+function captureHistoryEditQuantities() {
+  elements.historyEditIngredients.querySelectorAll("[data-history-edit-quantity]").forEach((input) => {
+    const change = state.historyEditChanges.find((candidate) =>
+      candidate.itemId === input.dataset.historyEditQuantity);
+    if (change) change.quantity = Number(input.value);
+  });
+}
+
+function syncHistoryEditAddPicker() {
+  const selected = new Set(state.historyEditChanges.map((change) => change.itemId));
+  const choices = activeInventory().filter((item) => !selected.has(item.id));
+  const current = elements.historyEditAddItem.value;
+  elements.historyEditAddItem.innerHTML = choices.length
+    ? choices.map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.name)}</option>`).join("")
+    : '<option value="">追加できる在庫はありません</option>';
+  if (choices.some((item) => item.id === current)) elements.historyEditAddItem.value = current;
+  const item = choices.find((candidate) => candidate.id === elements.historyEditAddItem.value) || choices[0];
+  elements.historyEditAdd.disabled = !item;
+  elements.historyEditAddQuantity.disabled = !item;
+  if (!item) {
+    elements.historyEditAddQuantity.value = "";
+    elements.historyEditAddUnit.textContent = "";
+    return;
+  }
+  const step = stepForUnit(item.unit);
+  elements.historyEditAddQuantity.max = String(item.quantity);
+  if (!Number(elements.historyEditAddQuantity.value) || current !== item.id) {
+    elements.historyEditAddQuantity.value = String(Math.min(step, Number(item.quantity) || step));
+  }
+  elements.historyEditAddUnit.textContent = item.unit;
+}
+
+function renderHistoryEdit() {
+  const entry = editableHistoryEntry();
+  if (!entry) return;
+  elements.historyEditRecipe.textContent = `${entry.recipeName}・${Number(entry.servings) || 1}人分`;
+  elements.historyEditIngredients.innerHTML = state.historyEditChanges.map((change) => `
+    <div class="history-edit-row">
+      <span>${escapeHtml(change.name)}</span>
+      <span class="quantity-with-unit">
+        <input type="number" min="0" max="${historyEditMaximum(change)}" step="any" value="${Number(change.quantity)}" data-history-edit-quantity="${escapeHtml(change.itemId)}" aria-label="${escapeHtml(change.name)}を使った量">
+        <span>${escapeHtml(change.unit)}</span>
+      </span>
+      <button class="history-edit-remove" type="button" data-history-edit-remove="${escapeHtml(change.itemId)}" aria-label="${escapeHtml(change.name)}を使用食材から外す">×</button>
+    </div>
+  `).join("");
+  syncHistoryEditAddPicker();
+  const issues = historyEditIssues();
+  elements.saveHistoryEdit.disabled = Boolean(issues.length);
+  elements.historyEditMessage.classList.toggle("is-missing", Boolean(issues.length));
+  elements.historyEditMessage.textContent = issues.length
+    ? `${issues.map((change) => change.name).join("、")}の量または単位を確認してください。`
+    : "増やした分は在庫から減り、減らした分は在庫へ戻ります。";
+}
+
+function openHistoryEdit(historyId) {
+  const entry = state.cookingHistory.find((candidate) =>
+    candidate.id === historyId && historyEntryType(candidate) === "cooking" && !candidate.undoneAt);
+  if (!entry) return;
+  state.editingHistoryId = entry.id;
+  state.historyEditChanges = entry.changes.map((change) => ({
+    ...change,
+    snapshot: { ...change.snapshot },
+    originalQuantity: Number(change.quantity) || 0
+  }));
+  renderHistoryEdit();
+  elements.historyEditDialog.showModal();
+}
+
+function closeHistoryEdit() {
+  state.editingHistoryId = null;
+  state.historyEditChanges = [];
+  if (elements.historyEditDialog.open) elements.historyEditDialog.close();
+}
+
+function addHistoryEditIngredient() {
+  captureHistoryEditQuantities();
+  const item = state.inventory.find((candidate) =>
+    candidate.id === elements.historyEditAddItem.value && candidate.active !== false);
+  const quantity = Number(elements.historyEditAddQuantity.value);
+  if (!item || !Number.isFinite(quantity) || quantity <= 0 || quantity > item.quantity) {
+    elements.historyEditAddQuantity.reportValidity();
+    return;
+  }
+  state.historyEditChanges.push({
+    itemId: item.id,
+    name: item.name,
+    unit: item.unit,
+    quantity,
+    originalQuantity: 0,
+    snapshot: { ...item }
+  });
+  elements.historyEditAddQuantity.value = "";
+  renderHistoryEdit();
+}
+
+function saveHistoryEdit(event) {
+  event.preventDefault();
+  captureHistoryEditQuantities();
+  const entry = editableHistoryEntry();
+  if (!entry || entry.undoneAt || historyEditIssues().length) {
+    renderHistoryEdit();
+    return;
+  }
+
+  const originalById = new Map(entry.changes.map((change) => [change.itemId, change]));
+  const editedById = new Map(state.historyEditChanges.map((change) => [change.itemId, change]));
+  const ids = new Set([...originalById.keys(), ...editedById.keys()]);
+
+  for (const itemId of ids) {
+    const original = originalById.get(itemId);
+    const edited = editedById.get(itemId);
+    const oldQuantity = Number(original?.quantity) || 0;
+    const newQuantity = Number(edited?.quantity) || 0;
+    const unit = edited?.unit || original?.unit;
+    let item = state.inventory.find((candidate) => candidate.id === itemId);
+    if (item && item.unit !== unit) {
+      elements.historyEditMessage.textContent = `${item.name}の在庫単位が変わっているため修正できません。`;
+      elements.historyEditMessage.classList.add("is-missing");
+      return;
+    }
+    if (!item && newQuantity < oldQuantity) {
+      item = { ...original.snapshot, id: itemId, quantity: 0, active: false };
+      state.inventory.push(item);
+    }
+    const delta = Number((newQuantity - oldQuantity).toFixed(2));
+    if (!item || delta === 0) continue;
+    item.quantity = Number(Math.max(0, (Number(item.quantity) || 0) - delta).toFixed(2));
+    item.active = item.quantity > 0;
+    item.confirmedAt = todayIso();
+    item.quantityConfidence = QUANTITY_ESTIMATED;
+    if (item.active) delete item.consumedAt;
+    else item.consumedAt = todayIso();
+  }
+
+  entry.changes = state.historyEditChanges
+    .filter((change) => Number(change.quantity) > 0)
+    .map(({ originalQuantity, ...change }) => ({ ...change, quantity: Number(change.quantity) }));
+  entry.editedAt = new Date().toISOString();
+  state.lastUndo = null;
+  persistInventory();
+  persistCookingHistory();
+  closeHistoryEdit();
+  renderAll();
+  showToast(`${entry.recipeName}で使った食材を修正しました`);
 }
 
 function showToast(message, withUndo = false) {
@@ -7307,6 +7745,7 @@ elements.ingredientReceiptShortcut.addEventListener("click", startReceiptScanFro
 document.querySelector("#close-dialog").addEventListener("click", closeIngredientDialog);
 document.querySelector("#cancel-dialog").addEventListener("click", closeIngredientDialog);
 document.querySelector("#consume-ingredient").addEventListener("click", consumeCurrentIngredient);
+document.querySelector("#discard-ingredient").addEventListener("click", discardCurrentIngredient);
 document.querySelector("#delete-ingredient").addEventListener("click", deleteCurrentIngredient);
 document.querySelector("#close-receipt-dialog").addEventListener("click", closeReceiptDialog);
 document.querySelector("#cancel-receipt-dialog").addEventListener("click", closeReceiptDialog);
@@ -7514,6 +7953,7 @@ elements.cookConfirmDialog.addEventListener("click", (event) => {
 elements.cookConfirmDialog.addEventListener("close", () => {
   state.pendingCookRecipeId = null;
   state.pendingCookServings = state.servings;
+  state.pendingCookExtras = [];
 });
 document.querySelector("#close-cook-confirm").addEventListener("click", closeCookConfirmation);
 document.querySelector("#cancel-cook-confirm").addEventListener("click", closeCookConfirmation);
@@ -7534,7 +7974,84 @@ elements.cookConfirmIngredients.addEventListener("change", (event) => {
   state.cookAmountAnswers[amount.dataset.cookAmount] = amount.checked;
   updateCookConfirmation();
 });
+elements.cookExtraItem.addEventListener("change", () => {
+  const recipe = RECIPES.find((candidate) => candidate.id === state.pendingCookRecipeId);
+  const item = state.inventory.find((candidate) => candidate.id === elements.cookExtraItem.value);
+  if (!recipe || !item) return;
+  const available = cookExtraAvailable(item.id, recipe, state.pendingCookServings);
+  const step = stepForUnit(item.unit);
+  elements.cookExtraQuantity.max = String(available);
+  elements.cookExtraQuantity.value = String(Math.min(step, available));
+  elements.cookExtraUnit.textContent = item.unit;
+});
+elements.cookExtraAdd.addEventListener("click", () => {
+  captureCookExtraQuantities();
+  const recipe = RECIPES.find((candidate) => candidate.id === state.pendingCookRecipeId);
+  const item = state.inventory.find((candidate) => candidate.id === elements.cookExtraItem.value);
+  const quantity = Number(elements.cookExtraQuantity.value);
+  if (!recipe || !item || !Number.isFinite(quantity) || quantity <= 0
+    || quantity > cookExtraAvailable(item.id, recipe, state.pendingCookServings)) {
+    elements.cookExtraQuantity.reportValidity();
+    return;
+  }
+  state.pendingCookExtras.push({ itemId: item.id, name: item.name, unit: item.unit, quantity });
+  elements.cookExtraQuantity.value = "";
+  updateCookConfirmation();
+});
+elements.cookExtraList.addEventListener("change", (event) => {
+  const input = event.target.closest("[data-cook-extra-quantity]");
+  if (!input) return;
+  const extra = state.pendingCookExtras.find((candidate) => candidate.itemId === input.dataset.cookExtraQuantity);
+  if (!extra) return;
+  extra.quantity = Number(input.value);
+  updateCookConfirmation();
+});
+elements.cookExtraList.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-cook-extra-remove]");
+  if (!button) return;
+  captureCookExtraQuantities();
+  state.pendingCookExtras = state.pendingCookExtras.filter((extra) =>
+    extra.itemId !== button.dataset.cookExtraRemove);
+  updateCookConfirmation();
+});
 elements.cookConfirmForm.addEventListener("submit", confirmCookRecipe);
+
+document.querySelector("#close-history-edit").addEventListener("click", closeHistoryEdit);
+document.querySelector("#cancel-history-edit").addEventListener("click", closeHistoryEdit);
+elements.historyEditDialog.addEventListener("cancel", (event) => {
+  event.preventDefault();
+  closeHistoryEdit();
+});
+elements.historyEditDialog.addEventListener("click", (event) => {
+  if (event.target === elements.historyEditDialog) closeHistoryEdit();
+});
+elements.historyEditAddItem.addEventListener("change", () => {
+  const item = state.inventory.find((candidate) => candidate.id === elements.historyEditAddItem.value);
+  if (!item) return;
+  const step = stepForUnit(item.unit);
+  elements.historyEditAddQuantity.max = String(item.quantity);
+  elements.historyEditAddQuantity.value = String(Math.min(step, Number(item.quantity) || step));
+  elements.historyEditAddUnit.textContent = item.unit;
+});
+elements.historyEditAdd.addEventListener("click", addHistoryEditIngredient);
+elements.historyEditIngredients.addEventListener("change", (event) => {
+  const input = event.target.closest("[data-history-edit-quantity]");
+  if (!input) return;
+  const change = state.historyEditChanges.find((candidate) =>
+    candidate.itemId === input.dataset.historyEditQuantity);
+  if (!change) return;
+  change.quantity = Number(input.value);
+  renderHistoryEdit();
+});
+elements.historyEditIngredients.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-history-edit-remove]");
+  if (!button) return;
+  captureHistoryEditQuantities();
+  state.historyEditChanges = state.historyEditChanges.filter((change) =>
+    change.itemId !== button.dataset.historyEditRemove);
+  renderHistoryEdit();
+});
+elements.historyEditForm.addEventListener("submit", saveHistoryEdit);
 
 // ---- 初回登録の操作 ------------------------------------------------------
 elements.onboardingLeads.addEventListener("click", (event) => {
@@ -7629,8 +8146,8 @@ function renderShare() {
       "在庫データは、この端末と、共有している相手の端末で見られます。"],
     "privacy-note-shopping": ["買い物リストも、この端末のブラウザ内だけに保存されます。",
       "買い物リストも、共有している相手と同じものを見ています。"],
-    "privacy-note-history": ["調理履歴も、この端末のブラウザ内だけに保存されます。",
-      "調理履歴も、共有している相手と同じものを見ています。"]
+    "privacy-note-history": ["履歴も、この端末のブラウザ内だけに保存されます。",
+      "履歴も、共有している相手と同じものを見ています。"]
   };
   for (const note of elements.privacyNotes) {
     if (!note) continue;
@@ -8199,7 +8716,7 @@ elements.inventoryList.addEventListener("click", (event) => {
       current.maxQuantity = Math.max(Number(current.maxQuantity) || 0, current.quantity);
       current.confirmedAt = todayIso();
       current.quantityConfidence = QUANTITY_CONFIRMED;
-    });
+    }, { recordHistory: true });
   }
   if (button.dataset.action === "decrease") {
     const nextQuantity = Number((item.quantity - item.step).toFixed(2));
@@ -8210,7 +8727,7 @@ elements.inventoryList.addEventListener("click", (event) => {
         current.quantity = nextQuantity;
         current.confirmedAt = todayIso();
         current.quantityConfidence = QUANTITY_CONFIRMED;
-      });
+      }, { recordHistory: true });
     }
   }
   if (button.dataset.action === "confirm") {
@@ -8321,6 +8838,11 @@ elements.clearBought.addEventListener("click", () => {
 });
 
 elements.cookingHistoryList.addEventListener("click", (event) => {
+  const editButton = event.target.closest("[data-history-edit]");
+  if (editButton) {
+    openHistoryEdit(editButton.dataset.historyEdit);
+    return;
+  }
   const button = event.target.closest("[data-history-undo]");
   if (!button) return;
   undoCookingHistoryEntry(button.dataset.historyUndo);

@@ -12,9 +12,9 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="冷蔵庫の現在地">
-  <link rel="stylesheet" href="styles.css?v=860dfb3f">
+  <link rel="stylesheet" href="styles.css?v=1970b4ce">
   <script src="vendor/tesseract/tesseract.min.js?v=7.0.0" defer></script>
-  <script src="app.js?v=f959e01b" defer></script>
+  <script src="app.js?v=3d759b17" defer></script>
   <!--
     起動の読み込み画面は、外部CSS（styles.css）が届く前から出したいので、
     ここだけ色を直書きしている（:root の変数に頼らない）。回線が細いときほど
@@ -177,7 +177,7 @@
           <div>
             <p class="eyebrow">残量を正しく保つ</p>
             <h2 id="management-title">在庫管理</h2>
-            <p class="overview-copy">残量変更・履歴あり削除・完全削除</p>
+            <p class="overview-copy">残量変更・使い切り・廃棄・完全削除</p>
           </div>
           <div class="management-actions">
             <button class="button button-secondary receipt-scan-button" type="button" id="scan-receipt">
@@ -201,7 +201,7 @@
 
         <details class="finished-section" id="finished-section">
           <summary>
-            <span>削除の履歴（戻せます）</span>
+            <span>在庫から外した食材（戻せます）</span>
             <span class="finished-count" id="finished-count">0品</span>
           </summary>
           <div id="finished-list"></div>
@@ -341,16 +341,16 @@
       <section class="view history-view" id="history-view" aria-labelledby="history-title" hidden>
         <div class="history-heading">
           <div>
-            <p class="eyebrow">調理後も、あとから戻せる</p>
-            <h2 id="history-title">調理履歴</h2>
-            <p class="overview-copy">「これを作る」で減った食材を記録しています。</p>
+            <p class="eyebrow">冷蔵庫で起きたこと</p>
+            <h2 id="history-title">履歴</h2>
+            <p class="overview-copy">調理・使い切り・廃棄・在庫の修正を記録しています。</p>
           </div>
           <span class="history-mark" aria-hidden="true">↶</span>
         </div>
 
         <div class="cooking-history-list" id="cooking-history-list" aria-live="polite"></div>
 
-        <p class="privacy-note" id="privacy-note-history">調理履歴も、この端末のブラウザ内だけに保存されます。</p>
+        <p class="privacy-note" id="privacy-note-history">履歴も、この端末のブラウザ内だけに保存されます。</p>
       </section>
     </main>
 
@@ -623,6 +623,7 @@
 
         <div class="dialog-actions">
           <button class="button button-consume" type="button" id="consume-ingredient" hidden>履歴あり削除（使い切った）</button>
+          <button class="button button-discard" type="button" id="discard-ingredient" hidden>履歴あり削除（廃棄した）</button>
           <button class="button button-danger" type="button" id="delete-ingredient" hidden>完全削除（履歴に残さない）</button>
           <button class="button button-secondary" type="button" id="cancel-dialog">キャンセル</button>
           <button class="button button-primary" type="submit">保存</button>
@@ -715,6 +716,28 @@
           <small id="cook-confirm-nutrition"></small>
         </div>
         <div id="cook-confirm-ingredients"></div>
+
+        <section class="cook-extra-section" aria-labelledby="cook-extra-title">
+          <div class="cook-extra-heading">
+            <h4 id="cook-extra-title">ついでに使う食材</h4>
+            <small>レシピ外の食材や、追加で使う分</small>
+          </div>
+          <div class="cook-extra-add">
+            <label>
+              食材
+              <select id="cook-extra-item"></select>
+            </label>
+            <label>
+              量
+              <span class="quantity-with-unit">
+                <input id="cook-extra-quantity" type="number" min="0.01" step="any" inputmode="decimal">
+                <span id="cook-extra-unit"></span>
+              </span>
+            </label>
+            <button class="button button-secondary" type="button" id="cook-extra-add">追加</button>
+          </div>
+          <ul class="cook-extra-list" id="cook-extra-list"></ul>
+        </section>
       </section>
 
       <p class="cook-confirm-message" id="cook-confirm-message" aria-live="polite"></p>
@@ -728,6 +751,46 @@
       <div class="dialog-actions">
         <button class="button button-secondary" type="button" id="cancel-cook-confirm">ほかの候補へ</button>
         <button class="button button-primary cook-confirm-button" type="submit" id="confirm-cook">この人数で作る</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog class="ingredient-dialog history-edit-dialog" id="history-edit-dialog" aria-labelledby="history-edit-title">
+    <form id="history-edit-form">
+      <div class="dialog-head">
+        <div>
+          <p class="eyebrow">調理後の訂正</p>
+          <h2 id="history-edit-title">使った食材を修正</h2>
+        </div>
+        <button class="icon-button" type="button" id="close-history-edit" aria-label="閉じる">×</button>
+      </div>
+
+      <p class="history-edit-recipe" id="history-edit-recipe"></p>
+      <p class="overview-copy">実際に使った量へ直すと、差分だけ在庫へ反映します。</p>
+      <div class="history-edit-ingredients" id="history-edit-ingredients"></div>
+
+      <section class="history-edit-add" aria-labelledby="history-edit-add-title">
+        <h3 id="history-edit-add-title">使った食材を追加</h3>
+        <div class="cook-extra-add">
+          <label>
+            食材
+            <select id="history-edit-add-item"></select>
+          </label>
+          <label>
+            量
+            <span class="quantity-with-unit">
+              <input id="history-edit-add-quantity" type="number" min="0.01" step="any" inputmode="decimal">
+              <span id="history-edit-add-unit"></span>
+            </span>
+          </label>
+          <button class="button button-secondary" type="button" id="history-edit-add">追加</button>
+        </div>
+      </section>
+
+      <p class="cook-confirm-message" id="history-edit-message" aria-live="polite"></p>
+      <div class="dialog-actions">
+        <button class="button button-secondary" type="button" id="cancel-history-edit">キャンセル</button>
+        <button class="button button-primary" type="submit" id="save-history-edit">修正を保存</button>
       </div>
     </form>
   </dialog>
