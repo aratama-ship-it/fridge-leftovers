@@ -4641,3 +4641,341 @@ input[type="number"] {
 .recipe-illustration-r05 { background-image: url("assets/recipe-atlas-05.png?v=20260801-1"); }
 .recipe-illustration-r06 { background-image: url("assets/recipe-atlas-06.png?v=20260801-1"); }
 .recipe-illustration-r07 { background-image: url("assets/recipe-atlas-07.png?v=20260801-1"); }
+
+/* ---- iPad mini / タブレット ------------------------------------------------
+   スマホのUIをそのまま中央へ置くと左右が空くだけになるため、700px以上では
+   幅を情報量へ戻す。縦向きは下部ナビを残して2列、横向きは左ナビ＋3列にする。 */
+@media (min-width: 700px) {
+  .app-shell {
+    max-width: 900px;
+    box-shadow: 0 0 34px rgb(34 39 34 / 12%);
+  }
+
+  .app-header {
+    padding: max(8px, env(safe-area-inset-top)) 24px 8px 28px;
+  }
+
+  .view {
+    padding: 20px 28px 38px;
+  }
+
+  h2 {
+    font-size: 1.55rem;
+  }
+
+  .storage-tabs {
+    margin-inline: -28px;
+    padding-inline: 28px;
+  }
+
+  .fridge-unit-tabs,
+  .fridge-appliance,
+  .food-consume-station {
+    width: min(100%, 680px);
+  }
+
+  .fridge-appliance {
+    padding: 12px;
+  }
+
+  .fridge-foods {
+    grid-template-columns: repeat(auto-fit, 62px);
+    gap: 0 3px;
+  }
+
+  .fridge-food,
+  .shelf-add-food {
+    width: 62px;
+  }
+
+  .fridge-food .ingredient-illustration,
+  .fridge-food .ingredient-initial {
+    width: 57px;
+    height: 57px;
+  }
+
+  .food-hp-gauge {
+    left: 8px;
+  }
+
+  .today-ingredient-control {
+    grid-template-columns: minmax(0, 1fr) 220px;
+    align-items: stretch;
+  }
+
+  .today-ingredient-control .recipe-sort-control {
+    grid-template-columns: 1fr;
+    align-content: center;
+    padding: 7px 10px;
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    background: var(--paper-raised);
+  }
+
+  .recipe-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+    gap: 20px;
+  }
+
+  .recipe.is-featured {
+    grid-column: 1 / -1;
+  }
+
+  .recipe.is-alternative {
+    height: 100%;
+    margin-inline: 0;
+    padding-inline: 14px;
+    border: 1px solid var(--line-strong);
+    background: rgb(251 250 245 / 58%);
+  }
+
+  .inventory-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 24px;
+    border-bottom: 0;
+  }
+
+  .inventory-list > .empty-state {
+    grid-column: 1 / -1;
+  }
+
+  .inventory-row {
+    align-content: start;
+    border-bottom: 1px solid var(--line-strong);
+  }
+
+  .cooking-history-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+    gap: 0 24px;
+  }
+
+  .history-entry {
+    height: 100%;
+  }
+
+  .history-empty {
+    grid-column: 1 / -1;
+  }
+
+  .shopping-category-grid {
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+  }
+
+  .shopping-food-group-grid,
+  .ingredient-item-group-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .ingredient-category-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .onboarding-leads,
+  .onboarding-extra-grid,
+  .refine-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .ingredient-dialog,
+  .today-ingredient-dialog {
+    width: min(calc(100% - 56px), 680px);
+    max-height: 88dvh;
+    margin: auto;
+    border-radius: 14px;
+  }
+
+  .ingredient-dialog form {
+    padding: 24px 26px;
+  }
+
+  .cook-confirm-dialog,
+  .history-edit-dialog {
+    width: min(calc(100% - 64px), 640px);
+    margin: auto;
+  }
+
+  .receipt-dialog {
+    width: min(calc(100% - 56px), 760px);
+  }
+
+  .settings-dialog {
+    width: min(calc(100% - 64px), 540px);
+  }
+}
+
+@media (min-width: 900px) {
+  .app-shell {
+    display: grid;
+    grid-template-columns: 112px minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    max-width: 1180px;
+  }
+
+  .app-header {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+
+  .app-shell > main {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .bottom-nav {
+    position: sticky;
+    top: 0;
+    bottom: auto;
+    grid-column: 1;
+    grid-row: 2;
+    grid-template-columns: 1fr;
+    grid-template-rows: repeat(5, minmax(78px, auto));
+    align-self: start;
+    height: calc(100dvh - 55px);
+    padding: 12px 0 env(safe-area-inset-bottom);
+    border-top: 0;
+    border-right: 1px solid var(--line-strong);
+    background: rgb(251 250 245 / 92%);
+    box-shadow: 5px 0 16px var(--shadow);
+  }
+
+  .nav-button {
+    align-content: center;
+    gap: 7px;
+    padding: 10px 7px;
+    font-size: 0.78rem;
+  }
+
+  .nav-button span {
+    font-size: 1.5rem;
+  }
+
+  .nav-button.is-active {
+    box-shadow: inset 4px 0 0 var(--leaf);
+  }
+
+  .view {
+    padding: 24px 32px 42px;
+  }
+
+  .storage-tabs {
+    margin-inline: -32px;
+    padding-inline: 32px;
+  }
+
+  .fridge-unit-tabs,
+  .fridge-appliance,
+  .food-consume-station {
+    width: min(100%, 800px);
+  }
+
+  .recipe-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .recipe.is-featured {
+    grid-column: auto;
+    height: 100%;
+  }
+
+  .recipe.is-featured .ingredient-groups,
+  .recipe.is-alternative .ingredient-groups {
+    grid-template-columns: 1fr;
+  }
+
+  .shopping-view {
+    display: grid;
+    grid-template-columns: minmax(0, 1.08fr) minmax(320px, 0.92fr);
+    align-items: start;
+    gap: 18px 26px;
+  }
+
+  .shopping-heading,
+  .shopping-view > .privacy-note {
+    grid-column: 1 / -1;
+  }
+
+  .shopping-heading {
+    margin-bottom: 0;
+  }
+
+  .shopping-illustration-picker {
+    grid-column: 1;
+    grid-row: 2;
+    margin-bottom: 0;
+  }
+
+  .shopping-manual {
+    grid-column: 1;
+    grid-row: 3;
+    margin-top: 0;
+  }
+
+  .shopping-recommendations {
+    grid-column: 2;
+    grid-row: 2;
+    margin-top: 0;
+  }
+
+  .shopping-note {
+    grid-column: 2;
+    grid-row: 3;
+    margin-top: 0;
+  }
+
+  .shopping-view > .privacy-note {
+    margin-top: 0;
+  }
+
+  .ingredient-category-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .ingredient-item-group-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  .cook-confirm-dialog {
+    width: min(calc(100% - 72px), 860px);
+  }
+
+  #cook-confirm-form {
+    grid-template-columns: minmax(230px, 0.72fr) minmax(0, 1.28fr);
+    align-items: start;
+    column-gap: 20px;
+  }
+
+  #cook-confirm-form > .dialog-head,
+  #cook-confirm-form > .cook-confirm-recipe {
+    grid-column: 1 / -1;
+  }
+
+  #cook-confirm-form > .cook-serving-fieldset {
+    grid-column: 1;
+    grid-row: 3;
+  }
+
+  #cook-confirm-form > .cook-confirm-ingredients {
+    grid-column: 2;
+    grid-row: 3 / span 4;
+  }
+
+  #cook-confirm-form > .cook-confirm-message {
+    grid-column: 1;
+    grid-row: 4;
+  }
+
+  #cook-confirm-form > .cook-fallback {
+    grid-column: 1;
+    grid-row: 5;
+    margin-top: 0;
+  }
+
+  #cook-confirm-form > .dialog-actions {
+    grid-column: 1;
+    grid-row: 6;
+  }
+}

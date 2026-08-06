@@ -5,7 +5,7 @@ const SHELF_COUNTS_STORAGE_KEY = "fridge-leftovers-shelf-counts-v1";
 const RECENT_INGREDIENTS_STORAGE_KEY = "fridge-leftovers-recent-ingredients-v1";
 const SETTINGS_STORAGE_KEY = "fridge-leftovers-settings-v1";
 const DEVICE_STORAGE_KEY = "fridge-leftovers-device-v1";
-const APP_VERSION = "0.12.0";
+const APP_VERSION = "0.13.0";
 const RECIPE_PAGE_SIZE = 3;
 const RECIPE_LIST_SERVINGS = 1;
 
