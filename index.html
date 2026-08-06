@@ -12,9 +12,9 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="冷蔵庫の現在地">
-  <link rel="stylesheet" href="styles.css?v=7b690d21">
+  <link rel="stylesheet" href="styles.css?v=1a106711">
   <script src="vendor/tesseract/tesseract.min.js?v=7.0.0" defer></script>
-  <script src="app.js?v=03cfc82c" defer></script>
+  <script src="app.js?v=9c5a493e" defer></script>
   <!--
     起動の読み込み画面は、外部CSS（styles.css）が届く前から出したいので、
     ここだけ色を直書きしている（:root の変数に頼らない）。回線が細いときほど
@@ -395,6 +395,15 @@
         商品表示や医療・栄養指導の代わりにはなりません。
       </p>
 
+      <div class="settings-block device-settings">
+        <label class="settings-row-copy" for="device-name">
+          <strong>この端末の名前</strong>
+          <small>変更した端末を見分けるために表示します</small>
+        </label>
+        <input id="device-name" class="device-name-input" type="text" maxlength="30" autocomplete="off" spellcheck="false" placeholder="例：台所のiPad">
+        <p class="settings-note">機種情報は自動取得しません。この名前は変更者の目印で、本人確認には使いません。</p>
+      </div>
+
       <div class="settings-block">
         <div class="settings-row-copy">
           <strong>二人で共有する</strong>
@@ -449,7 +458,37 @@
         <p class="settings-note import-error" id="import-error" hidden></p>
       </div>
 
-      <p class="privacy-note">設定は、この端末のブラウザ内だけに保存されます。</p>
+      <p class="privacy-note">表示の設定は、この端末のブラウザ内だけに保存されます。端末名は、共有中の変更データにも添えられます。</p>
+    </section>
+  </dialog>
+
+  <dialog class="share-join-dialog" id="share-join-dialog" aria-labelledby="share-join-dialog-title">
+    <section class="share-join-dialog-shell">
+      <div class="dialog-head">
+        <div>
+          <p class="eyebrow">共有する前に確認</p>
+          <h2 id="share-join-dialog-title">この冷蔵庫に入りますか？</h2>
+        </div>
+        <button class="icon-button" type="button" id="share-join-cancel-icon" aria-label="閉じる">×</button>
+      </div>
+
+      <p class="share-join-intro" id="share-join-intro"></p>
+      <ul class="share-join-counts" id="share-join-counts" aria-label="この端末にあるデータ"></ul>
+
+      <div class="share-join-options">
+        <button class="share-join-option is-recommended" type="button" id="share-join-replace">
+          <strong>共有の内容に入れ替える</strong>
+          <small>この端末の在庫・買い物・履歴は共有先へ送りません</small>
+        </button>
+        <button class="share-join-option" type="button" id="share-join-merge">
+          <strong>今の内容も合わせる</strong>
+          <small>この端末にある内容も相手の冷蔵庫へ送って統合します</small>
+        </button>
+      </div>
+
+      <p class="settings-note share-join-warning" id="share-join-warning"></p>
+      <p class="settings-note share-join-status" id="share-join-status" hidden></p>
+      <button class="button button-secondary share-join-cancel" type="button" id="share-join-cancel">やめる</button>
     </section>
   </dialog>
 

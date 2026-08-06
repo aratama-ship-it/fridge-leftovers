@@ -51,14 +51,14 @@ const FUNCTIONS = [
   "availableForRequirement", "requiredAmount", "shortageFor", "unconfirmedFor",
   "cookBlockers", "confirmUnknownAmounts", "optionalReady",
   "inventoryLevel", "pendingDayAfterItems", "dayAfterCorrection",
-  "markSyncChanges", "pendingSyncChanges", "applySyncResult", "mergeEntity"
+  "currentChangeAttribution", "markSyncChanges", "pendingSyncChanges", "applySyncResult", "mergeEntity"
 ];
 
 // stockForRequirement は inventoryMap() と state を使う。テスト側で差し替える。
 const harness = `
 "use strict";
 const todayIso = () => "2026-01-01";
-const state = { inventory: [], servings: 1, cookingHistory: [], shopping: [], shelfCounts: {}, syncMeta: {}, settings: { dayAfterSkippedOn: "" } };
+const state = { inventory: [], servings: 1, cookingHistory: [], shopping: [], shelfCounts: {}, syncMeta: {}, device: { id: "test-device", name: "テスト端末" }, settings: { dayAfterSkippedOn: "" } };
 const inventoryMap = () => new Map(state.inventory.filter((item) => item.active !== false).map((item) => [item.id, item]));
 ${CONSTANTS.map(takeConst).join("\n")}
 ${FUNCTIONS.map(takeFunction).join("\n")}
@@ -353,6 +353,12 @@ check("新しい在庫は送る印が付く", (() => {
   syncSetup([stock("eggs", 3)]);
   return pendingKeys();
 })(), ["item:eggs", "shelves:shelves"]);
+
+check("変更時刻と端末情報を一緒に送る", (() => {
+  syncSetup([stock("eggs", 3)]);
+  const change = changeFor("item:eggs");
+  return [Number.isNaN(Date.parse(change.changedAt)), change.changedBy];
+})(), [false, { id: "test-device", name: "テスト端末" }]);
 
 check("変えていなければ送らない", (() => {
   syncSetup([stock("eggs", 3)]);

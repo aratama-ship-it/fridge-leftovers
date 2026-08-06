@@ -20,6 +20,9 @@ create table if not exists entities (
   version    integer not null default 1,
   change_seq integer not null,
   deleted_at integer,                    -- 削除は墓石化（消さずに印を付ける）
+  changed_at integer,                    -- 端末で変更した時刻（端末時計）
+  device_id  text,                       -- 端末を区別するランダムID（認証ではない）
+  device_name text,                      -- 本人が付けた端末名のスナップショット
   updated_at integer not null,
   primary key (fridge_id, kind, id)
 );
