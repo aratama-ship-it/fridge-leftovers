@@ -4661,74 +4661,76 @@ async function shareFetch(path, { method = "GET", body } = {}) {
 
 // 受け取った変更を自分の在庫へ入れる。
 // 自分がまだ送っていない行とぶつかったら、決着ルールで混ぜる（→ mergeEntity）。
-function applyIncoming(changes) {
+function applyOneIncoming(change) {
   const lists = new Map(SYNC_KINDS.map((entry) => [entry.kind, entry]));
+  const entry = lists.get(change.kind);
+  if (!entry) return false;
+  const key = `${change.kind}:${change.id}`;
+  const meta = state.syncMeta[key];
+  const list = entry.list();
+
+  if (change.deleted) {
+    // 相手が消したものは消す。自分がまだ送っていない変更があっても、
+    // 「無いほうを採る」の考えに沿って消す側を採る
+    if (change.kind === "item") state.inventory = state.inventory.filter((item) => item.id !== change.id);
+    if (change.kind === "shopping") state.shopping = state.shopping.filter((item) => item.id !== change.id);
+    if (change.kind === "cooking") state.cookingHistory = state.cookingHistory.filter((item) => item.id !== change.id);
+    delete state.syncMeta[key];
+    return true;
+  }
+
+  const mineIsDirty = Boolean(meta?.dirty);
+  const current = list.find((item) => String(item.id) === String(change.id)) || null;
+  const merged = mineIsDirty
+    ? mergeEntity(change.kind, current, change.body)
+    : change.body;
+
+  if (change.kind === "shelves") {
+    const { id, ...counts } = merged;
+    void id;
+    state.shelfCounts = { ...state.shelfCounts, ...counts };
+  } else if (current) {
+    Object.assign(current, merged);
+  } else if (change.kind === "item") {
+    state.inventory.push(merged);
+  } else if (change.kind === "shopping") {
+    state.shopping.push(merged);
+  } else if (change.kind === "cooking") {
+    state.cookingHistory.unshift(merged);
+  }
+
+  // 混ぜた結果が相手の中身と違うなら、こちらから送り直す必要がある
+  const settled = JSON.stringify(merged) === JSON.stringify(change.body);
+  const remoteAttribution = {
+    changedAt: typeof change.changedAt === "string" ? change.changedAt : "",
+    changedBy: change.changedBy && typeof change.changedBy === "object"
+      ? {
+          id: typeof change.changedBy.id === "string" ? change.changedBy.id : "",
+          name: typeof change.changedBy.name === "string" ? change.changedBy.name : ""
+        }
+      : null
+  };
+  // 競合を混ぜてこちらから送り直すなら、この端末の変更として残す。
+  // 相手の内容をそのまま採った場合だけ、相手の端末・時刻を引き継ぐ。
+  const attribution = settled
+    ? remoteAttribution
+    : {
+        changedAt: meta?.changedAt || new Date().toISOString(),
+        changedBy: meta?.changedBy || { ...state.device }
+      };
+  state.syncMeta[key] = {
+    version: change.version,
+    body: JSON.stringify(merged),
+    dirty: !settled,
+    ...attribution
+  };
+  return true;
+}
+
+function applyIncoming(changes) {
   let touched = false;
-
   for (const change of changes) {
-    const entry = lists.get(change.kind);
-    if (!entry) continue;
-    const key = `${change.kind}:${change.id}`;
-    const meta = state.syncMeta[key];
-    const list = entry.list();
-
-    if (change.deleted) {
-      // 相手が消したものは消す。自分がまだ送っていない変更があっても、
-      // 「無いほうを採る」の考えに沿って消す側を採る
-      if (change.kind === "item") state.inventory = state.inventory.filter((item) => item.id !== change.id);
-      if (change.kind === "shopping") state.shopping = state.shopping.filter((item) => item.id !== change.id);
-      if (change.kind === "cooking") state.cookingHistory = state.cookingHistory.filter((item) => item.id !== change.id);
-      delete state.syncMeta[key];
-      touched = true;
-      continue;
-    }
-
-    const mineIsDirty = Boolean(meta?.dirty);
-    const current = list.find((item) => String(item.id) === String(change.id)) || null;
-    const merged = mineIsDirty
-      ? mergeEntity(change.kind, current, change.body)
-      : change.body;
-
-    if (change.kind === "shelves") {
-      const { id, ...counts } = merged;
-      void id;
-      state.shelfCounts = { ...state.shelfCounts, ...counts };
-    } else if (current) {
-      Object.assign(current, merged);
-    } else if (change.kind === "item") {
-      state.inventory.push(merged);
-    } else if (change.kind === "shopping") {
-      state.shopping.push(merged);
-    } else if (change.kind === "cooking") {
-      state.cookingHistory.unshift(merged);
-    }
-
-    // 混ぜた結果が相手の中身と違うなら、こちらから送り直す必要がある
-    const settled = JSON.stringify(merged) === JSON.stringify(change.body);
-    const remoteAttribution = {
-      changedAt: typeof change.changedAt === "string" ? change.changedAt : "",
-      changedBy: change.changedBy && typeof change.changedBy === "object"
-        ? {
-            id: typeof change.changedBy.id === "string" ? change.changedBy.id : "",
-            name: typeof change.changedBy.name === "string" ? change.changedBy.name : ""
-          }
-        : null
-    };
-    // 競合を混ぜてこちらから送り直すなら、この端末の変更として残す。
-    // 相手の内容をそのまま採った場合だけ、相手の端末・時刻を引き継ぐ。
-    const attribution = settled
-      ? remoteAttribution
-      : {
-          changedAt: meta?.changedAt || new Date().toISOString(),
-          changedBy: meta?.changedBy || { ...state.device }
-        };
-    state.syncMeta[key] = {
-      version: change.version,
-      body: JSON.stringify(merged),
-      dirty: !settled,
-      ...attribution
-    };
-    touched = true;
+    touched = applyOneIncoming(change) || touched;
   }
   return touched;
 }
@@ -4784,13 +4786,29 @@ async function syncOnce() {
         if (result.status === "applied") {
           applySyncResult(key, result.version);
         } else if (result.status === "conflict") {
-          // 相手が先に変えていた。次の往復で受け取って混ぜる。
-          // ここで自分の変更を捨てないのが大事
-          const meta = state.syncMeta[key];
-          if (meta) meta.version = result.server?.version ?? meta.version;
+          // 競合はその場でサーバー状態を混ぜる
+          if (result.server) {
+            applyOneIncoming({
+              kind: result.kind,
+              id: result.id,
+              body: result.server.body,
+              version: result.server.version,
+              deleted: result.server.deleted,
+              changedAt: result.server.changedAt,
+              changedBy: result.server.changedBy
+            });
+          } else {
+            const meta = state.syncMeta[key];
+            if (meta?.deletedAt) {
+              delete state.syncMeta[key];
+            } else if (meta) {
+              meta.version = 0;
+            }
+          }
+          touched = true;
         }
       }
-      state.share.seq = Number(sent.seq) || state.share.seq;
+      // seq はPOSTでは進めない。進めると相手の変更を飛ばす
       touched = true;
     }
 

@@ -42,18 +42,48 @@ function makeDb() {
   };
 }
 
+const delayCompletion = async () => {
+  await Promise.resolve();
+  await Promise.resolve();
+  await Promise.resolve();
+};
+
+function delayedDb(db) {
+  return {
+    prepare(sql) {
+      const statement = db.prepare(sql);
+      const api = {
+        bind(...values) { statement.bind(...values); return api; },
+        async first() {
+          const result = await statement.first();
+          await delayCompletion();
+          return result;
+        },
+        async all() { return statement.all(); },
+        async run() {
+          const result = await statement.run();
+          await delayCompletion();
+          return result;
+        }
+      };
+      return api;
+    }
+  };
+}
+
 const env = { DB: makeDb() };
-const call = async (method, url, body) => {
+const callWithEnv = async (testEnv, method, url, body) => {
   const response = await worker.fetch(
     new Request(`https://example.test${url}`, {
       method,
       headers: body ? { "Content-Type": "application/json" } : undefined,
       body: body ? JSON.stringify(body) : undefined
     }),
-    env
+    testEnv
   );
   return { status: response.status, body: await response.json() };
 };
+const call = (method, url, body) => callWithEnv(env, method, url, body);
 
 let failures = 0;
 function check(label, actual, expected) {
@@ -156,6 +186,51 @@ check("競合のときサーバー側の端末情報も返す",
   stale.body.results[0].server.changedBy?.name, "買い物用スマホ");
 check("競合しても書き換わっていない", (await pull(0)).body.changes
   .find((c) => c.id === "eggs").body.quantity, 4);
+
+// SELECTと書き込みの間へ別リクエストが入っても、CASで片方だけを通す
+const parallelEnv = { DB: delayedDb(makeDb()) };
+const parallelCall = (method, url, body) => callWithEnv(parallelEnv, method, url, body);
+const parallelFridge = (await parallelCall("POST", "/v1/fridges")).body.id;
+await parallelCall("POST", `/v1/fridges/${parallelFridge}/changes`, {
+  changes: [{
+    kind: "item",
+    id: "parallel-eggs",
+    body: { id: "parallel-eggs", name: "卵", quantity: 6 },
+    baseVersion: 0
+  }]
+});
+const parallelChanges = [
+  {
+    kind: "item",
+    id: "parallel-eggs",
+    body: { id: "parallel-eggs", name: "卵", quantity: 4 },
+    baseVersion: 1
+  },
+  {
+    kind: "item",
+    id: "parallel-eggs",
+    body: { id: "parallel-eggs", name: "卵", quantity: 2 },
+    baseVersion: 1
+  }
+];
+const parallelResponses = await Promise.all(parallelChanges.map((change) =>
+  parallelCall("POST", `/v1/fridges/${parallelFridge}/changes`, { changes: [change] })
+));
+const parallelResults = parallelResponses.map((response) => response.body.results[0]);
+check("同じbaseVersionの並行書き込みは片方だけ applied になる",
+  [
+    parallelResults.filter((result) => result.status === "applied").length,
+    parallelResults.filter((result) => result.status === "conflict").length
+  ],
+  [1, 1]);
+const appliedAt = parallelResults.findIndex((result) => result.status === "applied");
+const parallelRow = (await parallelCall(
+  "GET",
+  `/v1/fridges/${parallelFridge}/changes?since=0`
+)).body.changes.find((change) => change.id === "parallel-eggs");
+check("並行競合後の版は1回分だけ進む", parallelRow.version, 2);
+check("並行競合後の中身は applied 側になる",
+  parallelRow.body, parallelChanges[appliedAt].body);
 
 // サーバーに無いのに版を申告した場合
 const ghost = await push([
