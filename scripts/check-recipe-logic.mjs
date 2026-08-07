@@ -42,15 +42,19 @@ function takeFunction(name) {
 const CONSTANTS = [
   "QUANTITY_CONFIRMED", "QUANTITY_ESTIMATED", "QUANTITY_UNKNOWN",
   "DAY_AFTER_LEVELS", "DAY_AFTER_LIMIT", "SYNC_KINDS", "STORAGE_SHELF_CAPACITIES",
+  "HISTORY_STORAGE_LIMIT", "HISTORY_PAGE_SIZE", "SEASONAL_INGREDIENTS", "SEASONAL_RECIPE_MONTHS",
   "CONFIDENCE_ORDER", "quantityConfidence", "quantityUnknown", "lessCertain",
   "RECIPES", "RECEIPT_RULES", "INGREDIENT_SUBSTITUTES", "UNIT_CONVERSIONS",
-  "SUBSTITUTE_GENERICS", "RECIPE_LIST_SERVINGS", "RECIPE_ILLUSTRATIONS"
+  "SUBSTITUTE_GENERICS", "RECIPE_LIST_SERVINGS", "RECIPE_ILLUSTRATIONS",
+  "RECIPE_ILLUSTRATION_FALLBACKS"
 ];
 const FUNCTIONS = [
+  "normalizedExpiryDate", "localDateIso", "expiryDayDifference", "expiryAlertState",
   "normalizedSubstitute", "conversionRatio", "stockForRequirement",
   "availableForRequirement", "requiredAmount", "shortageFor", "unconfirmedFor",
   "cookBlockers", "confirmUnknownAmounts", "optionalReady",
   "inventoryLevel", "pendingDayAfterItems", "dayAfterCorrection",
+  "historyEntryType", "historyEntryTime", "addHistoryEntry", "seasonalRecipeState",
   "currentChangeAttribution", "markSyncChanges", "pendingSyncChanges", "applySyncResult", "mergeEntity"
 ];
 
@@ -63,24 +67,28 @@ const inventoryMap = () => new Map(state.inventory.filter((item) => item.active 
 ${CONSTANTS.map(takeConst).join("\n")}
 ${FUNCTIONS.map(takeFunction).join("\n")}
 return {
-  state, RECIPES, RECEIPT_RULES, RECIPE_ILLUSTRATIONS, INGREDIENT_SUBSTITUTES, UNIT_CONVERSIONS,
+  state, RECIPES, RECEIPT_RULES, RECIPE_ILLUSTRATIONS, RECIPE_ILLUSTRATION_FALLBACKS, INGREDIENT_SUBSTITUTES, UNIT_CONVERSIONS,
   QUANTITY_CONFIRMED, QUANTITY_ESTIMATED, QUANTITY_UNKNOWN,
   quantityConfidence, lessCertain, conversionRatio, stockForRequirement,
   availableForRequirement, shortageFor, unconfirmedFor, cookBlockers,
   confirmUnknownAmounts, optionalReady, requiredAmount,
   pendingDayAfterItems, dayAfterCorrection, DAY_AFTER_LEVELS,
-  markSyncChanges, pendingSyncChanges, applySyncResult, mergeEntity
+  normalizedExpiryDate, expiryDayDifference, expiryAlertState,
+  markSyncChanges, pendingSyncChanges, applySyncResult, mergeEntity,
+  addHistoryEntry, seasonalRecipeState, HISTORY_STORAGE_LIMIT, HISTORY_PAGE_SIZE
 };
 `;
 
 const app_ = new Function(harness)();
 const {
-  state, RECIPES, RECEIPT_RULES, RECIPE_ILLUSTRATIONS,
+  state, RECIPES, RECEIPT_RULES, RECIPE_ILLUSTRATIONS, RECIPE_ILLUSTRATION_FALLBACKS,
   QUANTITY_CONFIRMED, QUANTITY_ESTIMATED, QUANTITY_UNKNOWN,
   quantityConfidence, lessCertain, stockForRequirement,
   shortageFor, unconfirmedFor, cookBlockers, confirmUnknownAmounts,
   pendingDayAfterItems, dayAfterCorrection, DAY_AFTER_LEVELS,
-  markSyncChanges, pendingSyncChanges, applySyncResult, mergeEntity
+  normalizedExpiryDate, expiryDayDifference, expiryAlertState,
+  markSyncChanges, pendingSyncChanges, applySyncResult, mergeEntity,
+  addHistoryEntry, seasonalRecipeState, HISTORY_STORAGE_LIMIT, HISTORY_PAGE_SIZE
 } = app_;
 
 const ruleFor = (id) => RECEIPT_RULES.find((rule) => rule.id === id);
@@ -109,6 +117,48 @@ function check(label, actual, expected) {
     console.log(`✗ ${label}\n    実際: ${JSON.stringify(actual)}\n    期待: ${JSON.stringify(expected)}`);
   }
 }
+
+// ---- 賞味期限 ------------------------------------------------------------
+check("正しい賞味期限の日付を保存できる", normalizedExpiryDate("2026-08-10"), "2026-08-10");
+check("存在しない日付は保存しない", normalizedExpiryDate("2026-02-30"), "");
+check("賞味期限の前日差を時刻なしで計算する", expiryDayDifference("2026-08-10", "2026-08-07"), 3);
+check("期限切れは超過日数を返す", expiryAlertState("2026-08-06", "2026-08-07"), { days: -1, kind: "expired", label: "1日超過" });
+check("当日は今日までと知らせる", expiryAlertState("2026-08-07", "2026-08-07"), { days: 0, kind: "today", label: "今日まで" });
+check("3日以内は残り日数を知らせる", expiryAlertState("2026-08-10", "2026-08-07"), { days: 3, kind: "soon", label: "あと3日" });
+check("4日以上先はアラートに出さない", expiryAlertState("2026-08-11", "2026-08-07"), null);
+check("未設定はアラートに出さない", expiryAlertState("", "2026-08-07"), null);
+
+// ---- 履歴の保存上限 ------------------------------------------------------
+state.cookingHistory = [];
+for (let at = 0; at <= HISTORY_STORAGE_LIMIT; at += 1) {
+  addHistoryEntry({ id: `history-${at}`, changes: [] });
+}
+check("履歴は1000件まで保持する", state.cookingHistory.length, 1000);
+check("履歴は直近50件から表示する", HISTORY_PAGE_SIZE, 50);
+check("上限超過時は最古の履歴から整理する",
+  [state.cookingHistory[0].id, state.cookingHistory.at(-1).id],
+  ["history-1000", "history-1"]);
+
+// ---- 季節のおすすめ ------------------------------------------------------
+const summerSomen = seasonalRecipeState(
+  recipeFor("chilled-somen"),
+  new Date("2026-08-07T12:00:00+09:00")
+);
+check("8月はそうめんを季節料理として評価する",
+  [summerSomen.explicit, summerSomen.ingredientHits, summerSomen.boost],
+  [true, 2, 20]);
+const springSomen = seasonalRecipeState(
+  recipeFor("chilled-somen"),
+  new Date("2026-04-07T12:00:00+09:00")
+);
+check("4月はそうめんへ季節加点しない",
+  [springSomen.explicit, springSomen.boost], [false, 0]);
+check("1月は白菜の重ね鍋を季節料理として評価する",
+  seasonalRecipeState(
+    recipeFor("pork-chinese-cabbage-hotpot"),
+    new Date("2026-01-07T12:00:00+09:00")
+  ).explicit,
+  true);
 
 // ---- 確信度そのもの ------------------------------------------------------
 check("項目が無い在庫は確認済みとして扱う", quantityConfidence({ quantity: 1 }), QUANTITY_CONFIRMED);
@@ -255,6 +305,25 @@ check("使い切った在庫は不足を埋めない", (() => {
   return shortageFor(eggRecipe, 1).map((item) => item.id);
 })(), ["eggs"]);
 
+check("同じ調理履歴を両端末で直した場合は新しい修正を採る",
+  mergeEntity("cooking",
+    { id: "h1", recipeName: "料理", editedAt: "2026-01-01T12:00:00.000Z", changes: [{ quantity: 2 }] },
+    { id: "h1", recipeName: "料理", editedAt: "2026-01-01T11:00:00.000Z", changes: [{ quantity: 1 }] }
+  ).changes[0].quantity,
+  2);
+check("修正後に取り消した履歴は取り消し時刻を最新操作として採る",
+  mergeEntity("cooking",
+    {
+      id: "h2",
+      recipeName: "料理",
+      editedAt: "2026-01-01T11:00:00.000Z",
+      undoneAt: "2026-01-01T13:00:00.000Z",
+      changes: [{ quantity: 2 }]
+    },
+    { id: "h2", recipeName: "料理", editedAt: "2026-01-01T12:00:00.000Z", changes: [{ quantity: 1 }] }
+  ).undoneAt,
+  "2026-01-01T13:00:00.000Z");
+
 // ---- 使い切り優先の在庫を先に使う ----------------------------------------
 check("使い切り優先の代用を先に選ぶ", (() => {
   const need = { id: "pork", name: "豚こま", quantity: 100, unit: "g" };
@@ -291,6 +360,16 @@ check("取り消した調理は聞かない", (() => {
   const result = dayAfterSetup("2025-12-31T19:00:00.000Z", [estimated("eggs", 1)]);
   void result;
   state.cookingHistory[0].undoneAt = "2026-01-01T00:00:00.000Z";
+  return pendingDayAfterItems().items.length;
+})(), 0);
+check("在庫修正の履歴は翌日の調理確認に混ぜない", (() => {
+  state.settings.dayAfterSkippedOn = "";
+  state.inventory = [estimated("eggs", 1)];
+  state.cookingHistory = [{
+    id: "adjustment-1", type: "adjustment", occurredAt: "2025-12-31T19:00:00.000Z",
+    title: "卵を修正", undoneAt: null,
+    changes: [{ itemId: "eggs", name: "卵", before: { quantity: 2 }, after: { quantity: 1 } }]
+  }];
   return pendingDayAfterItems().items.length;
 })(), 0);
 check("「あとで」を押した日は聞かない", (() => {
@@ -472,12 +551,16 @@ check("片方しか無ければそれを採る", [
 // 普通に出てしまう（RECIPE_ILLUSTRATIONS に無いレシピは従来表示、という
 // 作りにしてあるため）。目で気づけないので数えて止める。
 const illustrated = Object.keys(RECIPE_ILLUSTRATIONS);
+const fallbackIllustrated = Object.keys(RECIPE_ILLUSTRATION_FALLBACKS);
 const recipeIds = RECIPES.map((recipe) => recipe.id);
 
-check("全てのレシピに完成イラストがある",
-  recipeIds.filter((id) => !RECIPE_ILLUSTRATIONS[id]), []);
+check("全てのレシピに完成絵または主役食材の代替絵がある",
+  recipeIds.filter((id) => !RECIPE_ILLUSTRATIONS[id] && !RECIPE_ILLUSTRATION_FALLBACKS[id]), []);
 check("レシピに無いidが混ざっていない",
-  illustrated.filter((id) => !recipeIds.includes(id)), []);
+  [...illustrated, ...fallbackIllustrated].filter((id) => !recipeIds.includes(id)), []);
+check("代替絵に食材カタログ外のidが混ざっていない",
+  Object.values(RECIPE_ILLUSTRATION_FALLBACKS)
+    .filter((id) => !RECEIPT_RULES.some((rule) => rule.id === id)), []);
 check("同じマスを2品が使っていない", (() => {
   const seen = new Map();
   const clashes = [];

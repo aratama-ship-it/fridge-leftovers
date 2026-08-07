@@ -15,6 +15,7 @@ const ID_ALPHABET = "abcdefghijkmnpqrstuvwxyz23456789";
 const ID_LENGTH = 22;
 const MAX_BODY_BYTES = 512 * 1024;
 const MAX_CHANGES = 200;
+const READ_PAGE_SIZE = 500;
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -54,21 +55,30 @@ async function createFridge(env) {
 }
 
 async function readChanges(env, fridgeId, since) {
+  // 1件多く読むことで、通し番号の欠番に影響されず次ページの有無を判定する。
+  // entities は各IDの最新版だけを持つため、head.seq との差だけでは判断できない。
   const rows = await env.DB.prepare(
     `select kind, id, body, version, change_seq, deleted_at,
             changed_at, device_id, device_name, updated_at
        from entities
       where fridge_id = ? and change_seq > ?
       order by change_seq
-      limit 500`
-  ).bind(fridgeId, since).all();
+      limit ?`
+  ).bind(fridgeId, since, READ_PAGE_SIZE + 1).all();
 
   const head = await env.DB.prepare("select seq from fridges where id = ?")
     .bind(fridgeId).first();
+  const available = rows.results || [];
+  const hasMore = available.length > READ_PAGE_SIZE;
+  const page = available.slice(0, READ_PAGE_SIZE);
+  const lastSeq = Number(page.at(-1)?.change_seq) || Number(since) || 0;
 
   return json({
-    seq: head?.seq ?? 0,
-    changes: (rows.results || []).map((row) => ({
+    // 続きがある間は「実際に返した最後の行」だけを既読にする。
+    // 最終ページでは、同じIDの更新で生じた欠番も含めheadまで進めてよい。
+    seq: hasMore ? lastSeq : (head?.seq ?? lastSeq),
+    hasMore,
+    changes: page.map((row) => ({
       kind: row.kind,
       id: row.id,
       body: row.body ? JSON.parse(row.body) : null,

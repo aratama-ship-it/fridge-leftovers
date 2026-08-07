@@ -5,9 +5,11 @@ const SHELF_COUNTS_STORAGE_KEY = "fridge-leftovers-shelf-counts-v1";
 const RECENT_INGREDIENTS_STORAGE_KEY = "fridge-leftovers-recent-ingredients-v1";
 const SETTINGS_STORAGE_KEY = "fridge-leftovers-settings-v1";
 const DEVICE_STORAGE_KEY = "fridge-leftovers-device-v1";
-const APP_VERSION = "0.10.0";
+const APP_VERSION = "0.15.0";
 const RECIPE_PAGE_SIZE = 3;
 const RECIPE_LIST_SERVINGS = 1;
+const HISTORY_STORAGE_LIMIT = 1000;
+const HISTORY_PAGE_SIZE = 50;
 
 // 方針書の「初期状態では料理選びを複雑にしない」に合わせ、栄養表示は既定で出さない
 const DEFAULT_SETTINGS = {
@@ -18,7 +20,62 @@ const DEFAULT_SETTINGS = {
   reviewedCategories: []
 };
 
-const todayIso = () => new Date().toISOString().slice(0, 10);
+// 賞味期限は時刻ではなく、その端末のカレンダー上の日付として扱う。
+// Date.parse("YYYY-MM-DD") はUTCになるため、日付だけを分解して比較する。
+function normalizedExpiryDate(value) {
+  const text = typeof value === "string" ? value.trim() : "";
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text);
+  if (!match) return "";
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(year, month - 1, day);
+  return date.getFullYear() === year
+    && date.getMonth() === month - 1
+    && date.getDate() === day
+    ? text
+    : "";
+}
+
+function localDateIso(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+// 在庫確認・使い切り・買い物・翌日確認も、UTCではなく端末の暦日でそろえる。
+const todayIso = () => localDateIso();
+
+function expiryDayDifference(value, today = localDateIso()) {
+  const expiry = normalizedExpiryDate(value);
+  const base = normalizedExpiryDate(today);
+  if (!expiry || !base) return null;
+  const toUtcDay = (text) => {
+    const [year, month, day] = text.split("-").map(Number);
+    return Date.UTC(year, month - 1, day);
+  };
+  return Math.round((toUtcDay(expiry) - toUtcDay(base)) / 86400000);
+}
+
+function expiryAlertState(value, today = localDateIso()) {
+  const days = expiryDayDifference(value, today);
+  if (days === null || days > 3) return null;
+  if (days < 0) return { days, kind: "expired", label: `${Math.abs(days)}日超過` };
+  if (days === 0) return { days, kind: "today", label: "今日まで" };
+  return { days, kind: "soon", label: `あと${days}日` };
+}
+
+function formatExpiryDate(value) {
+  const normalized = normalizedExpiryDate(value);
+  if (!normalized) return "";
+  const [year, month, day] = normalized.split("-").map(Number);
+  return new Intl.DateTimeFormat("ja-JP", {
+    month: "numeric",
+    day: "numeric",
+    weekday: "short"
+  }).format(new Date(year, month - 1, day));
+}
 
 // 在庫の数量をどれだけ信じてよいか（方針書「数量は捨てるのでも盛るのでもなく、
 // 確信度を持たせる」）。数量を持たない状態を作ると残量ゲージ・調理後の減算・
@@ -67,15 +124,47 @@ const DEFAULT_INVENTORY = [
 // どれを選んでも同じ件数になる。並べても選びにくくなるだけなので、
 // 家庭でよく買う形だけを出す。
 //
-// さば2件・ぶり2件・えび2件・納豆1件・そば1件・焼きそば麺1件は3件に届かない。
-// それでも出すのは、実際に持っている人がいるため。足りない分は主役以外の
-// レシピから補う。
+// 各主役から最低3件へ直接つながるようにして、選んだ食材と無関係な補完候補を
+// できるだけ減らす。
 const LEAD_INGREDIENTS = [
   { name: "肉", ids: ["ground-meat", "pork", "pork-belly", "chicken", "chicken-thigh", "beef"] },
   { name: "魚介", ids: ["salmon", "tuna", "mackerel", "yellowtail", "shrimp"] },
   { name: "卵・豆腐", ids: ["eggs", "tofu", "natto"] },
   { name: "主食・麺", ids: ["rice", "bread", "pasta", "udon", "yakisoba-noodles", "soba"] }
 ];
+
+// 気温や位置情報は使わず、端末の月だけで「この時期らしい」食材と料理を扱う。
+// 旬は地域や品種で前後するため、厳密な出荷時期ではなく家庭料理の目安。
+const SEASONAL_INGREDIENTS = {
+  1: ["chinese-cabbage", "radish", "spinach", "green-onion", "yellowtail", "tofu"],
+  2: ["chinese-cabbage", "radish", "spinach", "broccoli", "yellowtail", "tofu"],
+  3: ["cabbage", "asparagus", "snow-peas", "boiled-bamboo", "clam", "strawberry"],
+  4: ["cabbage", "asparagus", "snow-peas", "boiled-bamboo", "fuki", "clam"],
+  5: ["cabbage", "asparagus", "snap-peas", "boiled-bamboo", "broad-beans", "strawberry"],
+  6: ["tomato", "cucumber", "bell-pepper", "okra", "corn", "somen"],
+  7: ["tomato", "eggplant", "cucumber", "bell-pepper", "okra", "somen"],
+  8: ["tomato", "eggplant", "cucumber", "bitter-melon", "corn", "somen"],
+  9: ["mushroom", "sweet-potato", "pumpkin", "taro", "saury", "grape"],
+  10: ["mushroom", "sweet-potato", "pumpkin", "taro", "saury", "persimmon"],
+  11: ["mushroom", "sweet-potato", "pumpkin", "lotus-root", "saury", "persimmon"],
+  12: ["chinese-cabbage", "radish", "spinach", "green-onion", "yellowtail", "tofu"]
+};
+
+const SEASONAL_RECIPE_MONTHS = {
+  "chilled-somen": [6, 7, 8],
+  "tuna-tomato-somen": [6, 7, 8],
+  "zaru-soba": [5, 6, 7, 8, 9],
+  "pork-cold-soba": [6, 7, 8, 9],
+  "natto-pasta": [6, 7, 8],
+  "pork-chinese-cabbage-hotpot": [11, 12, 1, 2, 3],
+  "tofu-mushroom-hotpot": [10, 11, 12, 1, 2, 3],
+  "yellowtail-daikon": [11, 12, 1, 2],
+  "pumpkin-simmer": [9, 10, 11],
+  "pumpkin-salad": [9, 10, 11],
+  "eggplant-miso": [6, 7, 8, 9],
+  "tomato-cheese-bake": [6, 7, 8],
+  "cream-stew": [11, 12, 1, 2]
+};
 
 const RECIPES = [
   {
@@ -1230,6 +1319,198 @@ const RECIPES = [
       { id: "cucumber", name: "きゅうり", quantity: 0.5, unit: "本", benefit: "食感がさっぱりする" },
       { id: "lettuce", name: "レタス", quantity: 0.25, unit: "個", benefit: "見た目と歯ざわりが良くなる" }
     ]
+  },
+  {
+    id: "mackerel-ginger-stew",
+    name: "さばのしょうが煮",
+    minutes: 22,
+    required: [
+      { id: "mackerel", name: "さば", quantity: 1, unit: "切れ" }
+    ],
+    pantry: "醤油・砂糖・みりん・酒・水",
+    optional: [
+      { id: "ginger", name: "しょうが", quantity: 0.25, unit: "個", benefit: "魚の風味をさっぱり整える" },
+      { id: "green-onion", name: "ねぎ", quantity: 0.5, unit: "本", benefit: "甘みと香りが加わる" },
+      { id: "radish", name: "大根", quantity: 0.25, unit: "本", benefit: "煮汁を含む付け合わせになる" }
+    ]
+  },
+  {
+    id: "yellowtail-salt-grill",
+    name: "ぶりの塩焼き",
+    minutes: 16,
+    required: [
+      { id: "yellowtail", name: "ぶり", quantity: 1, unit: "切れ" }
+    ],
+    pantry: "塩・油",
+    optional: [
+      { id: "radish", name: "大根", quantity: 0.25, unit: "本", benefit: "大根おろしで後味が軽くなる" },
+      { id: "lemon", name: "レモン", quantity: 0.25, unit: "個", benefit: "脂のある魚をさっぱり食べられる" },
+      { id: "shiso", name: "大葉", quantity: 0.25, unit: "袋", benefit: "香りを添えられる" }
+    ]
+  },
+  {
+    id: "shrimp-garlic-saute",
+    name: "えびのガーリック炒め",
+    minutes: 12,
+    required: [
+      { id: "shrimp", name: "えび", quantity: 120, unit: "g" }
+    ],
+    pantry: "にんにく・塩・こしょう・油",
+    optional: [
+      { id: "broccoli", name: "ブロッコリー", quantity: 0.5, unit: "個", benefit: "彩りと食べ応えが増す" },
+      { id: "mushroom-button", name: "マッシュルーム", quantity: 0.5, unit: "パック", benefit: "うま味と食感が増す" },
+      { id: "butter", name: "バター", quantity: 10, unit: "g", benefit: "香りとコクが増す" }
+    ]
+  },
+  {
+    id: "natto-omelet",
+    name: "納豆オムレツ",
+    minutes: 10,
+    required: [
+      { id: "natto", name: "納豆", quantity: 1, unit: "パック" },
+      { id: "eggs", name: "卵", quantity: 2, unit: "個" }
+    ],
+    pantry: "醤油・塩・油",
+    optional: [
+      { id: "green-onion", name: "ねぎ", quantity: 0.25, unit: "本", benefit: "香りと食感が加わる" },
+      { id: "cheese", name: "チーズ", quantity: 20, unit: "g", benefit: "コクが増してまとまりやすい" },
+      { id: "shiso", name: "大葉", quantity: 0.25, unit: "袋", benefit: "後味がさっぱりする" }
+    ]
+  },
+  {
+    id: "natto-pasta",
+    name: "納豆とねぎの和風パスタ",
+    minutes: 12,
+    required: [
+      { id: "natto", name: "納豆", quantity: 1, unit: "パック" },
+      { id: "pasta", name: "スパゲッティ", quantity: 100, unit: "g" }
+    ],
+    pantry: "醤油・油",
+    optional: [
+      { id: "green-onion", name: "ねぎ", quantity: 0.25, unit: "本", benefit: "香りと食感が加わる" },
+      { id: "nori", name: "のり", quantity: 0.1, unit: "袋", benefit: "磯の香りが加わる" },
+      { id: "eggs", name: "卵", quantity: 1, unit: "個", benefit: "まろやかさと満足感が増す" }
+    ]
+  },
+  {
+    id: "zaru-soba",
+    name: "ざるそば",
+    minutes: 10,
+    required: [
+      { id: "soba", name: "そば", quantity: 100, unit: "g" }
+    ],
+    pantry: "だし・醤油・みりん・水・わさび",
+    optional: [
+      { id: "green-onion", name: "ねぎ", quantity: 0.25, unit: "本", benefit: "定番の薬味になる" },
+      { id: "nori", name: "のり", quantity: 0.1, unit: "袋", benefit: "磯の香りが加わる" },
+      { id: "tenkasu", name: "天かす", quantity: 0.1, unit: "袋", benefit: "香ばしさと食べ応えが増す" }
+    ]
+  },
+  {
+    id: "pork-cold-soba",
+    name: "豚しゃぶおろしそば",
+    minutes: 18,
+    required: [
+      { id: "soba", name: "そば", quantity: 100, unit: "g" },
+      { id: "pork", name: "豚こま", quantity: 80, unit: "g" },
+      { id: "radish", name: "大根", quantity: 0.25, unit: "本" }
+    ],
+    pantry: "だし・醤油・みりん・水",
+    optional: [
+      { id: "shiso", name: "大葉", quantity: 0.25, unit: "袋", benefit: "香りが加わる" },
+      { id: "cucumber", name: "きゅうり", quantity: 0.5, unit: "本", benefit: "みずみずしい食感が増す" },
+      { id: "tomato", name: "トマト", quantity: 0.5, unit: "個", benefit: "彩りと酸味が加わる" }
+    ]
+  },
+  {
+    id: "salt-yakisoba",
+    name: "野菜の塩焼きそば",
+    minutes: 13,
+    required: [
+      { id: "yakisoba-noodles", name: "焼きそば麺", quantity: 1, unit: "袋" },
+      { id: "cabbage", name: "キャベツ", quantity: 100, unit: "g" }
+    ],
+    pantry: "塩・こしょう・鶏がらスープの素・油",
+    optional: [
+      { id: "bean-sprouts", name: "もやし", quantity: 0.5, unit: "袋", benefit: "食感と量が増す" },
+      { id: "pork", name: "豚こま", quantity: 80, unit: "g", benefit: "主菜らしい満足感が増す" },
+      { id: "green-onion", name: "ねぎ", quantity: 0.25, unit: "本", benefit: "香りが加わる" }
+    ]
+  },
+  {
+    id: "sobameshi",
+    name: "焼きそば麺のそばめし",
+    minutes: 15,
+    required: [
+      { id: "yakisoba-noodles", name: "焼きそば麺", quantity: 1, unit: "袋" },
+      { id: "rice", name: "ごはん", quantity: 1, unit: "膳" }
+    ],
+    pantry: "中濃ソース・塩・こしょう・油",
+    optional: [
+      { id: "cabbage", name: "キャベツ", quantity: 80, unit: "g", benefit: "食感と野菜量が増す" },
+      { id: "pork", name: "豚こま", quantity: 60, unit: "g", benefit: "うま味と満足感が増す" },
+      { id: "green-onion", name: "ねぎ", quantity: 0.25, unit: "本", benefit: "仕上げの香りが加わる" }
+    ]
+  },
+  {
+    id: "chilled-somen",
+    name: "冷やしそうめん",
+    minutes: 10,
+    required: [
+      { id: "somen", name: "そうめん", quantity: 1, unit: "袋" }
+    ],
+    pantry: "だし・醤油・みりん・水",
+    optional: [
+      { id: "cucumber", name: "きゅうり", quantity: 0.5, unit: "本", benefit: "涼しい食感が加わる" },
+      { id: "eggs", name: "卵", quantity: 1, unit: "個", benefit: "錦糸卵で彩りと満足感が増す" },
+      { id: "green-onion", name: "ねぎ", quantity: 0.25, unit: "本", benefit: "定番の薬味になる" }
+    ]
+  },
+  {
+    id: "tuna-tomato-somen",
+    name: "ツナトマトそうめん",
+    minutes: 12,
+    required: [
+      { id: "somen", name: "そうめん", quantity: 1, unit: "袋" },
+      { id: "tuna", name: "ツナ", quantity: 1, unit: "缶" },
+      { id: "tomato", name: "トマト", quantity: 1, unit: "個" }
+    ],
+    pantry: "めんつゆ・油",
+    optional: [
+      { id: "cucumber", name: "きゅうり", quantity: 0.5, unit: "本", benefit: "食感と清涼感が増す" },
+      { id: "shiso", name: "大葉", quantity: 0.25, unit: "袋", benefit: "香りが加わる" },
+      { id: "sesame", name: "ごま", quantity: 0.1, unit: "袋", benefit: "香ばしさが増す" }
+    ]
+  },
+  {
+    id: "pork-chinese-cabbage-hotpot",
+    name: "豚肉と白菜の重ね鍋",
+    minutes: 25,
+    required: [
+      { id: "pork", name: "豚こま", quantity: 120, unit: "g" },
+      { id: "chinese-cabbage", name: "白菜", quantity: 250, unit: "g" }
+    ],
+    pantry: "だし・醤油・酒・水",
+    optional: [
+      { id: "mushroom", name: "しめじ", quantity: 0.25, unit: "株", benefit: "うま味が増す" },
+      { id: "tofu", name: "豆腐", quantity: 0.5, unit: "個", benefit: "食べ応えが増す" },
+      { id: "green-onion", name: "ねぎ", quantity: 0.5, unit: "本", benefit: "甘みと香りが加わる" }
+    ]
+  },
+  {
+    id: "tofu-mushroom-hotpot",
+    name: "豆腐ときのこの寄せ鍋",
+    minutes: 20,
+    required: [
+      { id: "tofu", name: "豆腐", quantity: 1, unit: "個" },
+      { id: "mushroom", name: "しめじ", quantity: 0.5, unit: "株" }
+    ],
+    pantry: "だし・醤油・みりん・水",
+    optional: [
+      { id: "chinese-cabbage", name: "白菜", quantity: 150, unit: "g", benefit: "甘みと野菜量が増す" },
+      { id: "green-onion", name: "ねぎ", quantity: 0.5, unit: "本", benefit: "香りと甘みが加わる" },
+      { id: "chicken", name: "鶏むね肉", quantity: 100, unit: "g", benefit: "主菜らしい満足感が増す" }
+    ]
   }
 ];
 
@@ -1618,6 +1899,71 @@ const RECIPE_STEPS = {
     "トマトを厚めに切り、耐熱皿へ並べる。",
     "塩・こしょうをふり、チーズを全体へ散らす。",
     "トースターなどで、チーズに焼き色がつくまで焼く。"
+  ],
+  "mackerel-ginger-stew": [
+    "さばの水分を拭き、皮に浅く切り目を入れる。",
+    "鍋に醤油・砂糖・みりん・酒・水を煮立て、さばとしょうがを入れる。",
+    "落としぶたをして、中心まで火を通しながら煮汁をからめる。"
+  ],
+  "yellowtail-salt-grill": [
+    "ぶりの水分を拭き、両面に塩をふって少し置く。",
+    "出た水分を拭き、グリルまたは油を薄くひいたフライパンで焼く。",
+    "裏返して、中心まで十分に火を通す。"
+  ],
+  "shrimp-garlic-saute": [
+    "えびの水分を拭き、塩・こしょうをふる。",
+    "油とにんにくを弱火で温め、香りが出たらえびを加える。",
+    "えびの中心まで火を通し、好みでバターをからめる。"
+  ],
+  "natto-omelet": [
+    "納豆を混ぜ、溶いた卵と少量の醤油を合わせる。",
+    "油を熱したフライパンへ流し、周囲が固まったら大きく混ぜる。",
+    "納豆を包むように形を整え、卵に火を通す。"
+  ],
+  "natto-pasta": [
+    "スパゲッティを表示時間どおりにゆでる。",
+    "納豆に醤油と少量の油を混ぜ、使う薬味を用意する。",
+    "湯を切った麺と納豆を和え、ねぎやのりを添える。"
+  ],
+  "zaru-soba": [
+    "そばを袋の表示に合わせてゆでる。",
+    "冷水でよく洗ってぬめりを取り、水気を切る。",
+    "器に盛り、冷やしたつゆと薬味を添える。"
+  ],
+  "pork-cold-soba": [
+    "そばをゆでて冷水で洗い、水気を切る。",
+    "豚肉を熱湯で中心までゆで、冷まして大根をおろす。",
+    "そばに豚肉と大根おろしをのせ、冷たいつゆをかける。"
+  ],
+  "salt-yakisoba": [
+    "キャベツと使う具材を食べやすく切って炒める。",
+    "焼きそば麺と少量の水を加え、ほぐしながら火を通す。",
+    "塩・こしょうと鶏がらスープの素で味を整える。"
+  ],
+  sobameshi: [
+    "焼きそば麺を短く刻み、使う具材を炒める。",
+    "麺とごはんを加え、ほぐしながら炒め合わせる。",
+    "ソースを加え、水分を飛ばして香ばしく仕上げる。"
+  ],
+  "chilled-somen": [
+    "そうめんを袋の表示に合わせてゆでる。",
+    "冷水でよく洗い、氷水で冷やして水気を切る。",
+    "器に盛り、冷やしたつゆと好みの薬味を添える。"
+  ],
+  "tuna-tomato-somen": [
+    "そうめんをゆでて冷水で洗い、水気を切る。",
+    "トマトを切り、汁気を切ったツナとめんつゆを混ぜる。",
+    "そうめんと具を和え、好みで大葉やごまを添える。"
+  ],
+  "pork-chinese-cabbage-hotpot": [
+    "白菜と豚肉を食べやすい大きさに切り、交互に鍋へ詰める。",
+    "だし・醤油・酒・水を加え、ふたをして煮る。",
+    "白菜がやわらかくなり、豚肉の中心まで火が通ったら完成。"
+  ],
+  "tofu-mushroom-hotpot": [
+    "豆腐ときのこ、使う野菜を食べやすく切る。",
+    "鍋にだし・醤油・みりん・水を入れ、具材を加えて煮る。",
+    "全体が温まり、肉を使う場合は中心まで火を通す。"
   ]
 };
 
@@ -2144,6 +2490,24 @@ const RECIPE_ILLUSTRATIONS = {
   "tuna-toast": [2, 0, "r07"],
   "french-toast": [3, 0, "r07"],
   "egg-sandwich": [0, 1, "r07"]
+};
+
+// 完成イラストをまだ描いていない追加レシピは、空欄にせず主役食材を大きく見せる。
+// 完成絵を追加したらこの表から外し、RECIPE_ILLUSTRATIONSへ移す。
+const RECIPE_ILLUSTRATION_FALLBACKS = {
+  "mackerel-ginger-stew": "mackerel",
+  "yellowtail-salt-grill": "yellowtail",
+  "shrimp-garlic-saute": "shrimp",
+  "natto-omelet": "natto",
+  "natto-pasta": "natto",
+  "zaru-soba": "soba",
+  "pork-cold-soba": "soba",
+  "salt-yakisoba": "yakisoba-noodles",
+  sobameshi: "yakisoba-noodles",
+  "chilled-somen": "somen",
+  "tuna-tomato-somen": "somen",
+  "pork-chinese-cabbage-hotpot": "chinese-cabbage",
+  "tofu-mushroom-hotpot": "tofu"
 };
 
 const INGREDIENT_ILLUSTRATIONS = {
@@ -3102,6 +3466,7 @@ const state = {
   inventory: [],
   shopping: [],
   cookingHistory: [],
+  historyVisibleCount: HISTORY_PAGE_SIZE,
   location: "すべて",
   servings: 1,
   priority: "no-shop",
@@ -3127,9 +3492,12 @@ const state = {
   recentIngredientIds: [],
   pendingCookRecipeId: null,
   pendingCookServings: 1,
+  pendingCookExtras: [],
   // 作る前に量を確認した結果。{ 食材id: true（ある）/ false（足りない）}。
   // ダイアログを開くたびに空へ戻す（前回の答えを持ち回らない）
   cookAmountAnswers: {},
+  editingHistoryId: null,
+  historyEditChanges: [],
   // 初回登録。step 1 は主役選び、step 2 は候補の分かれ目を聞く
   onboarding: { step: 1, leads: [], extras: [] },
   // 売り場を順番に回って足していく画面。added はこの画面で入れたぶん
@@ -3155,13 +3523,20 @@ const state = {
 const elements = {
   appVersion: document.querySelector("#app-version"),
   appHeader: document.querySelector("#app-header"),
+  headerSync: document.querySelector("#header-sync"),
+  headerSyncLabel: document.querySelector("#header-sync-label"),
   openSettings: document.querySelector("#open-settings"),
   settingsDialog: document.querySelector("#settings-dialog"),
   closeSettings: document.querySelector("#close-settings"),
   settingShowNutrition: document.querySelector("#setting-show-nutrition"),
+  nutritionHelp: document.querySelector("#nutrition-help"),
   settingsNutritionNote: document.querySelector("#settings-nutrition-note"),
   deviceName: document.querySelector("#device-name"),
   fridgeScene: document.querySelector("#fridge-scene"),
+  expiryAlert: document.querySelector("#expiry-alert"),
+  expiryAlertTitle: document.querySelector("#expiry-alert-title"),
+  expiryAlertSummary: document.querySelector("#expiry-alert-summary"),
+  expiryAlertList: document.querySelector("#expiry-alert-list"),
   inventoryList: document.querySelector("#inventory-list"),
   finishedSection: document.querySelector("#finished-section"),
   finishedCount: document.querySelector("#finished-count"),
@@ -3175,6 +3550,7 @@ const elements = {
   todayIngredientArt: document.querySelector("#today-ingredient-art"),
   todayIngredientDialog: document.querySelector("#today-ingredient-dialog"),
   todayIngredientOptions: document.querySelector("#today-ingredient-options"),
+  seasonalGuide: document.querySelector("#seasonal-guide"),
   closeTodayIngredientDialog: document.querySelector("#close-today-ingredient-dialog"),
   clearTodayIngredient: document.querySelector("#clear-today-ingredient"),
   inventoryView: document.querySelector("#inventory-view"),
@@ -3214,6 +3590,7 @@ const elements = {
   ingredientPickerReselect: document.querySelector("#ingredient-picker-reselect"),
   ingredientDetails: document.querySelector("#ingredient-details"),
   selectedIngredientPreview: document.querySelector("#selected-ingredient-preview"),
+  ingredientAddShortcuts: document.querySelector("#ingredient-add-shortcuts"),
   ingredientReceiptShortcut: document.querySelector("#ingredient-receipt-shortcut"),
   ingredientNameField: document.querySelector("#ingredient-name-field"),
   ingredientName: document.querySelector("#ingredient-name"),
@@ -3225,8 +3602,10 @@ const elements = {
   ingredientQuantityRange: document.querySelector("#ingredient-quantity-range"),
   ingredientUnit: document.querySelector("#ingredient-unit"),
   ingredientLocation: document.querySelector("#ingredient-location"),
+  ingredientExpiry: document.querySelector("#ingredient-expiry"),
   ingredientPriority: document.querySelector("#ingredient-priority"),
   consumeIngredient: document.querySelector("#consume-ingredient"),
+  discardIngredient: document.querySelector("#discard-ingredient"),
   deleteIngredient: document.querySelector("#delete-ingredient"),
   receiptInput: document.querySelector("#receipt-input"),
   receiptDialog: document.querySelector("#receipt-dialog"),
@@ -3249,6 +3628,21 @@ const elements = {
   cookServingOptions: document.querySelector("#cook-serving-options"),
   cookConfirmIngredients: document.querySelector("#cook-confirm-ingredients"),
   cookConfirmNutrition: document.querySelector("#cook-confirm-nutrition"),
+  cookExtraItem: document.querySelector("#cook-extra-item"),
+  cookExtraQuantity: document.querySelector("#cook-extra-quantity"),
+  cookExtraUnit: document.querySelector("#cook-extra-unit"),
+  cookExtraAdd: document.querySelector("#cook-extra-add"),
+  cookExtraList: document.querySelector("#cook-extra-list"),
+  historyEditDialog: document.querySelector("#history-edit-dialog"),
+  historyEditForm: document.querySelector("#history-edit-form"),
+  historyEditRecipe: document.querySelector("#history-edit-recipe"),
+  historyEditIngredients: document.querySelector("#history-edit-ingredients"),
+  historyEditAddItem: document.querySelector("#history-edit-add-item"),
+  historyEditAddQuantity: document.querySelector("#history-edit-add-quantity"),
+  historyEditAddUnit: document.querySelector("#history-edit-add-unit"),
+  historyEditAdd: document.querySelector("#history-edit-add"),
+  historyEditMessage: document.querySelector("#history-edit-message"),
+  saveHistoryEdit: document.querySelector("#save-history-edit"),
   bottomNav: document.querySelector(".bottom-nav"),
   onboardingView: document.querySelector("#onboarding-view"),
   onboardingStepLabel: document.querySelector("#onboarding-step-label"),
@@ -3419,6 +3813,8 @@ function currentChangeAttribution() {
 // 比べて差分を出す。在庫を消す場所がアプリ内に7箇所あり、全部へ印を付ける
 // 細工を入れると、足し忘れが必ず起きるため。
 const SYNC_STORAGE_KEY = "fridge-leftovers-sync-v1";
+const AUTO_SYNC_DELAY_MS = 600;
+let autoSyncTimer = null;
 
 const SYNC_KINDS = [
   { kind: "item", list: () => state.inventory },
@@ -3538,7 +3934,16 @@ function mergeEntity(kind, mine, theirs) {
     return merged;
   }
 
-  // 調理履歴は追記だけなので競合しない。万一のときはサーバー側を残す
+  if (kind === "cooking") {
+    // 履歴は通常別IDで追記する。調理内容を両端末で直したときだけ同じIDが
+    // ぶつかるので、修正・取り消しの日時が新しいほうを採る。
+    const changedAt = (entry) => Math.max(
+      ...[entry.editedAt, entry.undoneAt, entry.occurredAt, entry.cookedAt]
+        .map((value) => Date.parse(value || "") || 0)
+    );
+    return changedAt(mine) >= changedAt(theirs) ? mine : theirs;
+  }
+
   return theirs;
 }
 
@@ -3696,12 +4101,26 @@ function applyIncoming(changes) {
 async function syncOnce() {
   if (!state.share.fridgeId || state.syncing) return { skipped: true };
   state.syncing = true;
+  renderHeaderSync();
+  let completed = false;
   try {
-    const pulled = await shareFetch(
-      `/v1/fridges/${state.share.fridgeId}/changes?since=${state.share.seq}`
-    );
-    let touched = applyIncoming(pulled.changes || []);
-    state.share.seq = Number(pulled.seq) || state.share.seq;
+    let touched = false;
+    let hasMore = false;
+    do {
+      const previousSeq = state.share.seq;
+      const pulled = await shareFetch(
+        `/v1/fridges/${state.share.fridgeId}/changes?since=${previousSeq}`
+      );
+      touched = applyIncoming(pulled.changes || []) || touched;
+      const nextSeq = Number(pulled.seq);
+      if (Number.isFinite(nextSeq) && nextSeq >= previousSeq) {
+        state.share.seq = nextSeq;
+      }
+      hasMore = pulled.hasMore === true;
+      if (hasMore && state.share.seq <= previousSeq) {
+        throw new Error("同期の続き位置を更新できませんでした");
+      }
+    } while (hasMore);
 
     markSyncChanges();
     const pending = pendingSyncChanges();
@@ -3749,9 +4168,15 @@ async function syncOnce() {
       renderAll();
       renderDayAfterCheck();
     }
-    return { changed: touched, pending: pendingSyncChanges().length };
+    const result = { changed: touched, pending: pendingSyncChanges().length };
+    completed = true;
+    return result;
   } finally {
     state.syncing = false;
+    renderHeaderSync();
+    // 通信中に新しい操作が入った場合や競合が起きた場合は、残った変更だけを
+    // もう一度送る。通信失敗時は連続再試行せず、上部の「未同期」から手で戻せる。
+    if (completed && pendingSyncChanges().length) scheduleAutoSync();
   }
 }
 
@@ -3794,7 +4219,7 @@ const EXPORT_APP = "fridge-leftovers";
 const EXPORT_SECTIONS = [
   { key: "inventory", label: "冷蔵庫の中身", storage: STORAGE_KEY, get: () => state.inventory },
   { key: "shopping", label: "買い物リスト", storage: SHOPPING_STORAGE_KEY, get: () => state.shopping },
-  { key: "cookingHistory", label: "調理履歴", storage: COOKING_HISTORY_STORAGE_KEY, get: () => state.cookingHistory },
+  { key: "cookingHistory", label: "履歴", storage: COOKING_HISTORY_STORAGE_KEY, get: () => state.cookingHistory },
   { key: "shelfCounts", label: "棚の数", storage: SHELF_COUNTS_STORAGE_KEY, get: () => state.shelfCounts },
   { key: "recentIngredientIds", label: "最近追加した食材", storage: RECENT_INGREDIENTS_STORAGE_KEY, get: () => state.recentIngredientIds },
   { key: "settings", label: "設定", storage: SETTINGS_STORAGE_KEY, get: () => state.settings },
@@ -3895,7 +4320,7 @@ function applyBackup({ found }) {
   loadCookingHistory();
   state.needsOnboarding = false;
   elements.settingShowNutrition.checked = state.settings.showNutrition;
-  elements.settingsNutritionNote.hidden = !state.settings.showNutrition;
+  setNutritionHelpExpanded(false);
   renderAll();
   renderRefineEntry();
   renderDayAfterCheck();
@@ -3925,7 +4350,9 @@ function pendingDayAfterItems() {
 
   const today = todayIso();
   const entries = state.cookingHistory.filter((entry) =>
-    !entry.undoneAt && String(entry.cookedAt).slice(0, 10) < today);
+    historyEntryType(entry) === "cooking"
+    && !entry.undoneAt
+    && String(historyEntryTime(entry)).slice(0, 10) < today);
   if (!entries.length) return { recipeName: "", items: [] };
 
   const seen = new Set();
@@ -3998,8 +4425,11 @@ function dayAfterCorrection(item, answer) {
 function answerDayAfter(id, answer) {
   const item = state.inventory.find((candidate) => candidate.id === id);
   if (!item) return;
+  const before = { ...item };
   dayAfterCorrection(item, answer);
+  recordInventoryAdjustment(before, item);
   persistInventory();
+  persistCookingHistory();
   renderAll();
   renderDayAfterCheck();
 }
@@ -4149,6 +4579,7 @@ function persistInventory() {
   }
   markSyncChanges();
   persistSyncMeta();
+  scheduleAutoSync();
 }
 
 function loadRecentIngredients() {
@@ -4216,6 +4647,11 @@ function persistSettings() {
   }
 }
 
+function setNutritionHelpExpanded(expanded) {
+  elements.nutritionHelp.setAttribute("aria-expanded", String(expanded));
+  elements.settingsNutritionNote.hidden = !expanded;
+}
+
 function loadShelfCounts() {
   state.shelfCounts = { ...DEFAULT_STORAGE_SHELF_COUNTS };
   try {
@@ -4242,6 +4678,7 @@ function persistShelfCounts() {
   }
   markSyncChanges();
   persistSyncMeta();
+  scheduleAutoSync();
 }
 
 function loadShoppingList() {
@@ -4267,6 +4704,7 @@ function persistShoppingList() {
   }
   markSyncChanges();
   persistSyncMeta();
+  scheduleAutoSync();
 }
 
 function loadCookingHistory() {
@@ -4278,7 +4716,7 @@ function loadCookingHistory() {
     }
     const parsed = JSON.parse(saved);
     state.cookingHistory = Array.isArray(parsed)
-      ? parsed.filter((entry) => entry && Array.isArray(entry.changes)).slice(0, 50)
+      ? parsed.filter((entry) => entry && Array.isArray(entry.changes)).slice(0, HISTORY_STORAGE_LIMIT)
       : [];
   } catch {
     state.cookingHistory = [];
@@ -4288,12 +4726,16 @@ function loadCookingHistory() {
 function persistCookingHistory() {
   if (!state.storageEnabled) return;
   try {
-    localStorage.setItem(COOKING_HISTORY_STORAGE_KEY, JSON.stringify(state.cookingHistory.slice(0, 50)));
+    localStorage.setItem(
+      COOKING_HISTORY_STORAGE_KEY,
+      JSON.stringify(state.cookingHistory.slice(0, HISTORY_STORAGE_LIMIT))
+    );
   } catch {
     markStorageUnavailable();
   }
   markSyncChanges();
   persistSyncMeta();
+  scheduleAutoSync();
 }
 
 function escapeHtml(value) {
@@ -4791,6 +5233,7 @@ function renderInventory() {
   ensureInventoryShelves();
   const active = activeInventory();
   const filtered = active.filter((item) => state.location === "すべて" || item.location === state.location);
+  renderExpiryAlerts(active);
   renderFridgeScene(active);
 
   if (!filtered.length) {
@@ -4814,6 +5257,36 @@ function renderInventory() {
       <button class="restore-button" type="button" data-action="restore" data-id="${escapeHtml(item.id)}">戻す</button>
     </div>
   `).join("");
+  scheduleInventoryScrollLock();
+}
+
+function renderExpiryAlerts(active) {
+  const alerts = active
+    .map((item) => ({ item, status: expiryAlertState(item.expiryDate) }))
+    .filter(({ status }) => status)
+    .sort((a, b) => a.status.days - b.status.days || a.item.name.localeCompare(b.item.name, "ja"));
+
+  elements.expiryAlert.hidden = alerts.length === 0;
+  if (!alerts.length) {
+    elements.expiryAlertList.innerHTML = "";
+    return;
+  }
+
+  const expiredCount = alerts.filter(({ status }) => status.kind === "expired").length;
+  elements.expiryAlertTitle.textContent = expiredCount
+    ? "期限を過ぎた食材があります"
+    : "賞味期限が近い食材があります";
+  elements.expiryAlertSummary.textContent = `${alerts.length}品`;
+  elements.expiryAlertList.innerHTML = alerts.map(({ item, status }) => `
+    <button class="expiry-alert-item is-${status.kind}" type="button" data-expiry-edit="${escapeHtml(item.id)}">
+      ${renderIngredientIllustration(item.id, item.name)}
+      <span class="expiry-alert-copy">
+        <strong>${escapeHtml(item.name)}</strong>
+        <small>賞味期限 ${escapeHtml(formatExpiryDate(item.expiryDate))}</small>
+      </span>
+      <span class="expiry-alert-state">${escapeHtml(status.label)}</span>
+    </button>
+  `).join("");
 }
 
 function inventoryLevel(item) {
@@ -4832,10 +5305,16 @@ function inventoryLevelState(item) {
   return { label: "まだあります", width: 100, className: "" };
 }
 
-// 料理の完成イラスト。食材と同じアトラスの切り出し方で、無ければ空文字
+// 料理の完成イラスト。完成絵が準備中の追加レシピは主役食材を代わりに見せる。
 function renderRecipeIllustration(recipeId) {
   const illustration = RECIPE_ILLUSTRATIONS[recipeId];
-  if (!illustration) return "";
+  if (!illustration) {
+    const fallbackId = RECIPE_ILLUSTRATION_FALLBACKS[recipeId];
+    const item = fallbackId ? illustratedIngredientItem(fallbackId) : null;
+    return item
+      ? `<span class="recipe-illustration-fallback" aria-hidden="true">${renderIngredientIllustration(item.id, item.name, true)}</span>`
+      : "";
+  }
   const [column, row, sheet] = illustration;
   const x = ((4.4 * ((column + 0.5) / 4) - 0.5) / 3.4) * 100;
   const y = ((3.3 * ((row + 0.5) / 3) - 0.5) / 2.3) * 100;
@@ -4844,10 +5323,13 @@ function renderRecipeIllustration(recipeId) {
 
 function renderFridgeFood(item) {
   const state3 = inventoryLevelState(item);
+  const expiry = expiryAlertState(item.expiryDate);
+  const expiryLabel = expiry ? `、賞味期限${expiry.label}` : "";
   return `
-    <button class="fridge-food${item.priority ? " is-priority" : ""}" type="button" data-fridge-edit="${escapeHtml(item.id)}" data-drag-item="${escapeHtml(item.id)}" aria-label="${escapeHtml(item.name)}、${state3.label}。タップで在庫を編集、長押しで棚を移動">
+    <button class="fridge-food${item.priority ? " is-priority" : ""}${expiry ? ` is-expiry-${expiry.kind}` : ""}" type="button" data-fridge-edit="${escapeHtml(item.id)}" data-drag-item="${escapeHtml(item.id)}" aria-label="${escapeHtml(item.name)}、${state3.label}${expiryLabel}。タップで在庫を編集、長押しで棚を移動">
       <span class="food-hp-gauge${state3.className}" aria-hidden="true"><span style="--food-level:${state3.width}%"></span></span>
       ${renderIngredientIllustration(item.id, item.name)}
+      ${expiry ? `<span class="food-expiry-badge is-${expiry.kind}" aria-hidden="true">${expiry.kind === "expired" ? "!" : expiry.days}</span>` : ""}
     </button>
   `;
 }
@@ -4995,6 +5477,10 @@ function renderFridgeScene(active) {
 
 function renderInventoryRow(item) {
   const confirmation = confirmationLabel(item);
+  const expiry = expiryAlertState(item.expiryDate);
+  const expiryText = normalizedExpiryDate(item.expiryDate)
+    ? `賞味期限 ${formatExpiryDate(item.expiryDate)}${expiry ? `・${expiry.label}` : ""}`
+    : "賞味期限 未設定";
   return `
     <article class="inventory-row${item.priority ? " is-priority" : ""}">
       <div class="item-identity">
@@ -5004,6 +5490,7 @@ function renderInventoryRow(item) {
           <span class="item-meta${confirmation.stale ? " is-stale" : ""}">
             ${escapeHtml(item.location)}・${confirmation.text}${item.priority ? '<strong>・先に使う</strong>' : ""}
           </span>
+          <span class="item-expiry${expiry ? ` is-${expiry.kind}` : ""}">${escapeHtml(expiryText)}</span>
           ${renderChangeAttribution("item", item.id)}
         </button>
       </div>
@@ -5017,7 +5504,7 @@ function renderInventoryRow(item) {
       <div class="row-actions">
         <button class="row-action" type="button" data-action="confirm" data-id="${escapeHtml(item.id)}">まだある</button>
         <button class="row-action${item.priority ? " is-priority" : ""}" type="button" data-action="priority" data-id="${escapeHtml(item.id)}">${item.priority ? "優先を解除" : "先に使う"}</button>
-        <button class="row-action" type="button" data-action="consume" data-id="${escapeHtml(item.id)}">履歴あり削除</button>
+        <button class="row-action" type="button" data-action="consume" data-id="${escapeHtml(item.id)}">使い切った</button>
         <button class="row-action is-delete" type="button" data-action="delete" data-id="${escapeHtml(item.id)}">完全削除</button>
       </div>
     </article>
@@ -5502,6 +5989,49 @@ function closeTodayIngredientDialog() {
   if (elements.todayIngredientDialog.open) elements.todayIngredientDialog.close();
 }
 
+function seasonalRecipeState(recipe, date = new Date()) {
+  const month = date.getMonth() + 1;
+  const seasonalIds = new Set(SEASONAL_INGREDIENTS[month] || []);
+  const explicit = (SEASONAL_RECIPE_MONTHS[recipe.id] || []).includes(month);
+  const ingredientHits = [...recipe.required, ...recipe.optional]
+    .filter((ingredient) => seasonalIds.has(ingredient.id)).length;
+  return {
+    month,
+    explicit,
+    ingredientHits,
+    boost: (explicit ? 14 : 0) + Math.min(ingredientHits, 3) * 3
+  };
+}
+
+function renderSeasonalGuide() {
+  const month = new Date().getMonth() + 1;
+  const inventoryIds = new Set(activeInventory().flatMap((item) => {
+    const generic = SUBSTITUTE_GENERICS.get(item.id);
+    return generic ? [item.id, generic] : [item.id];
+  }));
+  const items = (SEASONAL_INGREDIENTS[month] || [])
+    .map((id) => illustratedIngredientItem(id))
+    .filter(Boolean);
+  elements.seasonalGuide.innerHTML = `
+    <div class="seasonal-guide-heading">
+      <div>
+        <span>${month}月</span>
+        <strong>この時期のおすすめ</strong>
+      </div>
+      <small>旬は地域や品種で前後します</small>
+    </div>
+    <div class="seasonal-food-list">
+      ${items.map((item) => `
+        <span class="seasonal-food${inventoryIds.has(item.id) ? " is-stocked" : ""}">
+          ${renderIngredientIllustration(item.id, item.name, true)}
+          <span>${escapeHtml(item.name)}</span>
+          ${inventoryIds.has(item.id) ? "<em>在庫あり</em>" : ""}
+        </span>
+      `).join("")}
+    </div>
+  `;
+}
+
 function recipeScore(recipe) {
   const shortagePenalty = shortageFor(recipe, RECIPE_LIST_SERVINGS).length * 100;
   // 「先に使う」を指定した食材が部位・商品のときは、総称の要求にも効かせる
@@ -5513,12 +6043,14 @@ function recipeScore(recipe) {
   });
   const priorityUse = [...recipe.required, ...recipe.optional].filter((ingredient) => priorityIds.has(ingredient.id)).length;
   const priorityBoost = priorityUse * 40;
-  if (state.priority === "quick") return priorityBoost + 30 - recipe.minutes - shortagePenalty;
-  return priorityBoost + 50 - shortagePenalty - recipe.minutes / 10;
+  const seasonBoost = seasonalRecipeState(recipe).boost;
+  if (state.priority === "quick") return priorityBoost + seasonBoost + 30 - recipe.minutes - shortagePenalty;
+  return priorityBoost + seasonBoost + 50 - shortagePenalty - recipe.minutes / 10;
 }
 
 function renderRecipes() {
   renderTodayIngredientControl();
+  renderSeasonalGuide();
   const ordered = [...RECIPES].sort((a, b) => recipeScore(b) - recipeScore(a));
   const visibleCount = Math.min(state.visibleRecipeCount, ordered.length);
   const visible = ordered.slice(0, visibleCount);
@@ -5546,6 +6078,7 @@ function renderRecipe(recipe, index) {
   `).join("");
   const quickSteps = (RECIPE_STEPS[recipe.id] || []).map((step) => `<li>${escapeHtml(step)}</li>`).join("");
   const nutrition = estimateRecipeNutrition(recipe);
+  const seasonal = seasonalRecipeState(recipe);
 
   const requiredLines = recipe.required.map((requirement) => {
     const stock = stockForRequirement(requirement);
@@ -5589,13 +6122,14 @@ function renderRecipe(recipe, index) {
         <div>
           <p class="recipe-rank">${featured ? "今日のおすすめ" : "ほかの候補"}</p>
           <h3>${escapeHtml(recipe.name)}</h3>
+          ${seasonal.explicit ? `<span class="recipe-season-badge">${seasonal.month}月のおすすめ</span>` : ""}
         </div>
         <nav class="recipe-search-links" aria-label="${escapeHtml(recipe.name)}を外部サイトで検索">
           <a class="recipe-search-link is-google" href="${googleSearchUrl}" target="_blank" rel="noopener noreferrer" aria-label="${escapeHtml(recipe.name)}をGoogleで検索" title="Googleで検索">
-            <span aria-hidden="true">G</span>
+            <span class="recipe-search-icon is-magnifier" aria-hidden="true"></span>
           </a>
           <a class="recipe-search-link is-youtube" href="${youtubeSearchUrl}" target="_blank" rel="noopener noreferrer" aria-label="${escapeHtml(recipe.name)}をYouTubeで検索" title="YouTubeで検索">
-            <span aria-hidden="true">▶</span>
+            <span class="recipe-search-icon is-youtube-play" aria-hidden="true"></span>
           </a>
         </nav>
       </div>
@@ -5675,44 +6209,143 @@ function renderChangeAttribution(kind, id) {
   return text ? `<span class="change-attribution">${escapeHtml(text)}</span>` : "";
 }
 
-function renderCookingHistory() {
-  if (!state.cookingHistory.length) {
-    elements.cookingHistoryList.innerHTML = `
-      <div class="history-empty">
-        <span aria-hidden="true">♨</span>
-        <p><strong>まだ調理履歴はありません</strong><br>おすすめから料理を作ると、ここに記録されます。</p>
-      </div>
-    `;
-    return;
-  }
+function historyEntryType(entry) {
+  return entry?.type || "cooking";
+}
 
-  elements.cookingHistoryList.innerHTML = state.cookingHistory.map((entry) => {
-    const undone = Boolean(entry.undoneAt);
-    const changes = entry.changes.map((change) => `
+function historyEntryTime(entry) {
+  return entry?.occurredAt || entry?.cookedAt;
+}
+
+function adjustmentSummary(change) {
+  const before = change.before || {};
+  const after = change.after || {};
+  const parts = [];
+  if (before.name !== after.name) parts.push(`${before.name || "名称なし"} → ${after.name || "名称なし"}`);
+  if (before.quantity !== after.quantity || before.unit !== after.unit) {
+    parts.push(`${formatQuantity(before.quantity, before.unit)} → ${formatQuantity(after.quantity, after.unit)}`);
+  }
+  if (before.location !== after.location) parts.push(`${before.location || "場所不明"} → ${after.location || "場所不明"}`);
+  if (before.expiryDate !== after.expiryDate) {
+    const beforeDate = before.expiryDate ? formatExpiryDate(before.expiryDate) : "未設定";
+    const afterDate = after.expiryDate ? formatExpiryDate(after.expiryDate) : "未設定";
+    parts.push(`賞味期限 ${beforeDate} → ${afterDate}`);
+  }
+  if (before.active !== after.active) parts.push(after.active === false ? "在庫から外した" : "在庫へ戻した");
+  return parts.join("・") || "在庫情報を確認";
+}
+
+function historyMonthKey(entry) {
+  const date = new Date(historyEntryTime(entry));
+  if (Number.isNaN(date.getTime())) return "unknown";
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function historyMonthLabel(entry) {
+  const date = new Date(historyEntryTime(entry));
+  if (Number.isNaN(date.getTime())) return "日付不明";
+  return new Intl.DateTimeFormat("ja-JP", {
+    year: "numeric",
+    month: "long"
+  }).format(date);
+}
+
+function renderHistoryEntry(entry) {
+  const type = historyEntryType(entry);
+  const undone = Boolean(entry.undoneAt);
+  const isCooking = type === "cooking";
+  const isAdjustment = type === "adjustment";
+  const changes = isAdjustment
+    ? ""
+    : entry.changes.map((change) => `
       <li>
         ${renderIngredientIllustration(change.itemId, change.name, true)}
         <span>${escapeHtml(change.name)}</span>
         <strong>−${formatQuantity(change.quantity, change.unit)}</strong>
       </li>
     `).join("");
-
-    return `
-      <article class="history-entry${undone ? " is-undone" : ""}">
-        <div class="history-entry-heading">
-          <div>
-            <p class="history-time">${escapeHtml(formatCookingTime(entry.cookedAt))}・${Number(entry.servings) || 1}人分</p>
-            <h3>${escapeHtml(entry.recipeName)}</h3>
-            ${renderChangeAttribution("cooking", entry.id)}
-          </div>
-          <span class="history-state">${undone ? "取り消し済み" : "在庫に反映済み"}</span>
-        </div>
-        <ul class="history-changes" aria-label="減った食材">${changes}</ul>
+  const title = isCooking
+    ? entry.recipeName
+    : entry.title || entry.changes?.[0]?.name || "在庫の変更";
+  const stateLabel = undone
+    ? "取り消し済み"
+    : isCooking
+      ? (entry.editedAt ? "修正済み" : "在庫に反映済み")
+      : type === "discard"
+        ? "廃棄"
+        : type === "consume"
+          ? "使い切り"
+          : "在庫修正";
+  const timeSuffix = isCooking ? `・${Number(entry.servings) || 1}人分` : "";
+  const adjustment = isAdjustment
+    ? `<p class="history-summary">${escapeHtml(adjustmentSummary(entry.changes[0] || {}))}</p>`
+    : `<ul class="history-changes" aria-label="減った食材">${changes}</ul>`;
+  const actions = isCooking
+    ? `<div class="history-entry-actions">
+        <button class="history-edit-button" type="button" data-history-edit="${escapeHtml(entry.id)}"${undone ? " disabled" : ""}>使った食材を修正</button>
         <button class="history-undo-button" type="button" data-history-undo="${escapeHtml(entry.id)}"${undone ? " disabled" : ""}>
           ${undone ? "取り消しました" : "この調理を取り消す"}
         </button>
-      </article>
+      </div>`
+    : "";
+
+  return `
+    <article class="history-entry is-${escapeHtml(type)}${undone ? " is-undone" : ""}">
+      <div class="history-entry-heading">
+        <div>
+          <p class="history-time">${escapeHtml(formatCookingTime(historyEntryTime(entry)))}${timeSuffix}</p>
+          <h3>${escapeHtml(title)}</h3>
+          ${renderChangeAttribution("cooking", entry.id)}
+        </div>
+        <span class="history-state">${stateLabel}</span>
+      </div>
+      ${adjustment}
+      ${actions}
+    </article>
+  `;
+}
+
+function renderCookingHistory() {
+  if (!state.cookingHistory.length) {
+    elements.cookingHistoryList.innerHTML = `
+      <div class="history-empty">
+        <span aria-hidden="true">♨</span>
+        <p><strong>まだ履歴はありません</strong><br>調理・使い切り・廃棄・在庫の修正がここに記録されます。</p>
+      </div>
     `;
-  }).join("");
+    return;
+  }
+
+  const orderedHistory = [...state.cookingHistory].sort((a, b) => {
+    const aTime = Date.parse(historyEntryTime(a)) || 0;
+    const bTime = Date.parse(historyEntryTime(b)) || 0;
+    return bTime - aTime;
+  });
+  const visibleCount = Math.min(state.historyVisibleCount, orderedHistory.length);
+  const groups = [];
+  orderedHistory.slice(0, visibleCount).forEach((entry) => {
+    const key = historyMonthKey(entry);
+    let group = groups.at(-1);
+    if (!group || group.key !== key) {
+      group = { key, label: historyMonthLabel(entry), entries: [] };
+      groups.push(group);
+    }
+    group.entries.push(entry);
+  });
+  const remaining = orderedHistory.length - visibleCount;
+  const months = groups.map((group) => `
+    <section class="history-month" aria-labelledby="history-month-${escapeHtml(group.key)}">
+      <h3 class="history-month-title" id="history-month-${escapeHtml(group.key)}">${escapeHtml(group.label)}</h3>
+      <div class="history-month-entries">${group.entries.map(renderHistoryEntry).join("")}</div>
+    </section>
+  `).join("");
+  const more = remaining > 0
+    ? `<button class="history-more-button" type="button" data-history-more>
+        <span>さらに${Math.min(HISTORY_PAGE_SIZE, remaining)}件見る</span>
+        <small>${visibleCount} / ${state.cookingHistory.length}件を表示</small>
+      </button>`
+    : `<p class="history-count-note">${state.cookingHistory.length}件すべて表示しています</p>`;
+  elements.cookingHistoryList.innerHTML = months + more;
 }
 
 // ---- 初回登録 ------------------------------------------------------------
@@ -5916,6 +6549,32 @@ function showView(viewName) {
   if (viewName === "shopping") renderShopping();
   if (viewName === "history") renderCookingHistory();
   window.scrollTo({ top: 0, behavior: "auto" });
+  scheduleInventoryScrollLock();
+}
+
+let inventoryScrollLockFrame = 0;
+
+function updateInventoryScrollLock() {
+  inventoryScrollLockFrame = 0;
+  const shell = document.querySelector(".app-shell");
+  const inventoryIsVisible = !elements.inventoryView.hidden && !elements.bottomNav.hidden;
+  const viewportHeight = Math.floor(window.visualViewport?.height || window.innerHeight);
+  // fixed のナビは文書高に入らないが、main の余白で同じ高さを確保している。
+  // scrollHeight が表示領域以下なら、縦パン自体を止めてiOSの端の揺れも出さない。
+  const fits = Boolean(
+    shell
+    && inventoryIsVisible
+    && Math.ceil(shell.scrollHeight) <= viewportHeight + 2
+  );
+
+  if (fits && window.scrollY) window.scrollTo({ top: 0, behavior: "auto" });
+  document.documentElement.classList.toggle("is-inventory-fit", fits);
+  document.body.classList.toggle("is-inventory-fit", fits);
+}
+
+function scheduleInventoryScrollLock() {
+  if (inventoryScrollLockFrame) cancelAnimationFrame(inventoryScrollLockFrame);
+  inventoryScrollLockFrame = requestAnimationFrame(updateInventoryScrollLock);
 }
 
 function normalizedReceiptLine(value) {
@@ -6279,6 +6938,7 @@ function addOrMergeInventoryItem({
   unit,
   location,
   priority = false,
+  expiryDate = null,
   shelf = null,
   confidence = QUANTITY_CONFIRMED
 }) {
@@ -6300,6 +6960,7 @@ function addOrMergeInventoryItem({
     existing.unit = unit;
     existing.location = location;
     existing.priority = existing.priority || priority;
+    if (expiryDate !== null) existing.expiryDate = normalizedExpiryDate(expiryDate);
     existing.active = true;
     existing.confirmedAt = todayIso();
     existing.step = stepForUnit(unit);
@@ -6326,6 +6987,7 @@ function addOrMergeInventoryItem({
     maxQuantity: quantity,
     quantityConfidence: confidence
   };
+  item.expiryDate = expiryDate === null ? "" : normalizedExpiryDate(expiryDate);
   if (Number.isInteger(shelf)) item.shelf = shelf;
   state.inventory.push(item);
   return "added";
@@ -6392,7 +7054,7 @@ function openIngredientDialog(item = null, preferredLocation = null, preferredSh
   elements.ingredientDetails.hidden = true;
   elements.selectedIngredientPreview.hidden = true;
   elements.ingredientNameField.hidden = false;
-  elements.ingredientReceiptShortcut.hidden = Boolean(item);
+  elements.ingredientAddShortcuts.hidden = Boolean(item);
   if (item) {
     showIngredientDetails({ editing: true });
     elements.dialogTitle.textContent = `${item.name}の在庫`;
@@ -6401,8 +7063,10 @@ function openIngredientDialog(item = null, preferredLocation = null, preferredSh
     elements.ingredientQuantity.value = item.quantity;
     elements.ingredientUnit.value = item.unit;
     elements.ingredientLocation.value = item.location;
+    elements.ingredientExpiry.value = normalizedExpiryDate(item.expiryDate);
     elements.ingredientPriority.checked = item.priority;
     elements.consumeIngredient.hidden = false;
+    elements.discardIngredient.hidden = false;
     elements.deleteIngredient.hidden = false;
   } else {
     const hasShelfTarget = (
@@ -6429,7 +7093,9 @@ function openIngredientDialog(item = null, preferredLocation = null, preferredSh
     elements.ingredientQuantity.value = 1;
     elements.ingredientUnit.value = "個";
     elements.ingredientLocation.value = preferredLocation || (state.location === "すべて" ? "冷蔵" : state.location);
+    elements.ingredientExpiry.value = "";
     elements.consumeIngredient.hidden = true;
+    elements.discardIngredient.hidden = true;
     elements.deleteIngredient.hidden = true;
     showIngredientCategoryLayer();
   }
@@ -6465,6 +7131,7 @@ function saveIngredient(event) {
   const quantity = Number(elements.ingredientQuantity.value);
   const unit = elements.ingredientUnit.value;
   const location = elements.ingredientLocation.value;
+  const expiryDate = normalizedExpiryDate(elements.ingredientExpiry.value);
   if (!name || !Number.isFinite(quantity) || quantity <= 0) return;
   if (updateIngredientNameSuggestion()) {
     elements.acceptIngredientName.focus();
@@ -6475,6 +7142,7 @@ function saveIngredient(event) {
   if (editingId) {
     const item = state.inventory.find((candidate) => candidate.id === editingId);
     if (item) {
+      const before = { ...item };
       const maxQuantity = item.unit === unit
         ? Math.max(Number(item.maxQuantity) || 0, quantity)
         : quantity;
@@ -6484,6 +7152,7 @@ function saveIngredient(event) {
         quantity,
         unit,
         location,
+        expiryDate,
         priority: elements.ingredientPriority.checked,
         active: true,
         confirmedAt: todayIso(),
@@ -6492,6 +7161,7 @@ function saveIngredient(event) {
         // 本人が数量欄を見て保存したので、量は確認済みになる
         quantityConfidence: QUANTITY_CONFIRMED
       });
+      recordInventoryAdjustment(before, item);
       showToast(`${name}を更新しました`);
     }
   } else {
@@ -6504,6 +7174,9 @@ function saveIngredient(event) {
       quantity,
       unit,
       location,
+      // 既存品への追加で空欄なら、登録済みの期限を消さない。
+      // 期限を解除するときは、その食材を編集して空欄で保存する。
+      expiryDate: expiryDate || null,
       priority: elements.ingredientPriority.checked,
       shelf: targetShelf
     });
@@ -6512,33 +7185,49 @@ function saveIngredient(event) {
   }
 
   persistInventory();
+  persistCookingHistory();
   renderAll();
   closeIngredientDialog();
 }
 
-function updateItem(id, updater) {
+function updateItem(id, updater, { recordHistory = false } = {}) {
   const item = state.inventory.find((candidate) => candidate.id === id);
   if (!item) return;
+  const before = { ...item };
   updater(item);
+  if (recordHistory) recordInventoryAdjustment(before, item);
   persistInventory();
+  if (recordHistory) persistCookingHistory();
   renderAll();
 }
 
-function consumeItem(item, message = `${item.name}を履歴へ移しました`) {
+function removeInventoryItemWithHistory(item, type, message) {
   const snapshot = { ...item };
   item.active = false;
   item.consumedAt = todayIso();
+  const entry = recordDepletionHistory(item, snapshot, type);
   state.lastUndo = () => {
     Object.keys(item).forEach((key) => {
       if (!(key in snapshot)) delete item[key];
     });
     Object.assign(item, snapshot);
+    entry.undoneAt = new Date().toISOString();
     persistInventory();
+    persistCookingHistory();
     renderAll();
   };
   persistInventory();
+  persistCookingHistory();
   renderAll();
   showToast(message, true);
+}
+
+function consumeItem(item, message = `${item.name}を使い切りとして履歴へ記録しました`) {
+  removeInventoryItemWithHistory(item, "consume", message);
+}
+
+function discardItem(item) {
+  removeInventoryItemWithHistory(item, "discard", `${item.name}を廃棄として履歴へ記録しました`);
 }
 
 function deleteItem(item) {
@@ -6569,17 +7258,82 @@ function consumeCurrentIngredient() {
   consumeItem(item);
 }
 
+function discardCurrentIngredient() {
+  const item = state.inventory.find((candidate) => candidate.id === elements.ingredientId.value);
+  if (!item) return;
+  closeIngredientDialog();
+  discardItem(item);
+}
+
 function restoreItem(id) {
   updateItem(id, (item) => {
     item.active = true;
     item.confirmedAt = todayIso();
     delete item.consumedAt;
+  }, { recordHistory: true });
+}
+
+function makeCookingHistoryId(type = "cooking") {
+  if (globalThis.crypto?.randomUUID) return `${type}-${crypto.randomUUID()}`;
+  return `${type}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function addHistoryEntry(entry) {
+  state.cookingHistory.unshift(entry);
+  state.cookingHistory = state.cookingHistory.slice(0, HISTORY_STORAGE_LIMIT);
+  return entry;
+}
+
+function inventoryHistoryComparable(item) {
+  return {
+    name: item?.name || "",
+    quantity: Number(item?.quantity) || 0,
+    unit: item?.unit || "",
+    location: item?.location || "",
+    expiryDate: normalizedExpiryDate(item?.expiryDate),
+    active: item?.active !== false
+  };
+}
+
+function recordInventoryAdjustment(before, after) {
+  const beforeComparable = inventoryHistoryComparable(before);
+  const afterComparable = inventoryHistoryComparable(after);
+  if (JSON.stringify(beforeComparable) === JSON.stringify(afterComparable)) return null;
+  const occurredAt = new Date().toISOString();
+  return addHistoryEntry({
+    id: makeCookingHistoryId("adjustment"),
+    type: "adjustment",
+    title: `${afterComparable.name || beforeComparable.name}を修正`,
+    occurredAt,
+    cookedAt: occurredAt,
+    undoneAt: null,
+    changes: [{
+      itemId: after?.id || before?.id,
+      name: afterComparable.name || beforeComparable.name,
+      before: beforeComparable,
+      after: afterComparable
+    }]
   });
 }
 
-function makeCookingHistoryId() {
-  if (globalThis.crypto?.randomUUID) return `cooking-${crypto.randomUUID()}`;
-  return `cooking-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+function recordDepletionHistory(item, snapshot, type) {
+  const occurredAt = new Date().toISOString();
+  const label = type === "discard" ? "廃棄" : "使い切り";
+  return addHistoryEntry({
+    id: makeCookingHistoryId(type),
+    type,
+    title: `${snapshot.name}を${label}`,
+    occurredAt,
+    cookedAt: occurredAt,
+    undoneAt: null,
+    changes: [{
+      itemId: item.id,
+      name: snapshot.name,
+      unit: snapshot.unit,
+      quantity: Number(snapshot.quantity) || 0,
+      snapshot
+    }]
+  });
 }
 
 function undoCookingHistoryEntry(historyId) {
@@ -6631,6 +7385,92 @@ function setServings(servings, { render = true } = {}) {
   state.servings = next;
   if (render) renderRecipes();
   return true;
+}
+
+function baseCookUsage(recipe, servings) {
+  const ingredients = [...recipe.required];
+  recipe.optional.forEach((option) => {
+    const key = `${recipe.id}:${option.id}`;
+    if (optionalReady(option, servings) && state.selectedOptionals[key] !== false) ingredients.push(option);
+  });
+
+  const usage = new Map();
+  ingredients.forEach((ingredient) => {
+    const stock = stockForRequirement(ingredient);
+    if (!stock) return;
+    const quantity = Number(((ingredient.quantity * servings) / stock.ratio).toFixed(2));
+    const existing = usage.get(stock.item.id);
+    if (existing) existing.quantity = Number((existing.quantity + quantity).toFixed(2));
+    else usage.set(stock.item.id, { item: stock.item, quantity });
+  });
+  return usage;
+}
+
+function cookExtraAvailable(itemId, recipe, servings) {
+  const item = state.inventory.find((candidate) => candidate.id === itemId && candidate.active !== false);
+  if (!item) return 0;
+  const base = baseCookUsage(recipe, servings).get(itemId)?.quantity || 0;
+  return Number(Math.max(0, (Number(item.quantity) || 0) - base).toFixed(2));
+}
+
+function syncCookExtraPicker(recipe, servings) {
+  const selected = new Set(state.pendingCookExtras.map((extra) => extra.itemId));
+  const choices = activeInventory().filter((item) => !selected.has(item.id));
+  const current = elements.cookExtraItem.value;
+  elements.cookExtraItem.innerHTML = choices.length
+    ? choices.map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.name)}</option>`).join("")
+    : '<option value="">追加できる在庫はありません</option>';
+  if (choices.some((item) => item.id === current)) elements.cookExtraItem.value = current;
+  const item = choices.find((candidate) => candidate.id === elements.cookExtraItem.value) || choices[0];
+  elements.cookExtraAdd.disabled = !item;
+  elements.cookExtraQuantity.disabled = !item;
+  if (!item) {
+    elements.cookExtraQuantity.value = "";
+    elements.cookExtraUnit.textContent = "";
+    return;
+  }
+  const available = cookExtraAvailable(item.id, recipe, servings);
+  const step = stepForUnit(item.unit);
+  elements.cookExtraQuantity.max = String(available);
+  if (!Number(elements.cookExtraQuantity.value) || current !== item.id) {
+    elements.cookExtraQuantity.value = String(Math.min(step, available));
+  }
+  elements.cookExtraUnit.textContent = item.unit;
+}
+
+function cookExtraIssues(recipe, servings) {
+  return state.pendingCookExtras.filter((extra) => {
+    const quantity = Number(extra.quantity);
+    return !Number.isFinite(quantity)
+      || quantity <= 0
+      || quantity > cookExtraAvailable(extra.itemId, recipe, servings);
+  });
+}
+
+function captureCookExtraQuantities() {
+  elements.cookExtraList.querySelectorAll("[data-cook-extra-quantity]").forEach((input) => {
+    const extra = state.pendingCookExtras.find((candidate) =>
+      candidate.itemId === input.dataset.cookExtraQuantity);
+    if (extra) extra.quantity = Number(input.value);
+  });
+}
+
+function renderCookExtras(recipe, servings) {
+  elements.cookExtraList.innerHTML = state.pendingCookExtras.map((extra) => {
+    const item = state.inventory.find((candidate) => candidate.id === extra.itemId);
+    const maximum = cookExtraAvailable(extra.itemId, recipe, servings);
+    return `
+      <li class="cook-extra-row">
+        <span>${escapeHtml(item?.name || extra.name)}</span>
+        <span class="quantity-with-unit">
+          <input type="number" min="0.01" max="${maximum}" step="any" value="${Number(extra.quantity)}" data-cook-extra-quantity="${escapeHtml(extra.itemId)}" aria-label="${escapeHtml(item?.name || extra.name)}を追加で使う量">
+          <span>${escapeHtml(extra.unit)}</span>
+        </span>
+        <button class="cook-extra-remove" type="button" data-cook-extra-remove="${escapeHtml(extra.itemId)}" aria-label="${escapeHtml(item?.name || extra.name)}を追加分から外す">×</button>
+      </li>
+    `;
+  }).join("");
+  syncCookExtraPicker(recipe, servings);
 }
 
 function updateCookConfirmation() {
@@ -6712,17 +7552,32 @@ function updateCookConfirmation() {
     <ul>${requiredRows}</ul>
     ${optionalRows ? `<h4>あるとより良い <small>使うものを選択</small></h4><ul>${optionalRows}</ul>` : ""}
   `;
-  const nutrition = estimateRecipeNutrition(recipe, servings, selectedIngredients);
+  renderCookExtras(recipe, servings);
+  const nutritionIngredients = [...selectedIngredients];
+  state.pendingCookExtras.forEach((extra) => {
+    const item = state.inventory.find((candidate) => candidate.id === extra.itemId);
+    if (item) nutritionIngredients.push({
+      id: item.id,
+      name: item.name,
+      quantity: Number(extra.quantity) / servings,
+      unit: item.unit
+    });
+  });
+  const nutrition = estimateRecipeNutrition(recipe, servings, nutritionIngredients);
   elements.cookConfirmNutrition.hidden = !state.settings.showNutrition;
   elements.cookConfirmNutrition.textContent = state.settings.showNutrition
     ? `合計目安 ${nutrition.kcal} kcal・P ${nutrition.p}g・F ${nutrition.f}g・C ${nutrition.c}g`
     : "";
 
-  const { shortages, unconfirmed, denied, canCook } =
+  const { shortages, unconfirmed, denied, canCook: baseCanCook } =
     cookBlockers(recipe, servings, state.cookAmountAnswers);
+  const extraIssues = cookExtraIssues(recipe, servings);
+  const canCook = baseCanCook && !extraIssues.length;
 
   elements.cookConfirmMessage.classList.toggle("is-missing", !canCook);
-  if (shortages.length) {
+  if (extraIssues.length) {
+    elements.cookConfirmMessage.textContent = `${extraIssues.map((extra) => extra.name).join("、")}の追加量が在庫を超えています。`;
+  } else if (shortages.length) {
     const missingText = shortages.map((requirement) => {
       const missing = Math.max(
         0,
@@ -6767,6 +7622,7 @@ function openCookConfirmation(recipeId) {
 
   state.pendingCookRecipeId = recipe.id;
   state.pendingCookServings = state.servings;
+  state.pendingCookExtras = [];
   state.cookAmountAnswers = {};
   elements.cookConfirmRecipe.textContent = recipe.name;
   updateCookConfirmation();
@@ -6781,6 +7637,7 @@ function openCookConfirmation(recipeId) {
 function closeCookConfirmation() {
   state.pendingCookRecipeId = null;
   state.pendingCookServings = state.servings;
+  state.pendingCookExtras = [];
   state.cookAmountAnswers = {};
   if (elements.cookConfirmDialog.open) elements.cookConfirmDialog.close();
 }
@@ -6794,10 +7651,12 @@ function confirmCookRecipe(event, { ignoreAmounts = false } = {}) {
   const recipe = RECIPES.find((candidate) => candidate.id === recipeId);
   if (!recipe) return;
 
+  captureCookExtraQuantities();
   const { shortages, denied } = cookBlockers(recipe, servings, state.cookAmountAnswers);
+  const extraIssues = cookExtraIssues(recipe, servings);
   // 「このまま作る」は足りないという答えを押し通す。数値で不足しているもの
   // （持っていない・明らかに足りない）は押し通せない
-  if (shortages.length || (!ignoreAmounts && denied.length)) {
+  if (shortages.length || extraIssues.length || (!ignoreAmounts && denied.length)) {
     updateCookConfirmation();
     return;
   }
@@ -6807,35 +7666,35 @@ function confirmCookRecipe(event, { ignoreAmounts = false } = {}) {
   // 「足りない」と答えたものは上げないので、不明のまま次回また確認する
   confirmUnknownAmounts(recipe, servings, state.cookAmountAnswers);
   setServings(servings, { render: false });
+  const extras = state.pendingCookExtras.map((extra) => ({ ...extra }));
   closeCookConfirmation();
-  cookRecipe(recipeId, servings);
+  cookRecipe(recipeId, servings, extras);
 }
 
-function cookRecipe(recipeId, servings = state.servings) {
+function cookRecipe(recipeId, servings = state.servings, extras = []) {
   const recipe = RECIPES.find((candidate) => candidate.id === recipeId);
   if (!recipe || shortageFor(recipe, servings).length) return;
 
-  const used = [...recipe.required];
-  recipe.optional.forEach((option) => {
-    const key = `${recipe.id}:${option.id}`;
-    if (optionalReady(option, servings) && state.selectedOptionals[key] !== false) used.push(option);
+  const usage = baseCookUsage(recipe, servings);
+  extras.forEach((extra) => {
+    const item = state.inventory.find((candidate) => candidate.id === extra.itemId);
+    if (!item || item.active === false || item.unit !== extra.unit) return;
+    const existing = usage.get(item.id);
+    if (existing) existing.quantity = Number((existing.quantity + Number(extra.quantity)).toFixed(2));
+    else usage.set(item.id, { item, quantity: Number(extra.quantity) });
   });
-
   const changes = [];
-  used.forEach((ingredient) => {
-    const stock = stockForRequirement(ingredient);
-    if (!stock) return;
-    const { item, ratio } = stock;
-    // レシピの単位で必要な量を、在庫側の単位へ戻してから引く
-    const quantity = Number(((ingredient.quantity * servings) / ratio).toFixed(2));
+  usage.forEach(({ item, quantity }) => {
+    const usedQuantity = Number(Math.min(Number(item.quantity) || 0, quantity).toFixed(2));
+    if (usedQuantity <= 0) return;
     changes.push({
       itemId: item.id,
       name: item.name,
       unit: item.unit,
-      quantity,
+      quantity: usedQuantity,
       snapshot: { ...item }
     });
-    item.quantity = Number(Math.max(0, item.quantity - quantity).toFixed(2));
+    item.quantity = Number(Math.max(0, item.quantity - usedQuantity).toFixed(2));
     // 引いたのはレシピ上の分量。実際に使った量とは違うので、残りは推定になる。
     // 翌日の確認でここを実物に合わせる（→ pendingDayAfterItems）
     item.quantityConfidence = QUANTITY_ESTIMATED;
@@ -6845,23 +7704,191 @@ function cookRecipe(recipeId, servings = state.servings) {
     }
   });
 
-  const historyEntry = {
+  const historyEntry = addHistoryEntry({
     id: makeCookingHistoryId(),
+    type: "cooking",
     recipeId: recipe.id,
     recipeName: recipe.name,
     servings,
     cookedAt: new Date().toISOString(),
     undoneAt: null,
     changes
-  };
-  state.cookingHistory.unshift(historyEntry);
-  state.cookingHistory = state.cookingHistory.slice(0, 50);
+  });
   state.lastUndo = () => undoCookingHistoryEntry(historyEntry.id);
   persistInventory();
   persistCookingHistory();
   renderAll();
   showView("inventory");
   showToast(`${recipe.name}を作った分だけ在庫を更新しました`, true);
+}
+
+function editableHistoryEntry() {
+  return state.cookingHistory.find((entry) => entry.id === state.editingHistoryId);
+}
+
+function historyEditMaximum(change) {
+  const item = state.inventory.find((candidate) => candidate.id === change.itemId);
+  const current = item && item.unit === change.unit ? Number(item.quantity) || 0 : 0;
+  const original = Number(change.originalQuantity ?? change.quantity) || 0;
+  return Number((original + current).toFixed(2));
+}
+
+function historyEditIssues() {
+  return state.historyEditChanges.filter((change) => {
+    const item = state.inventory.find((candidate) => candidate.id === change.itemId);
+    const quantity = Number(change.quantity);
+    return !Number.isFinite(quantity)
+      || quantity < 0
+      || quantity > historyEditMaximum(change)
+      || (item && item.unit !== change.unit);
+  });
+}
+
+function captureHistoryEditQuantities() {
+  elements.historyEditIngredients.querySelectorAll("[data-history-edit-quantity]").forEach((input) => {
+    const change = state.historyEditChanges.find((candidate) =>
+      candidate.itemId === input.dataset.historyEditQuantity);
+    if (change) change.quantity = Number(input.value);
+  });
+}
+
+function syncHistoryEditAddPicker() {
+  const selected = new Set(state.historyEditChanges.map((change) => change.itemId));
+  const choices = activeInventory().filter((item) => !selected.has(item.id));
+  const current = elements.historyEditAddItem.value;
+  elements.historyEditAddItem.innerHTML = choices.length
+    ? choices.map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.name)}</option>`).join("")
+    : '<option value="">追加できる在庫はありません</option>';
+  if (choices.some((item) => item.id === current)) elements.historyEditAddItem.value = current;
+  const item = choices.find((candidate) => candidate.id === elements.historyEditAddItem.value) || choices[0];
+  elements.historyEditAdd.disabled = !item;
+  elements.historyEditAddQuantity.disabled = !item;
+  if (!item) {
+    elements.historyEditAddQuantity.value = "";
+    elements.historyEditAddUnit.textContent = "";
+    return;
+  }
+  const step = stepForUnit(item.unit);
+  elements.historyEditAddQuantity.max = String(item.quantity);
+  if (!Number(elements.historyEditAddQuantity.value) || current !== item.id) {
+    elements.historyEditAddQuantity.value = String(Math.min(step, Number(item.quantity) || step));
+  }
+  elements.historyEditAddUnit.textContent = item.unit;
+}
+
+function renderHistoryEdit() {
+  const entry = editableHistoryEntry();
+  if (!entry) return;
+  elements.historyEditRecipe.textContent = `${entry.recipeName}・${Number(entry.servings) || 1}人分`;
+  elements.historyEditIngredients.innerHTML = state.historyEditChanges.map((change) => `
+    <div class="history-edit-row">
+      <span>${escapeHtml(change.name)}</span>
+      <span class="quantity-with-unit">
+        <input type="number" min="0" max="${historyEditMaximum(change)}" step="any" value="${Number(change.quantity)}" data-history-edit-quantity="${escapeHtml(change.itemId)}" aria-label="${escapeHtml(change.name)}を使った量">
+        <span>${escapeHtml(change.unit)}</span>
+      </span>
+      <button class="history-edit-remove" type="button" data-history-edit-remove="${escapeHtml(change.itemId)}" aria-label="${escapeHtml(change.name)}を使用食材から外す">×</button>
+    </div>
+  `).join("");
+  syncHistoryEditAddPicker();
+  const issues = historyEditIssues();
+  elements.saveHistoryEdit.disabled = Boolean(issues.length);
+  elements.historyEditMessage.classList.toggle("is-missing", Boolean(issues.length));
+  elements.historyEditMessage.textContent = issues.length
+    ? `${issues.map((change) => change.name).join("、")}の量または単位を確認してください。`
+    : "増やした分は在庫から減り、減らした分は在庫へ戻ります。";
+}
+
+function openHistoryEdit(historyId) {
+  const entry = state.cookingHistory.find((candidate) =>
+    candidate.id === historyId && historyEntryType(candidate) === "cooking" && !candidate.undoneAt);
+  if (!entry) return;
+  state.editingHistoryId = entry.id;
+  state.historyEditChanges = entry.changes.map((change) => ({
+    ...change,
+    snapshot: { ...change.snapshot },
+    originalQuantity: Number(change.quantity) || 0
+  }));
+  renderHistoryEdit();
+  elements.historyEditDialog.showModal();
+}
+
+function closeHistoryEdit() {
+  state.editingHistoryId = null;
+  state.historyEditChanges = [];
+  if (elements.historyEditDialog.open) elements.historyEditDialog.close();
+}
+
+function addHistoryEditIngredient() {
+  captureHistoryEditQuantities();
+  const item = state.inventory.find((candidate) =>
+    candidate.id === elements.historyEditAddItem.value && candidate.active !== false);
+  const quantity = Number(elements.historyEditAddQuantity.value);
+  if (!item || !Number.isFinite(quantity) || quantity <= 0 || quantity > item.quantity) {
+    elements.historyEditAddQuantity.reportValidity();
+    return;
+  }
+  state.historyEditChanges.push({
+    itemId: item.id,
+    name: item.name,
+    unit: item.unit,
+    quantity,
+    originalQuantity: 0,
+    snapshot: { ...item }
+  });
+  elements.historyEditAddQuantity.value = "";
+  renderHistoryEdit();
+}
+
+function saveHistoryEdit(event) {
+  event.preventDefault();
+  captureHistoryEditQuantities();
+  const entry = editableHistoryEntry();
+  if (!entry || entry.undoneAt || historyEditIssues().length) {
+    renderHistoryEdit();
+    return;
+  }
+
+  const originalById = new Map(entry.changes.map((change) => [change.itemId, change]));
+  const editedById = new Map(state.historyEditChanges.map((change) => [change.itemId, change]));
+  const ids = new Set([...originalById.keys(), ...editedById.keys()]);
+
+  for (const itemId of ids) {
+    const original = originalById.get(itemId);
+    const edited = editedById.get(itemId);
+    const oldQuantity = Number(original?.quantity) || 0;
+    const newQuantity = Number(edited?.quantity) || 0;
+    const unit = edited?.unit || original?.unit;
+    let item = state.inventory.find((candidate) => candidate.id === itemId);
+    if (item && item.unit !== unit) {
+      elements.historyEditMessage.textContent = `${item.name}の在庫単位が変わっているため修正できません。`;
+      elements.historyEditMessage.classList.add("is-missing");
+      return;
+    }
+    if (!item && newQuantity < oldQuantity) {
+      item = { ...original.snapshot, id: itemId, quantity: 0, active: false };
+      state.inventory.push(item);
+    }
+    const delta = Number((newQuantity - oldQuantity).toFixed(2));
+    if (!item || delta === 0) continue;
+    item.quantity = Number(Math.max(0, (Number(item.quantity) || 0) - delta).toFixed(2));
+    item.active = item.quantity > 0;
+    item.confirmedAt = todayIso();
+    item.quantityConfidence = QUANTITY_ESTIMATED;
+    if (item.active) delete item.consumedAt;
+    else item.consumedAt = todayIso();
+  }
+
+  entry.changes = state.historyEditChanges
+    .filter((change) => Number(change.quantity) > 0)
+    .map(({ originalQuantity, ...change }) => ({ ...change, quantity: Number(change.quantity) }));
+  entry.editedAt = new Date().toISOString();
+  state.lastUndo = null;
+  persistInventory();
+  persistCookingHistory();
+  closeHistoryEdit();
+  renderAll();
+  showToast(`${entry.recipeName}で使った食材を修正しました`);
 }
 
 function showToast(message, withUndo = false) {
@@ -7263,6 +8290,7 @@ function startReceiptScanFromDevice() {
 
 document.querySelector("#add-ingredient").addEventListener("click", () => openIngredientDialog());
 elements.openSettings.addEventListener("click", () => {
+  setNutritionHelpExpanded(false);
   elements.settingsDialog.showModal();
   requestAnimationFrame(() => elements.settingShowNutrition.focus());
 });
@@ -7271,10 +8299,13 @@ elements.closeSettings.addEventListener("click", () => elements.settingsDialog.c
 
 elements.settingShowNutrition.addEventListener("change", () => {
   state.settings.showNutrition = elements.settingShowNutrition.checked;
-  elements.settingsNutritionNote.hidden = !state.settings.showNutrition;
   persistSettings();
   renderRecipes();
   if (state.pendingCookRecipeId) updateCookConfirmation();
+});
+elements.nutritionHelp.addEventListener("click", () => {
+  const expanded = elements.nutritionHelp.getAttribute("aria-expanded") === "true";
+  setNutritionHelpExpanded(!expanded);
 });
 elements.deviceName.addEventListener("input", () => {
   state.device.name = elements.deviceName.value.slice(0, 30);
@@ -7291,6 +8322,7 @@ elements.ingredientReceiptShortcut.addEventListener("click", startReceiptScanFro
 document.querySelector("#close-dialog").addEventListener("click", closeIngredientDialog);
 document.querySelector("#cancel-dialog").addEventListener("click", closeIngredientDialog);
 document.querySelector("#consume-ingredient").addEventListener("click", consumeCurrentIngredient);
+document.querySelector("#discard-ingredient").addEventListener("click", discardCurrentIngredient);
 document.querySelector("#delete-ingredient").addEventListener("click", deleteCurrentIngredient);
 document.querySelector("#close-receipt-dialog").addEventListener("click", closeReceiptDialog);
 document.querySelector("#cancel-receipt-dialog").addEventListener("click", closeReceiptDialog);
@@ -7498,6 +8530,7 @@ elements.cookConfirmDialog.addEventListener("click", (event) => {
 elements.cookConfirmDialog.addEventListener("close", () => {
   state.pendingCookRecipeId = null;
   state.pendingCookServings = state.servings;
+  state.pendingCookExtras = [];
 });
 document.querySelector("#close-cook-confirm").addEventListener("click", closeCookConfirmation);
 document.querySelector("#cancel-cook-confirm").addEventListener("click", closeCookConfirmation);
@@ -7518,7 +8551,84 @@ elements.cookConfirmIngredients.addEventListener("change", (event) => {
   state.cookAmountAnswers[amount.dataset.cookAmount] = amount.checked;
   updateCookConfirmation();
 });
+elements.cookExtraItem.addEventListener("change", () => {
+  const recipe = RECIPES.find((candidate) => candidate.id === state.pendingCookRecipeId);
+  const item = state.inventory.find((candidate) => candidate.id === elements.cookExtraItem.value);
+  if (!recipe || !item) return;
+  const available = cookExtraAvailable(item.id, recipe, state.pendingCookServings);
+  const step = stepForUnit(item.unit);
+  elements.cookExtraQuantity.max = String(available);
+  elements.cookExtraQuantity.value = String(Math.min(step, available));
+  elements.cookExtraUnit.textContent = item.unit;
+});
+elements.cookExtraAdd.addEventListener("click", () => {
+  captureCookExtraQuantities();
+  const recipe = RECIPES.find((candidate) => candidate.id === state.pendingCookRecipeId);
+  const item = state.inventory.find((candidate) => candidate.id === elements.cookExtraItem.value);
+  const quantity = Number(elements.cookExtraQuantity.value);
+  if (!recipe || !item || !Number.isFinite(quantity) || quantity <= 0
+    || quantity > cookExtraAvailable(item.id, recipe, state.pendingCookServings)) {
+    elements.cookExtraQuantity.reportValidity();
+    return;
+  }
+  state.pendingCookExtras.push({ itemId: item.id, name: item.name, unit: item.unit, quantity });
+  elements.cookExtraQuantity.value = "";
+  updateCookConfirmation();
+});
+elements.cookExtraList.addEventListener("change", (event) => {
+  const input = event.target.closest("[data-cook-extra-quantity]");
+  if (!input) return;
+  const extra = state.pendingCookExtras.find((candidate) => candidate.itemId === input.dataset.cookExtraQuantity);
+  if (!extra) return;
+  extra.quantity = Number(input.value);
+  updateCookConfirmation();
+});
+elements.cookExtraList.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-cook-extra-remove]");
+  if (!button) return;
+  captureCookExtraQuantities();
+  state.pendingCookExtras = state.pendingCookExtras.filter((extra) =>
+    extra.itemId !== button.dataset.cookExtraRemove);
+  updateCookConfirmation();
+});
 elements.cookConfirmForm.addEventListener("submit", confirmCookRecipe);
+
+document.querySelector("#close-history-edit").addEventListener("click", closeHistoryEdit);
+document.querySelector("#cancel-history-edit").addEventListener("click", closeHistoryEdit);
+elements.historyEditDialog.addEventListener("cancel", (event) => {
+  event.preventDefault();
+  closeHistoryEdit();
+});
+elements.historyEditDialog.addEventListener("click", (event) => {
+  if (event.target === elements.historyEditDialog) closeHistoryEdit();
+});
+elements.historyEditAddItem.addEventListener("change", () => {
+  const item = state.inventory.find((candidate) => candidate.id === elements.historyEditAddItem.value);
+  if (!item) return;
+  const step = stepForUnit(item.unit);
+  elements.historyEditAddQuantity.max = String(item.quantity);
+  elements.historyEditAddQuantity.value = String(Math.min(step, Number(item.quantity) || step));
+  elements.historyEditAddUnit.textContent = item.unit;
+});
+elements.historyEditAdd.addEventListener("click", addHistoryEditIngredient);
+elements.historyEditIngredients.addEventListener("change", (event) => {
+  const input = event.target.closest("[data-history-edit-quantity]");
+  if (!input) return;
+  const change = state.historyEditChanges.find((candidate) =>
+    candidate.itemId === input.dataset.historyEditQuantity);
+  if (!change) return;
+  change.quantity = Number(input.value);
+  renderHistoryEdit();
+});
+elements.historyEditIngredients.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-history-edit-remove]");
+  if (!button) return;
+  captureHistoryEditQuantities();
+  state.historyEditChanges = state.historyEditChanges.filter((change) =>
+    change.itemId !== button.dataset.historyEditRemove);
+  renderHistoryEdit();
+});
+elements.historyEditForm.addEventListener("submit", saveHistoryEdit);
 
 // ---- 初回登録の操作 ------------------------------------------------------
 elements.onboardingLeads.addEventListener("click", (event) => {
@@ -7579,8 +8689,33 @@ elements.onboardingSkip.addEventListener("click", () => {
 const shareLinkFor = (fridgeId) =>
   `${location.origin}${location.pathname}#join=${fridgeId}`;
 
+function renderHeaderSync() {
+  const shared = Boolean(state.share.fridgeId);
+  elements.headerSync.hidden = !shared;
+  if (!shared) return;
+
+  const pending = pendingSyncChanges().length;
+  elements.headerSync.disabled = state.syncing;
+  elements.headerSync.classList.toggle("is-syncing", state.syncing);
+  elements.headerSync.classList.toggle("is-pending", !state.syncing && pending > 0);
+  elements.headerSyncLabel.textContent = state.syncing
+    ? "同期中"
+    : pending
+      ? "未同期"
+      : "同期";
+  elements.headerSync.setAttribute(
+    "aria-label",
+    state.syncing
+      ? "共有データを同期しています"
+      : pending
+        ? `未同期の変更が${pending}件あります。今すぐ同期する`
+        : "共有データを今すぐ同期する"
+  );
+}
+
 function renderShare() {
   const shared = Boolean(state.share.fridgeId);
+  renderHeaderSync();
 
   // ★共有していると「この端末のブラウザ内だけ」は事実と違う。約束を書き換える
   const notes = {
@@ -7588,8 +8723,10 @@ function renderShare() {
       "在庫データは、この端末と、共有している相手の端末で見られます。"],
     "privacy-note-shopping": ["買い物リストも、この端末のブラウザ内だけに保存されます。",
       "買い物リストも、共有している相手と同じものを見ています。"],
-    "privacy-note-history": ["調理履歴も、この端末のブラウザ内だけに保存されます。",
-      "調理履歴も、共有している相手と同じものを見ています。"]
+    "privacy-note-history": [
+      "履歴は月ごとにまとめ、最大1000件までこの端末に保存します。1000件を超えると古いものから整理されます。",
+      "履歴は共有相手と同じものを月ごとにまとめ、最大1000件まで保存します。1000件を超えると古いものから整理されます。"
+    ]
   };
   for (const note of elements.privacyNotes) {
     if (!note) continue;
@@ -7600,7 +8737,7 @@ function renderShare() {
   elements.shareOff.hidden = shared;
   elements.shareOn.hidden = !shared;
   elements.shareNote.textContent = shared
-    ? "この冷蔵庫は共有しています。開いたときと、画面に戻ったときに合わせます。"
+    ? "この冷蔵庫は共有しています。変更したあとと、画面に戻ったときに自動で合わせます。"
     : "同じ冷蔵庫を、相手のスマホからも見られるようにします。登録は要りません。";
   if (!shared) return;
   elements.shareLink.value = shareLinkFor(state.share.fridgeId);
@@ -7635,7 +8772,8 @@ function fridgeIdFrom(value) {
 }
 
 async function withShareBusy(label, run) {
-  const buttons = [elements.shareCreate, elements.shareJoinGo, elements.shareNow, elements.shareStop];
+  const buttons = [elements.shareCreate, elements.shareJoinGo, elements.shareNow,
+    elements.headerSync, elements.shareStop];
   buttons.forEach((button) => { button.disabled = true; });
   showShareMessage(label, "info");
   try {
@@ -7879,27 +9017,56 @@ elements.shareCopy.addEventListener("click", async () => {
 });
 
 elements.shareNow.addEventListener("click", async () => {
+  cancelScheduledAutoSync();
   const done = await withShareBusy("合わせています…", syncOnce);
   renderShare();
   if (done) showShareMessage("合わせました。", "info");
 });
 
+elements.headerSync.addEventListener("click", async () => {
+  cancelScheduledAutoSync();
+  const done = await withShareBusy("合わせています…", syncOnce);
+  renderShare();
+  showToast(done ? "同期しました" : elements.shareMessage.textContent);
+});
+
 elements.shareStop.addEventListener("click", () => {
+  cancelScheduledAutoSync();
   state.share = { fridgeId: "", seq: 0, syncedAt: "" };
   persistShare();
   renderShare();
   showShareMessage("この端末の共有をやめました。冷蔵庫の中身は残っています。", "info");
 });
 
-// 開いたとき・画面に戻ったときに合わせる。こまめに送らないのは、
-// 台所で1品ずつ触るたびに通信すると電池と通信量が無駄になるため
+function cancelScheduledAutoSync() {
+  if (autoSyncTimer === null) return;
+  clearTimeout(autoSyncTimer);
+  autoSyncTimer = null;
+}
+
+// 保存操作が連続したときは最後の操作から少し待ち、1回の通信へまとめる。
+// 同期で受け取った内容を保存している間は state.syncing が true なので再送しない。
+function scheduleAutoSync() {
+  if (!state.share.fridgeId || state.syncing) return;
+  cancelScheduledAutoSync();
+  renderHeaderSync();
+  autoSyncTimer = setTimeout(() => {
+    autoSyncTimer = null;
+    syncInBackground();
+  }, AUTO_SYNC_DELAY_MS);
+}
+
+// 開いたとき・画面に戻ったとき・保存操作のあとに合わせる。
 function syncInBackground() {
   if (!state.share.fridgeId || !navigator.onLine) return;
-  syncOnce().then(() => renderShare()).catch(() => {});
+  syncOnce().then(() => renderShare()).catch(() => renderHeaderSync());
 }
 
 document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible") syncInBackground();
+  if (document.visibilityState !== "visible") return;
+  // 日をまたいで開きっぱなしだった場合も、期限の残り日数を現在日に更新する。
+  renderInventory();
+  syncInBackground();
 });
 window.addEventListener("online", syncInBackground);
 
@@ -7944,7 +9111,10 @@ elements.importApply.addEventListener("click", () => {
   }
 });
 
-elements.openRefine.addEventListener("click", startRefine);
+elements.openRefine.addEventListener("click", () => {
+  if (elements.dialog.open) closeIngredientDialog();
+  startRefine();
+});
 
 elements.refineGrid.addEventListener("click", (event) => {
   const button = event.target.closest("[data-refine-pick]");
@@ -7985,6 +9155,15 @@ elements.sampleNoticeKeep.addEventListener("click", () => {
   state.settings.sampleNoticeDone = true;
   persistSettings();
   renderSampleNotice();
+});
+
+elements.expiryAlertList.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-expiry-edit]");
+  if (!button) return;
+  const item = state.inventory.find((candidate) => candidate.id === button.dataset.expiryEdit);
+  if (!item) return;
+  openIngredientDialog(item);
+  requestAnimationFrame(() => elements.ingredientExpiry.focus());
 });
 
 // 量が足りないと分かったときの逃げ道
@@ -8131,7 +9310,7 @@ elements.inventoryList.addEventListener("click", (event) => {
       current.maxQuantity = Math.max(Number(current.maxQuantity) || 0, current.quantity);
       current.confirmedAt = todayIso();
       current.quantityConfidence = QUANTITY_CONFIRMED;
-    });
+    }, { recordHistory: true });
   }
   if (button.dataset.action === "decrease") {
     const nextQuantity = Number((item.quantity - item.step).toFixed(2));
@@ -8142,7 +9321,7 @@ elements.inventoryList.addEventListener("click", (event) => {
         current.quantity = nextQuantity;
         current.confirmedAt = todayIso();
         current.quantityConfidence = QUANTITY_CONFIRMED;
-      });
+      }, { recordHistory: true });
     }
   }
   if (button.dataset.action === "confirm") {
@@ -8253,6 +9432,20 @@ elements.clearBought.addEventListener("click", () => {
 });
 
 elements.cookingHistoryList.addEventListener("click", (event) => {
+  const moreButton = event.target.closest("[data-history-more]");
+  if (moreButton) {
+    state.historyVisibleCount = Math.min(
+      state.historyVisibleCount + HISTORY_PAGE_SIZE,
+      state.cookingHistory.length
+    );
+    renderCookingHistory();
+    return;
+  }
+  const editButton = event.target.closest("[data-history-edit]");
+  if (editButton) {
+    openHistoryEdit(editButton.dataset.historyEdit);
+    return;
+  }
   const button = event.target.closest("[data-history-undo]");
   if (!button) return;
   undoCookingHistoryEntry(button.dataset.historyUndo);
@@ -8272,7 +9465,7 @@ loadSyncMeta();
 loadShare();
 loadSettings();
 elements.settingShowNutrition.checked = state.settings.showNutrition;
-elements.settingsNutritionNote.hidden = !state.settings.showNutrition;
+setNutritionHelpExpanded(false);
 loadShelfCounts();
 loadRecentIngredients();
 loadInventory();
@@ -8325,6 +9518,13 @@ function showViewFromHash() {
 
 showViewFromHash();
 window.addEventListener("hashchange", showViewFromHash);
+window.addEventListener("resize", scheduleInventoryScrollLock);
+window.visualViewport?.addEventListener("resize", scheduleInventoryScrollLock);
+if ("ResizeObserver" in window) {
+  const inventoryFitObserver = new ResizeObserver(scheduleInventoryScrollLock);
+  inventoryFitObserver.observe(elements.inventoryView);
+}
+scheduleInventoryScrollLock();
 
 // ここまでで最初の画面が組み上がっているので、起動の読み込み画面を消す。
 // index.html 側にも時間切れで消す安全弁があるので、ここが例外で

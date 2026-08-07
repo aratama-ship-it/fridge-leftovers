@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#f3f0e6">
-  <meta name="description" content="冷蔵庫の在庫を管理し、残っている食材から今日作れる料理を提案するスマホ向けプロトタイプ">
+  <meta name="description" content="冷蔵庫の在庫を管理し、残っている食材から今日作れる料理を提案するスマホ・タブレット対応アプリ">
   <title>冷蔵庫の現在地</title>
   <link rel="manifest" href="manifest.json?v=b750de2d">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32.png?v=a1371f08">
@@ -12,9 +12,9 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="冷蔵庫の現在地">
-  <link rel="stylesheet" href="styles.css?v=1a106711">
+  <link rel="stylesheet" href="styles.css?v=7fa5ea9f">
   <script src="vendor/tesseract/tesseract.min.js?v=7.0.0" defer></script>
-  <script src="app.js?v=9c5a493e" defer></script>
+  <script src="app.js?v=bc461ac6" defer></script>
   <!--
     起動の読み込み画面は、外部CSS（styles.css）が届く前から出したいので、
     ここだけ色を直書きしている（:root の変数に頼らない）。回線が細いときほど
@@ -78,13 +78,19 @@
     <p>読み込んでいます…</p>
   </div>
   <div class="app-shell">
-    <!-- タイトルは出さない（本人の指定）。バージョンと設定だけの細い帯にする -->
+    <!-- タイトルは出さない（本人の指定）。共有中は同期をすぐ押せる細い帯にする -->
     <header class="app-header" id="app-header">
       <h1 class="visually-hidden">冷蔵庫の現在地</h1>
       <p class="app-version" id="app-version" aria-label="アプリのバージョン"></p>
-      <button class="header-settings-button" type="button" id="open-settings" aria-label="設定" aria-haspopup="dialog" aria-controls="settings-dialog">
-        <span aria-hidden="true">⚙</span>
-      </button>
+      <div class="header-actions">
+        <button class="header-sync-button" type="button" id="header-sync" aria-label="共有データを今すぐ同期する" hidden>
+          <span class="header-sync-icon" aria-hidden="true">↻</span>
+          <span id="header-sync-label">同期</span>
+        </button>
+        <button class="header-settings-button" type="button" id="open-settings" aria-label="設定" aria-haspopup="dialog" aria-controls="settings-dialog">
+          <span aria-hidden="true">⚙</span>
+        </button>
+      </div>
     </header>
 
     <main>
@@ -134,6 +140,19 @@
           <button class="button button-secondary day-after-skip" type="button" id="day-after-skip">あとで</button>
         </section>
 
+        <!-- 期限が今日まで・3日以内・期限切れの食材だけを、操作を止めずに知らせる -->
+        <section class="expiry-alert" id="expiry-alert" aria-labelledby="expiry-alert-title" hidden>
+          <div class="expiry-alert-heading">
+            <div>
+              <p class="eyebrow">賞味期限のお知らせ</p>
+              <h3 id="expiry-alert-title">賞味期限が近い食材があります</h3>
+            </div>
+            <span id="expiry-alert-summary"></span>
+          </div>
+          <div class="expiry-alert-list" id="expiry-alert-list"></div>
+          <p class="expiry-alert-note">食材をタップすると、期限を変更できます。</p>
+        </section>
+
         <!-- 保存済みデータにサンプルの5品が残っている人へ、一度だけ出す -->
         <section class="sample-notice" id="sample-notice" hidden>
           <p class="eyebrow">はじめに入っていた食材</p>
@@ -145,15 +164,6 @@
             <button class="button button-primary" type="button" id="sample-notice-clear">片付ける</button>
           </div>
         </section>
-
-        <!-- 初回登録の続き。押すまで何も起きない -->
-        <button class="refine-entry" type="button" id="open-refine">
-          <span class="refine-entry-copy">
-            <strong>一覧から一度に追加する</strong>
-            <small id="refine-entry-note"></small>
-          </span>
-          <span class="refine-entry-mark" aria-hidden="true">→</span>
-        </button>
 
         <section class="fridge-visual" aria-labelledby="fridge-visual-title">
           <div class="fridge-visual-heading">
@@ -171,7 +181,7 @@
           <div>
             <p class="eyebrow">残量を正しく保つ</p>
             <h2 id="management-title">在庫管理</h2>
-            <p class="overview-copy">残量変更・履歴あり削除・完全削除</p>
+            <p class="overview-copy">残量変更・使い切り・廃棄・完全削除</p>
           </div>
           <div class="management-actions">
             <button class="button button-secondary receipt-scan-button" type="button" id="scan-receipt">
@@ -195,7 +205,7 @@
 
         <details class="finished-section" id="finished-section">
           <summary>
-            <span>削除の履歴（戻せます）</span>
+            <span>在庫から外した食材（戻せます）</span>
             <span class="finished-count" id="finished-count">0品</span>
           </summary>
           <div id="finished-list"></div>
@@ -227,6 +237,8 @@
             </select>
           </label>
         </section>
+
+        <section class="seasonal-guide" id="seasonal-guide" aria-label="今月の旬と季節のおすすめ"></section>
 
         <div class="recipe-list" id="recipe-list" aria-live="polite"></div>
         <div class="recipe-more" id="recipe-more">
@@ -335,16 +347,16 @@
       <section class="view history-view" id="history-view" aria-labelledby="history-title" hidden>
         <div class="history-heading">
           <div>
-            <p class="eyebrow">調理後も、あとから戻せる</p>
-            <h2 id="history-title">調理履歴</h2>
-            <p class="overview-copy">「これを作る」で減った食材を記録しています。</p>
+            <p class="eyebrow">冷蔵庫で起きたこと</p>
+            <h2 id="history-title">履歴</h2>
+            <p class="overview-copy">調理・使い切り・廃棄・在庫の修正を、直近50件から表示します。</p>
           </div>
           <span class="history-mark" aria-hidden="true">↶</span>
         </div>
 
         <div class="cooking-history-list" id="cooking-history-list" aria-live="polite"></div>
 
-        <p class="privacy-note" id="privacy-note-history">調理履歴も、この端末のブラウザ内だけに保存されます。</p>
+        <p class="privacy-note" id="privacy-note-history">履歴は月ごとにまとめ、最大1000件まで保存します。1000件を超えると古いものから整理されます。</p>
       </section>
     </main>
 
@@ -382,15 +394,18 @@
         <button class="icon-button" type="button" id="close-settings" aria-label="閉じる">×</button>
       </div>
 
-      <label class="settings-row" for="setting-show-nutrition">
+      <div class="settings-row nutrition-settings-row">
         <span class="settings-row-copy">
-          <strong>カロリーとPFCを表示する</strong>
+          <span class="settings-title-line">
+            <label for="setting-show-nutrition"><strong>カロリーとPFCを表示する</strong></label>
+            <button class="settings-help-button" type="button" id="nutrition-help" aria-expanded="false" aria-controls="settings-nutrition-note" aria-label="カロリーとPFCの数値について">?</button>
+          </span>
           <small>料理の候補と、作る前の確認画面に出します</small>
         </span>
-        <input id="setting-show-nutrition" type="checkbox" role="switch">
-      </label>
+        <input id="setting-show-nutrition" type="checkbox" role="switch" aria-label="カロリーとPFCを表示する">
+      </div>
 
-      <p class="settings-note" id="settings-nutrition-note">
+      <p class="settings-note nutrition-settings-note" id="settings-nutrition-note" hidden>
         表示される数値は、食品ごとの一般的な参考値と基本調味料の仮定から丸めた目安です。
         商品表示や医療・栄養指導の代わりにはなりません。
       </p>
@@ -511,20 +526,30 @@
     <form id="ingredient-form">
       <div class="dialog-head">
         <div>
-          <p class="eyebrow">在庫を整える</p>
           <h2 id="dialog-title">食材を追加</h2>
         </div>
         <button class="icon-button" type="button" id="close-dialog" aria-label="閉じる">×</button>
       </div>
 
-      <button class="ingredient-receipt-shortcut" type="button" id="ingredient-receipt-shortcut">
-        <span class="ingredient-receipt-icon" aria-hidden="true"></span>
-        <span>
-          <strong>レシートからまとめて追加</strong>
-          <small>写真を撮る・画像を選ぶ</small>
-        </span>
-        <span class="ingredient-receipt-arrow" aria-hidden="true">›</span>
-      </button>
+      <div class="ingredient-add-shortcuts" id="ingredient-add-shortcuts">
+        <button class="ingredient-add-shortcut ingredient-receipt-shortcut" type="button" id="ingredient-receipt-shortcut">
+          <span class="ingredient-receipt-icon" aria-hidden="true"></span>
+          <span class="ingredient-shortcut-copy">
+            <strong>レシートからまとめて追加</strong>
+            <small>写真を撮る・画像を選ぶ</small>
+          </span>
+          <span class="ingredient-shortcut-arrow" aria-hidden="true">›</span>
+        </button>
+
+        <button class="ingredient-add-shortcut ingredient-refine-shortcut" type="button" id="open-refine">
+          <span class="ingredient-refine-icon" aria-hidden="true">✓</span>
+          <span class="ingredient-shortcut-copy">
+            <strong>一覧から一度に追加する</strong>
+            <small id="refine-entry-note"></small>
+          </span>
+          <span class="ingredient-shortcut-arrow" aria-hidden="true">›</span>
+        </button>
+      </div>
 
       <input type="hidden" id="ingredient-id">
 
@@ -533,7 +558,6 @@
           <div class="ingredient-picker-lead">
             <p class="eyebrow">1. 種類を選ぶ</p>
             <strong>どのあたりの食材ですか？</strong>
-            <small>売り場を探すように選べます</small>
           </div>
           <div class="ingredient-category-grid" id="ingredient-category-grid"></div>
           <button class="ingredient-manual-button" type="button" id="ingredient-manual-mode">
@@ -607,6 +631,12 @@
           </select>
         </label>
 
+        <label class="ingredient-expiry-field" for="ingredient-expiry">
+          <span class="ingredient-expiry-label">賞味期限 <em>任意</em></span>
+          <input id="ingredient-expiry" name="expiry" type="date">
+          <small>未入力でも保存できます。日付部分をタップするとカレンダーが開きます。</small>
+        </label>
+
         <label class="check-row" for="ingredient-priority">
           <input id="ingredient-priority" name="priority" type="checkbox">
           <span>
@@ -617,6 +647,7 @@
 
         <div class="dialog-actions">
           <button class="button button-consume" type="button" id="consume-ingredient" hidden>履歴あり削除（使い切った）</button>
+          <button class="button button-discard" type="button" id="discard-ingredient" hidden>履歴あり削除（廃棄した）</button>
           <button class="button button-danger" type="button" id="delete-ingredient" hidden>完全削除（履歴に残さない）</button>
           <button class="button button-secondary" type="button" id="cancel-dialog">キャンセル</button>
           <button class="button button-primary" type="submit">保存</button>
@@ -709,6 +740,28 @@
           <small id="cook-confirm-nutrition"></small>
         </div>
         <div id="cook-confirm-ingredients"></div>
+
+        <section class="cook-extra-section" aria-labelledby="cook-extra-title">
+          <div class="cook-extra-heading">
+            <h4 id="cook-extra-title">ついでに使う食材</h4>
+            <small>レシピ外の食材や、追加で使う分</small>
+          </div>
+          <div class="cook-extra-add">
+            <label>
+              食材
+              <select id="cook-extra-item"></select>
+            </label>
+            <label>
+              量
+              <span class="quantity-with-unit">
+                <input id="cook-extra-quantity" type="number" min="0.01" step="any" inputmode="decimal">
+                <span id="cook-extra-unit"></span>
+              </span>
+            </label>
+            <button class="button button-secondary" type="button" id="cook-extra-add">追加</button>
+          </div>
+          <ul class="cook-extra-list" id="cook-extra-list"></ul>
+        </section>
       </section>
 
       <p class="cook-confirm-message" id="cook-confirm-message" aria-live="polite"></p>
@@ -722,6 +775,46 @@
       <div class="dialog-actions">
         <button class="button button-secondary" type="button" id="cancel-cook-confirm">ほかの候補へ</button>
         <button class="button button-primary cook-confirm-button" type="submit" id="confirm-cook">この人数で作る</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog class="ingredient-dialog history-edit-dialog" id="history-edit-dialog" aria-labelledby="history-edit-title">
+    <form id="history-edit-form">
+      <div class="dialog-head">
+        <div>
+          <p class="eyebrow">調理後の訂正</p>
+          <h2 id="history-edit-title">使った食材を修正</h2>
+        </div>
+        <button class="icon-button" type="button" id="close-history-edit" aria-label="閉じる">×</button>
+      </div>
+
+      <p class="history-edit-recipe" id="history-edit-recipe"></p>
+      <p class="overview-copy">実際に使った量へ直すと、差分だけ在庫へ反映します。</p>
+      <div class="history-edit-ingredients" id="history-edit-ingredients"></div>
+
+      <section class="history-edit-add" aria-labelledby="history-edit-add-title">
+        <h3 id="history-edit-add-title">使った食材を追加</h3>
+        <div class="cook-extra-add">
+          <label>
+            食材
+            <select id="history-edit-add-item"></select>
+          </label>
+          <label>
+            量
+            <span class="quantity-with-unit">
+              <input id="history-edit-add-quantity" type="number" min="0.01" step="any" inputmode="decimal">
+              <span id="history-edit-add-unit"></span>
+            </span>
+          </label>
+          <button class="button button-secondary" type="button" id="history-edit-add">追加</button>
+        </div>
+      </section>
+
+      <p class="cook-confirm-message" id="history-edit-message" aria-live="polite"></p>
+      <div class="dialog-actions">
+        <button class="button button-secondary" type="button" id="cancel-history-edit">キャンセル</button>
+        <button class="button button-primary" type="submit" id="save-history-edit">修正を保存</button>
       </div>
     </form>
   </dialog>

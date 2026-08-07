@@ -29,6 +29,11 @@ body {
   min-width: 320px;
 }
 
+html,
+body {
+  overscroll-behavior-y: none;
+}
+
 button,
 input,
 select {
@@ -54,10 +59,7 @@ summary:focus-visible {
 }
 
 .app-shell {
-  /* ★縦に伸びる箱にして、main に余りを全部持たせる。こうしないと、在庫が
-     少ない画面（在庫管理・調理履歴）で中身が短いときに、下のメニューが
-     内容のすぐ下＝画面の途中まで上がってくる。sticky は「はみ出したときに
-     貼り付く」だけなので、短いときは効かない */
+  /* ナビはfixedで画面に固定する。ここは短い画面でも背景を最下段まで伸ばす。 */
   display: flex;
   flex-direction: column;
   min-height: 100dvh;
@@ -69,9 +71,22 @@ summary:focus-visible {
 
 .app-shell > main {
   flex: 1;
-  /* 中身が短くても main が画面の下まで伸びるので、メニューは常に最下段。
-     長いときは今までどおり sticky で画面下に貼り付く */
   min-height: 0;
+  padding-bottom: calc(55px + env(safe-area-inset-bottom));
+}
+
+/* 冷蔵庫／パントリーの全体が画面に収まるときだけJSで付く。
+   touch-actionまで止めることで、iOSの画面端の小さな縦揺れも起こさない。 */
+html.is-inventory-fit,
+body.is-inventory-fit {
+  height: 100dvh;
+  overflow: hidden;
+}
+
+body.is-inventory-fit .app-shell {
+  height: 100dvh;
+  overflow: hidden;
+  touch-action: none;
 }
 
 .app-version {
@@ -84,7 +99,7 @@ summary:focus-visible {
   line-height: 1;
 }
 
-/* タイトルを持たない細い帯。バージョンが左、設定が右。
+/* タイトルを持たない細い帯。バージョンが左、同期と設定が右。
    読み上げにはタイトルを残す（.visually-hidden の h1） */
 .app-header {
   display: flex;
@@ -94,6 +109,50 @@ summary:focus-visible {
   padding: max(6px, env(safe-area-inset-top)) 12px 6px 16px;
   border-bottom: 1px solid var(--line-strong);
   background: var(--paper-raised);
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.header-sync-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 38px;
+  padding: 0 10px;
+  border: 1px solid rgb(47 100 75 / 30%);
+  border-radius: 3px;
+  background: #f5faf6;
+  color: var(--leaf);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.header-sync-button[hidden] {
+  display: none;
+}
+
+.header-sync-button.is-pending {
+  border-color: rgb(164 105 42 / 35%);
+  background: #fff8e9;
+  color: #80551f;
+}
+
+.header-sync-button:disabled {
+  opacity: 0.7;
+}
+
+.header-sync-icon {
+  font-size: 1rem;
+}
+
+.header-sync-button.is-syncing .header-sync-icon {
+  animation: boot-loading-spin 0.9s linear infinite;
 }
 
 .visually-hidden {
@@ -207,6 +266,62 @@ h3 {
   font-size: 0.92rem;
 }
 
+.settings-row-copy {
+  min-width: 0;
+}
+
+.nutrition-settings-row {
+  padding-block: 8px;
+}
+
+.settings-title-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.settings-title-line label {
+  cursor: pointer;
+}
+
+.settings-help-button {
+  position: relative;
+  display: grid;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  min-height: 44px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--leaf-dark);
+  font-size: 0.78rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.settings-help-button::before {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  border: 1px solid #87958b;
+  border-radius: 50%;
+  background: var(--paper-raised);
+  content: "";
+}
+
+.settings-help-button[aria-expanded="true"]::before {
+  border-color: var(--leaf);
+  background: var(--leaf-soft);
+}
+
+.settings-help-button:focus-visible {
+  outline: 3px solid rgb(47 100 75 / 35%);
+  outline-offset: 2px;
+}
+
 .settings-row-copy small {
   display: block;
   margin-top: 3px;
@@ -267,6 +382,19 @@ h3 {
   font-size: 0.76rem;
   line-height: 1.6;
   color: #6d7a6f;
+}
+
+.nutrition-settings-note {
+  margin-top: 6px;
+  padding: 8px 10px;
+  border-left: 3px solid var(--leaf);
+  background: var(--leaf-soft);
+  font-size: 0.72rem;
+  line-height: 1.5;
+}
+
+.nutrition-settings-note[hidden] {
+  display: none;
 }
 
 .device-settings {
@@ -339,6 +467,12 @@ h3 {
   border-color: var(--leaf);
   background: var(--leaf-soft);
   color: var(--leaf-dark);
+}
+
+.button-discard {
+  border-color: #9a713f;
+  background: #fff7e8;
+  color: #765127;
 }
 
 .add-button {
@@ -559,6 +693,15 @@ h3 {
   background: rgb(255 255 255 / 28%);
 }
 
+.fridge-food.is-expiry-soon::after,
+.fridge-food.is-expiry-today::after {
+  border-color: #c88b2e;
+}
+
+.fridge-food.is-expiry-expired::after {
+  border-color: var(--warm);
+}
+
 .fridge-food.is-priority::before {
   position: absolute;
   z-index: 3;
@@ -602,6 +745,32 @@ h3 {
 
 .food-hp-gauge.is-critical > span {
   background: linear-gradient(180deg, #df735f, #ae4037);
+}
+
+.food-expiry-badge {
+  position: absolute;
+  z-index: 4;
+  right: 1px;
+  bottom: 2px;
+  display: grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding-inline: 4px;
+  border: 1px solid #fff9e7;
+  border-radius: 9px;
+  background: #c88b2e;
+  color: white;
+  font-family: sans-serif;
+  font-size: 0.62rem;
+  font-weight: 900;
+  line-height: 1;
+  box-shadow: 0 1px 3px rgb(50 36 20 / 25%);
+  pointer-events: none;
+}
+
+.food-expiry-badge.is-expired {
+  background: var(--warm);
 }
 
 .fridge-food .ingredient-illustration,
@@ -931,8 +1100,8 @@ body.is-fridge-dragging .food-consume-station {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   border-block: 1px solid var(--line);
-  margin-inline: -16px;
-  padding-inline: 16px;
+  margin-inline: -14px;
+  padding-inline: 14px;
 }
 
 .storage-tab {
@@ -1131,6 +1300,25 @@ body.is-fridge-dragging .food-consume-station {
 
 .item-meta strong {
   color: var(--warm);
+}
+
+.item-expiry {
+  display: block;
+  margin-top: 2px;
+  color: #78827c;
+  font-size: 0.62rem;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.item-expiry.is-soon,
+.item-expiry.is-today {
+  color: #996819;
+}
+
+.item-expiry.is-expired {
+  color: var(--warm);
+  font-weight: 800;
 }
 
 .change-attribution {
@@ -1383,7 +1571,8 @@ body.is-fridge-dragging .food-consume-station {
 
 select,
 input[type="text"],
-input[type="number"] {
+input[type="number"],
+input[type="date"] {
   width: 100%;
   padding: 10px 11px;
   border: 1px solid var(--line-strong);
@@ -1397,6 +1586,94 @@ input[type="number"] {
   display: grid;
   gap: 17px;
   margin-top: 18px;
+}
+
+.seasonal-guide {
+  margin-top: 12px;
+  padding: 10px 11px;
+  border: 1px solid #c7b98e;
+  border-radius: 7px;
+  background: #fff9e8;
+}
+
+.seasonal-guide-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.seasonal-guide-heading > div {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+}
+
+.seasonal-guide-heading span {
+  color: var(--warm);
+  font-size: 0.7rem;
+  font-weight: 900;
+}
+
+.seasonal-guide-heading strong {
+  font-size: 0.88rem;
+}
+
+.seasonal-guide-heading small {
+  color: var(--muted);
+  font-size: 0.62rem;
+}
+
+.seasonal-food-list {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 4px;
+  margin-top: 8px;
+  padding-bottom: 2px;
+}
+
+.seasonal-food {
+  display: grid;
+  min-width: 0;
+  justify-items: center;
+  gap: 1px;
+  padding: 4px 1px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  color: var(--leaf-dark);
+  font-size: 0.62rem;
+  font-weight: 800;
+  line-height: 1.25;
+  text-align: center;
+}
+
+.seasonal-food.is-stocked {
+  border-color: rgb(47 100 75 / 28%);
+  background: var(--leaf-soft);
+}
+
+.seasonal-food .ingredient-illustration,
+.seasonal-food .ingredient-initial {
+  width: 38px;
+  height: 38px;
+}
+
+.seasonal-food em {
+  color: var(--leaf);
+  font-size: 0.56rem;
+  font-style: normal;
+}
+
+.recipe-season-badge {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 2px 5px;
+  border: 1px solid #c7b98e;
+  border-radius: 999px;
+  background: #fff9e8;
+  color: #7a5e20;
+  font-size: 0.62rem;
+  font-weight: 800;
 }
 
 .recipe-more {
@@ -1500,23 +1777,67 @@ input[type="number"] {
   height: 42px;
   place-items: center;
   border: 1px solid var(--line-strong);
-  border-radius: 50%;
+  border-radius: 10px;
   background: var(--paper-raised);
   color: var(--ink);
-  font-size: 0.8rem;
-  font-weight: 900;
   text-decoration: none;
 }
 
 .recipe-search-link.is-google {
-  color: #315eb4;
+  border-color: #829288;
+  color: var(--leaf-dark);
 }
 
 .recipe-search-link.is-youtube {
-  border-color: #c94a42;
-  background: #c94a42;
-  color: #fff;
-  font-size: 0.7rem;
+  border-color: #d49a96;
+  background: #fff9f7;
+}
+
+.recipe-search-icon {
+  position: relative;
+  display: block;
+  pointer-events: none;
+}
+
+.recipe-search-icon.is-magnifier {
+  width: 17px;
+  height: 17px;
+  margin: -3px 0 0 -3px;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+}
+
+.recipe-search-icon.is-magnifier::after {
+  position: absolute;
+  right: -7px;
+  bottom: -4px;
+  width: 8px;
+  height: 2px;
+  border-radius: 2px;
+  background: currentColor;
+  content: "";
+  transform: rotate(45deg);
+  transform-origin: left center;
+}
+
+.recipe-search-icon.is-youtube-play {
+  width: 28px;
+  height: 20px;
+  border-radius: 5px;
+  background: #e53935;
+  box-shadow: inset 0 0 0 1px rgb(138 27 24 / 18%);
+}
+
+.recipe-search-icon.is-youtube-play::after {
+  position: absolute;
+  top: 5px;
+  left: 11px;
+  width: 0;
+  height: 0;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 8px solid #fff;
+  content: "";
 }
 
 .recipe-search-link:hover,
@@ -2363,8 +2684,21 @@ input[type="number"] {
   margin-top: 8px;
 }
 
+.history-month {
+  margin-top: 12px;
+}
+
+.history-month-title {
+  margin: 0;
+  padding: 7px 2px;
+  border-bottom: 2px solid var(--leaf);
+  color: var(--leaf-dark);
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+}
+
 .history-entry {
-  padding: 18px 2px 20px;
+  padding: 12px 2px 14px;
   border-bottom: 1px solid var(--line-strong);
 }
 
@@ -2378,6 +2712,7 @@ input[type="number"] {
 
 .history-entry-heading h3 {
   margin: 2px 0 0;
+  font-size: 0.96rem;
 }
 
 .history-time {
@@ -2405,7 +2740,7 @@ input[type="number"] {
   display: flex;
   flex-wrap: wrap;
   gap: 7px 12px;
-  margin: 13px 0 15px;
+  margin: 9px 0 11px;
   padding: 0;
   list-style: none;
 }
@@ -2443,6 +2778,39 @@ input[type="number"] {
   font-weight: 800;
 }
 
+.history-entry-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.history-edit-button {
+  min-height: 44px;
+  border: 1px solid var(--leaf);
+  border-radius: 3px;
+  background: var(--leaf-soft);
+  color: var(--leaf-dark);
+  font-weight: 800;
+}
+
+.history-summary {
+  margin: 8px 0 10px;
+  color: var(--leaf-dark);
+  font-size: 0.78rem;
+  line-height: 1.55;
+}
+
+.history-entry.is-adjustment .history-state {
+  border-color: rgb(47 100 75 / 24%);
+  background: var(--leaf-soft);
+}
+
+.history-entry.is-discard .history-state {
+  border-color: rgb(154 113 63 / 35%);
+  background: #fff7e8;
+  color: #765127;
+}
+
 .history-undo-button:hover,
 .history-undo-button:active,
 .history-undo-button:focus-visible {
@@ -2475,21 +2843,52 @@ input[type="number"] {
   line-height: 1.7;
 }
 
+.history-more-button {
+  display: grid;
+  width: 100%;
+  min-height: 52px;
+  place-items: center;
+  gap: 1px;
+  margin-top: 14px;
+  padding: 7px 12px;
+  border: 2px dashed #718779;
+  border-radius: 6px;
+  background: #f2f3ea;
+  color: #405448;
+  font-weight: 800;
+}
+
+.history-more-button small,
+.history-count-note {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 600;
+}
+
+.history-count-note {
+  margin: 12px 0 0;
+  text-align: center;
+}
+
 /* display を持つ要素は hidden 属性だけでは消えないので明示する */
 .bottom-nav[hidden] {
   display: none;
 }
 
 .bottom-nav {
-  position: sticky;
+  position: fixed;
   z-index: 5;
+  right: auto;
   bottom: 0;
+  left: 50%;
   display: grid;
   grid-template-columns: repeat(5, 1fr);
+  width: min(100%, 540px);
   padding-bottom: env(safe-area-inset-bottom);
   border-top: 1px solid var(--line-strong);
   background: rgb(251 250 245 / 96%);
   box-shadow: 0 -5px 16px var(--shadow);
+  transform: translateX(-50%);
 }
 
 .nav-button {
@@ -2734,8 +3133,8 @@ input[type="number"] {
 
 .ingredient-dialog form {
   display: grid;
-  gap: 16px;
-  padding: 22px 18px calc(20px + env(safe-area-inset-bottom));
+  gap: 12px;
+  padding: 17px 16px calc(18px + env(safe-area-inset-bottom));
 }
 
 .ingredient-dialog label {
@@ -2746,61 +3145,94 @@ input[type="number"] {
   font-weight: 700;
 }
 
-.ingredient-receipt-shortcut {
+.ingredient-add-shortcuts {
   display: grid;
-  grid-template-columns: 42px minmax(0, 1fr) 16px;
+  gap: 7px;
+}
+
+.ingredient-add-shortcuts[hidden] {
+  display: none;
+}
+
+.ingredient-add-shortcut {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) 14px;
   align-items: center;
-  gap: 10px;
-  min-height: 66px;
-  padding: 8px 11px 8px 10px;
+  gap: 9px;
+  min-height: 56px;
+  padding: 6px 10px 6px 9px;
   border: 1px solid #9aac9f;
-  border-left: 5px solid #557766;
+  border-left: 4px solid #557766;
   border-radius: 7px;
   background: #edf3ed;
   color: var(--ink);
   text-align: left;
 }
 
-.ingredient-receipt-shortcut[hidden] {
-  display: none;
+.ingredient-refine-shortcut {
+  border-color: #b3aa90;
+  border-left-color: #8a7950;
+  background: #f4f1e7;
 }
 
-.ingredient-receipt-shortcut:active,
-.ingredient-receipt-shortcut:focus-visible {
+.ingredient-add-shortcut:active,
+.ingredient-add-shortcut:focus-visible {
   border-color: var(--leaf);
   outline: 2px solid var(--leaf);
   outline-offset: 2px;
   background: #e3eee5;
 }
 
-.ingredient-receipt-shortcut > span:nth-child(2) {
+.ingredient-shortcut-copy {
   display: grid;
   gap: 2px;
+  min-width: 0;
 }
 
-.ingredient-receipt-shortcut strong {
+.ingredient-shortcut-copy strong,
+.ingredient-shortcut-copy small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ingredient-shortcut-copy strong {
   font-size: 0.82rem;
 }
 
-.ingredient-receipt-shortcut small {
+.ingredient-shortcut-copy small {
   color: var(--muted);
   font-size: 0.65rem;
 }
 
 .ingredient-receipt-icon {
   justify-self: center;
-  width: 29px;
-  height: 39px;
+  width: 24px;
+  height: 32px;
   border: 1px solid #6c7b72;
   background:
-    linear-gradient(#b85f49, #b85f49) 6px 28px / 16px 2px no-repeat,
-    repeating-linear-gradient(180deg, #89978e 0 1px, transparent 1px 6px) 6px 7px / 16px 16px no-repeat,
+    linear-gradient(#b85f49, #b85f49) 5px 23px / 13px 2px no-repeat,
+    repeating-linear-gradient(180deg, #89978e 0 1px, transparent 1px 5px) 5px 6px / 13px 13px no-repeat,
     #fffdf6;
   box-shadow: 2px 2px 0 rgb(75 91 82 / 14%);
   clip-path: polygon(0 0, 100% 0, 100% 92%, 84% 100%, 67% 92%, 50% 100%, 33% 92%, 16% 100%, 0 92%);
 }
 
-.ingredient-receipt-arrow {
+.ingredient-refine-icon {
+  display: grid;
+  place-items: center;
+  justify-self: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid #8a7950;
+  border-radius: 50%;
+  background: #fffdf6;
+  color: #6c5e3c;
+  font-size: 0.9rem;
+  font-weight: 900;
+}
+
+.ingredient-shortcut-arrow {
   color: #557766;
   font-family: sans-serif;
   font-size: 1.35rem;
@@ -2819,12 +3251,12 @@ input[type="number"] {
 .ingredient-picker-layer,
 .ingredient-details {
   display: grid;
-  gap: 14px;
+  gap: 11px;
 }
 
 .ingredient-picker-lead {
   display: grid;
-  gap: 3px;
+  gap: 1px;
   padding-left: 10px;
   border-left: 4px solid #7a9a75;
 }
@@ -3182,6 +3614,152 @@ input[type="number"] {
   font-weight: 500;
 }
 
+.cook-extra-section {
+  display: grid;
+  gap: 8px;
+  margin-top: 7px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--line-strong);
+}
+
+.cook-extra-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.cook-extra-heading small {
+  color: var(--muted);
+  font-size: 0.62rem;
+}
+
+.cook-extra-add {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(86px, 0.8fr) auto;
+  align-items: end;
+  gap: 7px;
+}
+
+.cook-extra-add label {
+  display: grid;
+  gap: 3px;
+  color: var(--muted);
+  font-size: 0.62rem;
+  font-weight: 800;
+}
+
+.cook-extra-add select,
+.cook-extra-add input {
+  width: 100%;
+  min-height: 42px;
+  margin: 0;
+  font-size: 0.76rem;
+}
+
+.cook-extra-add .button {
+  min-height: 42px;
+  padding-inline: 10px;
+}
+
+.quantity-with-unit {
+  position: relative;
+  display: block;
+}
+
+.quantity-with-unit input {
+  padding-right: 31px;
+}
+
+.quantity-with-unit > span {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  color: var(--muted);
+  font-size: 0.66rem;
+  transform: translateY(-50%);
+}
+
+.cook-extra-list,
+.history-edit-ingredients {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cook-extra-row,
+.history-edit-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 108px 34px;
+  align-items: center;
+  gap: 7px;
+  min-height: 46px;
+  padding-top: 6px;
+  border-top: 1px solid rgb(157 168 157 / 40%);
+}
+
+.cook-extra-row > span:first-child,
+.history-edit-row > span:first-child {
+  min-width: 0;
+  color: var(--ink);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.cook-extra-row input,
+.history-edit-row input {
+  min-height: 40px;
+  margin: 0;
+}
+
+.cook-extra-remove,
+.history-edit-remove {
+  min-height: 36px;
+  padding: 0;
+  border: 1px solid rgb(168 73 45 / 30%);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--warm);
+  font-size: 1rem;
+}
+
+.history-edit-dialog {
+  width: min(calc(100% - 24px), 440px);
+  margin-bottom: 12px;
+  border-radius: 14px;
+}
+
+.history-edit-recipe {
+  margin: -4px 0 3px;
+  font-size: 1.05rem;
+  font-weight: 900;
+  text-align: center;
+}
+
+.history-edit-add {
+  display: grid;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--line-strong);
+}
+
+.history-edit-add h3 {
+  margin: 0;
+  font-size: 0.86rem;
+}
+
+@media (max-width: 380px) {
+  .cook-extra-add {
+    grid-template-columns: minmax(0, 1fr) 100px;
+  }
+
+  .cook-extra-add .button {
+    grid-column: 1 / -1;
+  }
+}
+
 .cook-confirm-ingredients ul {
   display: grid;
   gap: 3px;
@@ -3383,6 +3961,29 @@ input[type="number"] {
   gap: 10px;
 }
 
+.ingredient-expiry-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ingredient-expiry-label em {
+  padding: 2px 7px;
+  border-radius: 10px;
+  background: var(--leaf-soft);
+  color: var(--leaf-dark);
+  font-size: 0.62rem;
+  font-style: normal;
+  line-height: 1.2;
+}
+
+.ingredient-expiry-field small {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
 .check-row {
   grid-template-columns: auto minmax(0, 1fr);
   align-items: start;
@@ -3416,6 +4017,7 @@ input[type="number"] {
 }
 
 .dialog-actions .button-consume:not([hidden]),
+.dialog-actions .button-discard:not([hidden]),
 .dialog-actions .button-danger:not([hidden]) {
   grid-column: 1 / -1;
 }
@@ -3907,6 +4509,119 @@ input[type="number"] {
   flex: 1;
 }
 
+/* ---- 賞味期限のお知らせ -------------------------------------------------- */
+.expiry-alert {
+  margin-bottom: 18px;
+  padding: 14px;
+  border: 1px solid rgb(184 107 36 / 32%);
+  border-left: 5px solid #c17a2a;
+  border-radius: 6px;
+  background: #fff8e7;
+}
+
+.expiry-alert[hidden] {
+  display: none;
+}
+
+.expiry-alert-heading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.expiry-alert-heading h3 {
+  margin: 2px 0 0;
+  font-size: 0.96rem;
+  line-height: 1.45;
+}
+
+.expiry-alert-heading > span {
+  flex: none;
+  padding: 3px 8px;
+  border-radius: 12px;
+  background: #f0d6a2;
+  color: #704814;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.expiry-alert-list {
+  display: grid;
+  gap: 6px;
+  margin-top: 11px;
+}
+
+.expiry-alert-item {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 50px;
+  padding: 5px 8px;
+  border: 1px solid rgb(174 120 55 / 25%);
+  border-radius: 5px;
+  background: rgb(255 255 255 / 72%);
+  color: var(--ink);
+  text-align: left;
+}
+
+.expiry-alert-item:hover,
+.expiry-alert-item:focus-visible {
+  border-color: #aa6c25;
+  outline: 2px solid rgb(193 122 42 / 24%);
+  outline-offset: 1px;
+}
+
+.expiry-alert-item.is-expired {
+  border-color: rgb(168 73 45 / 34%);
+  background: #fff3ef;
+}
+
+.expiry-alert-item .ingredient-illustration,
+.expiry-alert-item .ingredient-initial {
+  width: 38px;
+  height: 38px;
+}
+
+.expiry-alert-copy {
+  min-width: 0;
+}
+
+.expiry-alert-copy strong,
+.expiry-alert-copy small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.expiry-alert-copy strong {
+  font-size: 0.82rem;
+}
+
+.expiry-alert-copy small {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 0.65rem;
+}
+
+.expiry-alert-state {
+  color: #996819;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.expiry-alert-item.is-expired .expiry-alert-state {
+  color: var(--warm);
+}
+
+.expiry-alert-note {
+  margin: 8px 0 0;
+  color: #775c33;
+  font-size: 0.68rem;
+}
+
 /* ---- 翌日の在庫確認 ------------------------------------------------------ */
 /* グラム数を思い出させず、3つのどれかを押すだけで実物へ寄せる。
    境目は残量ゲージと同じなので、押した直後の見た目と食い違わない。 */
@@ -4007,45 +4722,6 @@ input[type="number"] {
 .day-after-skip {
   margin-top: 12px;
   width: 100%;
-}
-
-/* ---- 冷蔵庫をもっと正確にする -------------------------------------------- */
-/* 初回に押し付けず、冷蔵庫画面から自分で入る。押すまで何も起きない */
-.refine-entry {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  margin-bottom: 12px;
-  padding: 9px 12px;
-  border: 1px solid var(--line);
-  border-radius: 5px;
-  background: var(--paper-raised);
-  text-align: left;
-}
-
-.refine-entry-copy strong {
-  display: block;
-  color: var(--ink);
-  font-size: 0.88rem;
-}
-
-.refine-entry-copy small {
-  display: block;
-  margin-top: 3px;
-  color: var(--muted);
-  font-size: 0.72rem;
-  line-height: 1.5;
-}
-
-.refine-entry-mark {
-  color: var(--leaf);
-  font-size: 1.05rem;
-}
-
-.refine-entry:active {
-  background: var(--leaf-soft);
 }
 
 .refine-view {
@@ -4399,6 +5075,23 @@ input[type="number"] {
   background-position: var(--atlas-x) var(--atlas-y);
 }
 
+.recipe-illustration-fallback {
+  display: grid;
+  flex: none;
+  width: 74px;
+  height: 74px;
+  place-items: center;
+  border: 1px solid rgb(47 100 75 / 18%);
+  border-radius: 50%;
+  background: var(--leaf-soft);
+}
+
+.recipe-illustration-fallback .ingredient-illustration,
+.recipe-illustration-fallback .ingredient-initial {
+  width: 66px;
+  height: 66px;
+}
+
 .recipe.is-featured .recipe-illustration {
   width: 108px;
   height: 108px;
@@ -4411,3 +5104,363 @@ input[type="number"] {
 .recipe-illustration-r05 { background-image: url("assets/recipe-atlas-05.png?v=20260801-1"); }
 .recipe-illustration-r06 { background-image: url("assets/recipe-atlas-06.png?v=20260801-1"); }
 .recipe-illustration-r07 { background-image: url("assets/recipe-atlas-07.png?v=20260801-1"); }
+
+/* ---- iPad mini / タブレット ------------------------------------------------
+   スマホのUIをそのまま中央へ置くと左右が空くだけになるため、700px以上では
+   幅を情報量へ戻す。縦向きは下部ナビを残して2列、横向きは左ナビ＋3列にする。 */
+@media (min-width: 700px) {
+  .app-shell {
+    max-width: 900px;
+    box-shadow: 0 0 34px rgb(34 39 34 / 12%);
+  }
+
+  .app-header {
+    padding: max(8px, env(safe-area-inset-top)) 24px 8px 28px;
+  }
+
+  .bottom-nav {
+    width: min(100%, 900px);
+  }
+
+  .view {
+    padding: 20px 28px 38px;
+  }
+
+  h2 {
+    font-size: 1.55rem;
+  }
+
+  .storage-tabs {
+    margin-inline: -28px;
+    padding-inline: 28px;
+  }
+
+  .fridge-unit-tabs,
+  .fridge-appliance,
+  .food-consume-station {
+    width: min(100%, 680px);
+  }
+
+  .fridge-appliance {
+    padding: 12px;
+  }
+
+  .fridge-foods {
+    grid-template-columns: repeat(auto-fit, 62px);
+    gap: 0 3px;
+  }
+
+  .fridge-food,
+  .shelf-add-food {
+    width: 62px;
+  }
+
+  .fridge-food .ingredient-illustration,
+  .fridge-food .ingredient-initial {
+    width: 57px;
+    height: 57px;
+  }
+
+  .food-hp-gauge {
+    left: 8px;
+  }
+
+  .today-ingredient-control {
+    grid-template-columns: minmax(0, 1fr) 220px;
+    align-items: stretch;
+  }
+
+  .today-ingredient-control .recipe-sort-control {
+    grid-template-columns: 1fr;
+    align-content: center;
+    padding: 7px 10px;
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    background: var(--paper-raised);
+  }
+
+  .recipe-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+    gap: 20px;
+  }
+
+  .recipe.is-featured {
+    grid-column: 1 / -1;
+  }
+
+  .recipe.is-alternative {
+    height: 100%;
+    margin-inline: 0;
+    padding-inline: 14px;
+    border: 1px solid var(--line-strong);
+    background: rgb(251 250 245 / 58%);
+  }
+
+  .inventory-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 24px;
+    border-bottom: 0;
+  }
+
+  .expiry-alert-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .inventory-list > .empty-state {
+    grid-column: 1 / -1;
+  }
+
+  .inventory-row {
+    align-content: start;
+    border-bottom: 1px solid var(--line-strong);
+  }
+
+  .history-month-entries {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+    gap: 0 24px;
+  }
+
+  .history-more-button,
+  .history-count-note {
+    grid-column: 1 / -1;
+  }
+
+  .history-entry {
+    height: 100%;
+  }
+
+  .history-empty {
+    grid-column: 1 / -1;
+  }
+
+  .shopping-category-grid {
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+  }
+
+  .shopping-food-group-grid,
+  .ingredient-item-group-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .ingredient-category-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .ingredient-add-shortcuts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .onboarding-leads,
+  .onboarding-extra-grid,
+  .refine-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .ingredient-dialog,
+  .today-ingredient-dialog {
+    width: min(calc(100% - 56px), 680px);
+    max-height: 88dvh;
+    margin: auto;
+    border-radius: 14px;
+  }
+
+  .ingredient-dialog form {
+    padding: 20px 24px;
+  }
+
+  .cook-confirm-dialog,
+  .history-edit-dialog {
+    width: min(calc(100% - 64px), 640px);
+    margin: auto;
+  }
+
+  .receipt-dialog {
+    width: min(calc(100% - 56px), 760px);
+  }
+
+  .settings-dialog {
+    width: min(calc(100% - 64px), 540px);
+  }
+}
+
+@media (min-width: 900px) {
+  .app-shell {
+    display: grid;
+    grid-template-columns: 112px minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    max-width: 1180px;
+  }
+
+  .app-header {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+
+  .app-shell > main {
+    grid-column: 2;
+    grid-row: 2;
+    padding-bottom: 0;
+  }
+
+  .bottom-nav {
+    position: fixed;
+    top: max(55px, calc(47px + env(safe-area-inset-top)));
+    right: auto;
+    bottom: 0;
+    left: max(0px, calc(50% - 590px));
+    grid-column: 1;
+    grid-row: 2;
+    grid-template-columns: 1fr;
+    grid-template-rows: repeat(5, minmax(78px, auto));
+    align-self: start;
+    width: 112px;
+    height: calc(100dvh - max(55px, calc(47px + env(safe-area-inset-top))));
+    padding: 12px 0 env(safe-area-inset-bottom);
+    border-top: 0;
+    border-right: 1px solid var(--line-strong);
+    background: rgb(251 250 245 / 92%);
+    box-shadow: 5px 0 16px var(--shadow);
+    transform: none;
+  }
+
+  .nav-button {
+    align-content: center;
+    gap: 7px;
+    padding: 10px 7px;
+    font-size: 0.78rem;
+  }
+
+  .nav-button span {
+    font-size: 1.5rem;
+  }
+
+  .nav-button.is-active {
+    box-shadow: inset 4px 0 0 var(--leaf);
+  }
+
+  .view {
+    padding: 24px 32px 42px;
+  }
+
+  .storage-tabs {
+    margin-inline: -32px;
+    padding-inline: 32px;
+  }
+
+  .fridge-unit-tabs,
+  .fridge-appliance,
+  .food-consume-station {
+    width: min(100%, 800px);
+  }
+
+  .recipe-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .recipe.is-featured {
+    grid-column: auto;
+    height: 100%;
+  }
+
+  .recipe.is-featured .ingredient-groups,
+  .recipe.is-alternative .ingredient-groups {
+    grid-template-columns: 1fr;
+  }
+
+  .shopping-view:not([hidden]) {
+    display: grid;
+    grid-template-columns: minmax(0, 1.08fr) minmax(320px, 0.92fr);
+    align-items: start;
+    gap: 18px 26px;
+  }
+
+  .shopping-heading,
+  .shopping-view > .privacy-note {
+    grid-column: 1 / -1;
+  }
+
+  .shopping-heading {
+    margin-bottom: 0;
+  }
+
+  .shopping-illustration-picker {
+    grid-column: 1;
+    grid-row: 2;
+    margin-bottom: 0;
+  }
+
+  .shopping-manual {
+    grid-column: 1;
+    grid-row: 3;
+    margin-top: 0;
+  }
+
+  .shopping-recommendations {
+    grid-column: 2;
+    grid-row: 2;
+    margin-top: 0;
+  }
+
+  .shopping-note {
+    grid-column: 2;
+    grid-row: 3;
+    margin-top: 0;
+  }
+
+  .shopping-view > .privacy-note {
+    margin-top: 0;
+  }
+
+  .ingredient-category-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .ingredient-item-group-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  .cook-confirm-dialog {
+    width: min(calc(100% - 72px), 860px);
+  }
+
+  #cook-confirm-form {
+    grid-template-columns: minmax(230px, 0.72fr) minmax(0, 1.28fr);
+    align-items: start;
+    column-gap: 20px;
+  }
+
+  #cook-confirm-form > .dialog-head,
+  #cook-confirm-form > .cook-confirm-recipe {
+    grid-column: 1 / -1;
+  }
+
+  #cook-confirm-form > .cook-serving-fieldset {
+    grid-column: 1;
+    grid-row: 3;
+  }
+
+  #cook-confirm-form > .cook-confirm-ingredients {
+    grid-column: 2;
+    grid-row: 3 / span 4;
+  }
+
+  #cook-confirm-form > .cook-confirm-message {
+    grid-column: 1;
+    grid-row: 4;
+  }
+
+  #cook-confirm-form > .cook-fallback {
+    grid-column: 1;
+    grid-row: 5;
+    margin-top: 0;
+  }
+
+  #cook-confirm-form > .dialog-actions {
+    grid-column: 1;
+    grid-row: 6;
+  }
+}
