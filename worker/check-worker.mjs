@@ -170,6 +170,44 @@ check("削除は applied で返る", removed.body.results[0].status, "applied");
 const afterDelete = (await pull(0)).body.changes.find((c) => c.id === "tofu");
 check("削除は墓石として届く", [afterDelete.deleted, afterDelete.body], [true, null]);
 
+// ---- 500件を超えても続きから漏れなく引ける ------------------------------
+const pagedCreated = await call("POST", "/v1/fridges");
+const pagedFridge = pagedCreated.body.id;
+const pushPage = (changes) => call(
+  "POST",
+  `/v1/fridges/${pagedFridge}/changes`,
+  { changes }
+);
+const manyChanges = Array.from({ length: 501 }, (_, at) => ({
+  kind: "item",
+  id: `paged-${String(at).padStart(3, "0")}`,
+  body: { id: `paged-${String(at).padStart(3, "0")}`, quantity: at },
+  baseVersion: 0
+}));
+for (let at = 0; at < manyChanges.length; at += 200) {
+  await pushPage(manyChanges.slice(at, at + 200));
+}
+const firstPage = await call(
+  "GET",
+  `/v1/fridges/${pagedFridge}/changes?since=0`
+);
+check("500件を超える受信は続きありで500件返す",
+  [firstPage.body.changes.length, firstPage.body.hasMore], [500, true]);
+check("続き位置は実際に返した最後の変更になる",
+  firstPage.body.seq,
+  firstPage.body.changes.at(-1).changeSeq);
+const secondPage = await call(
+  "GET",
+  `/v1/fridges/${pagedFridge}/changes?since=${firstPage.body.seq}`
+);
+check("最終ページで残りを返してheadまで進む",
+  [secondPage.body.changes.length, secondPage.body.hasMore, secondPage.body.seq],
+  [1, false, 501]);
+check("ページをまたいでも501件すべて一度ずつ届く",
+  new Set([...firstPage.body.changes, ...secondPage.body.changes]
+    .map((change) => change.id)).size,
+  501);
+
 // ---- 受け付けないもの ----------------------------------------------------
 check("知らない種別は拒む",
   (await push([{ kind: "でたらめ", id: "x", body: {}, baseVersion: 0 }]))

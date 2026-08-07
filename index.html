@@ -12,9 +12,9 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="冷蔵庫の現在地">
-  <link rel="stylesheet" href="styles.css?v=c8583cc7">
+  <link rel="stylesheet" href="styles.css?v=7fa5ea9f">
   <script src="vendor/tesseract/tesseract.min.js?v=7.0.0" defer></script>
-  <script src="app.js?v=3b492ab3" defer></script>
+  <script src="app.js?v=bc461ac6" defer></script>
   <!--
     起動の読み込み画面は、外部CSS（styles.css）が届く前から出したいので、
     ここだけ色を直書きしている（:root の変数に頼らない）。回線が細いときほど
@@ -238,6 +238,8 @@
           </label>
         </section>
 
+        <section class="seasonal-guide" id="seasonal-guide" aria-label="今月の旬と季節のおすすめ"></section>
+
         <div class="recipe-list" id="recipe-list" aria-live="polite"></div>
         <div class="recipe-more" id="recipe-more">
           <button type="button" id="show-more-recipes">
@@ -347,14 +349,14 @@
           <div>
             <p class="eyebrow">冷蔵庫で起きたこと</p>
             <h2 id="history-title">履歴</h2>
-            <p class="overview-copy">調理・使い切り・廃棄・在庫の修正を記録しています。</p>
+            <p class="overview-copy">調理・使い切り・廃棄・在庫の修正を、直近50件から表示します。</p>
           </div>
           <span class="history-mark" aria-hidden="true">↶</span>
         </div>
 
         <div class="cooking-history-list" id="cooking-history-list" aria-live="polite"></div>
 
-        <p class="privacy-note" id="privacy-note-history">履歴も、この端末のブラウザ内だけに保存されます。</p>
+        <p class="privacy-note" id="privacy-note-history">履歴は月ごとにまとめ、最大1000件まで保存します。1000件を超えると古いものから整理されます。</p>
       </section>
     </main>
 

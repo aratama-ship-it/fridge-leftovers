@@ -5,9 +5,11 @@ const SHELF_COUNTS_STORAGE_KEY = "fridge-leftovers-shelf-counts-v1";
 const RECENT_INGREDIENTS_STORAGE_KEY = "fridge-leftovers-recent-ingredients-v1";
 const SETTINGS_STORAGE_KEY = "fridge-leftovers-settings-v1";
 const DEVICE_STORAGE_KEY = "fridge-leftovers-device-v1";
-const APP_VERSION = "0.14.3";
+const APP_VERSION = "0.15.0";
 const RECIPE_PAGE_SIZE = 3;
 const RECIPE_LIST_SERVINGS = 1;
+const HISTORY_STORAGE_LIMIT = 1000;
+const HISTORY_PAGE_SIZE = 50;
 
 // 方針書の「初期状態では料理選びを複雑にしない」に合わせ、栄養表示は既定で出さない
 const DEFAULT_SETTINGS = {
@@ -17,8 +19,6 @@ const DEFAULT_SETTINGS = {
   // 見終わった売り場。進み具合の表示だけに使う（在庫の判定には使わない）
   reviewedCategories: []
 };
-
-const todayIso = () => new Date().toISOString().slice(0, 10);
 
 // 賞味期限は時刻ではなく、その端末のカレンダー上の日付として扱う。
 // Date.parse("YYYY-MM-DD") はUTCになるため、日付だけを分解して比較する。
@@ -43,6 +43,9 @@ function localDateIso(date = new Date()) {
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 }
+
+// 在庫確認・使い切り・買い物・翌日確認も、UTCではなく端末の暦日でそろえる。
+const todayIso = () => localDateIso();
 
 function expiryDayDifference(value, today = localDateIso()) {
   const expiry = normalizedExpiryDate(value);
@@ -121,15 +124,47 @@ const DEFAULT_INVENTORY = [
 // どれを選んでも同じ件数になる。並べても選びにくくなるだけなので、
 // 家庭でよく買う形だけを出す。
 //
-// さば2件・ぶり2件・えび2件・納豆1件・そば1件・焼きそば麺1件は3件に届かない。
-// それでも出すのは、実際に持っている人がいるため。足りない分は主役以外の
-// レシピから補う。
+// 各主役から最低3件へ直接つながるようにして、選んだ食材と無関係な補完候補を
+// できるだけ減らす。
 const LEAD_INGREDIENTS = [
   { name: "肉", ids: ["ground-meat", "pork", "pork-belly", "chicken", "chicken-thigh", "beef"] },
   { name: "魚介", ids: ["salmon", "tuna", "mackerel", "yellowtail", "shrimp"] },
   { name: "卵・豆腐", ids: ["eggs", "tofu", "natto"] },
   { name: "主食・麺", ids: ["rice", "bread", "pasta", "udon", "yakisoba-noodles", "soba"] }
 ];
+
+// 気温や位置情報は使わず、端末の月だけで「この時期らしい」食材と料理を扱う。
+// 旬は地域や品種で前後するため、厳密な出荷時期ではなく家庭料理の目安。
+const SEASONAL_INGREDIENTS = {
+  1: ["chinese-cabbage", "radish", "spinach", "green-onion", "yellowtail", "tofu"],
+  2: ["chinese-cabbage", "radish", "spinach", "broccoli", "yellowtail", "tofu"],
+  3: ["cabbage", "asparagus", "snow-peas", "boiled-bamboo", "clam", "strawberry"],
+  4: ["cabbage", "asparagus", "snow-peas", "boiled-bamboo", "fuki", "clam"],
+  5: ["cabbage", "asparagus", "snap-peas", "boiled-bamboo", "broad-beans", "strawberry"],
+  6: ["tomato", "cucumber", "bell-pepper", "okra", "corn", "somen"],
+  7: ["tomato", "eggplant", "cucumber", "bell-pepper", "okra", "somen"],
+  8: ["tomato", "eggplant", "cucumber", "bitter-melon", "corn", "somen"],
+  9: ["mushroom", "sweet-potato", "pumpkin", "taro", "saury", "grape"],
+  10: ["mushroom", "sweet-potato", "pumpkin", "taro", "saury", "persimmon"],
+  11: ["mushroom", "sweet-potato", "pumpkin", "lotus-root", "saury", "persimmon"],
+  12: ["chinese-cabbage", "radish", "spinach", "green-onion", "yellowtail", "tofu"]
+};
+
+const SEASONAL_RECIPE_MONTHS = {
+  "chilled-somen": [6, 7, 8],
+  "tuna-tomato-somen": [6, 7, 8],
+  "zaru-soba": [5, 6, 7, 8, 9],
+  "pork-cold-soba": [6, 7, 8, 9],
+  "natto-pasta": [6, 7, 8],
+  "pork-chinese-cabbage-hotpot": [11, 12, 1, 2, 3],
+  "tofu-mushroom-hotpot": [10, 11, 12, 1, 2, 3],
+  "yellowtail-daikon": [11, 12, 1, 2],
+  "pumpkin-simmer": [9, 10, 11],
+  "pumpkin-salad": [9, 10, 11],
+  "eggplant-miso": [6, 7, 8, 9],
+  "tomato-cheese-bake": [6, 7, 8],
+  "cream-stew": [11, 12, 1, 2]
+};
 
 const RECIPES = [
   {
@@ -1284,6 +1319,198 @@ const RECIPES = [
       { id: "cucumber", name: "きゅうり", quantity: 0.5, unit: "本", benefit: "食感がさっぱりする" },
       { id: "lettuce", name: "レタス", quantity: 0.25, unit: "個", benefit: "見た目と歯ざわりが良くなる" }
     ]
+  },
+  {
+    id: "mackerel-ginger-stew",
+    name: "さばのしょうが煮",
+    minutes: 22,
+    required: [
+      { id: "mackerel", name: "さば", quantity: 1, unit: "切れ" }
+    ],
+    pantry: "醤油・砂糖・みりん・酒・水",
+    optional: [
+      { id: "ginger", name: "しょうが", quantity: 0.25, unit: "個", benefit: "魚の風味をさっぱり整える" },
+      { id: "green-onion", name: "ねぎ", quantity: 0.5, unit: "本", benefit: "甘みと香りが加わる" },
+      { id: "radish", name: "大根", quantity: 0.25, unit: "本", benefit: "煮汁を含む付け合わせになる" }
+    ]
+  },
+  {
+    id: "yellowtail-salt-grill",
+    name: "ぶりの塩焼き",
+    minutes: 16,
+    required: [
+      { id: "yellowtail", name: "ぶり", quantity: 1, unit: "切れ" }
+    ],
+    pantry: "塩・油",
+    optional: [
+      { id: "radish", name: "大根", quantity: 0.25, unit: "本", benefit: "大根おろしで後味が軽くなる" },
+      { id: "lemon", name: "レモン", quantity: 0.25, unit: "個", benefit: "脂のある魚をさっぱり食べられる" },
+      { id: "shiso", name: "大葉", quantity: 0.25, unit: "袋", benefit: "香りを添えられる" }
+    ]
+  },
+  {
+    id: "shrimp-garlic-saute",
+    name: "えびのガーリック炒め",
+    minutes: 12,
+    required: [
+      { id: "shrimp", name: "えび", quantity: 120, unit: "g" }
+    ],
+    pantry: "にんにく・塩・こしょう・油",
+    optional: [
+      { id: "broccoli", name: "ブロッコリー", quantity: 0.5, unit: "個", benefit: "彩りと食べ応えが増す" },
+      { id: "mushroom-button", name: "マッシュルーム", quantity: 0.5, unit: "パック", benefit: "うま味と食感が増す" },
+      { id: "butter", name: "バター", quantity: 10, unit: "g", benefit: "香りとコクが増す" }
+    ]
+  },
+  {
+    id: "natto-omelet",
+    name: "納豆オムレツ",
+    minutes: 10,
+    required: [
+      { id: "natto", name: "納豆", quantity: 1, unit: "パック" },
+      { id: "eggs", name: "卵", quantity: 2, unit: "個" }
+    ],
+    pantry: "醤油・塩・油",
+    optional: [
+      { id: "green-onion", name: "ねぎ", quantity: 0.25, unit: "本", benefit: "香りと食感が加わる" },
+      { id: "cheese", name: "チーズ", quantity: 20, unit: "g", benefit: "コクが増してまとまりやすい" },
+      { id: "shiso", name: "大葉", quantity: 0.25, unit: "袋", benefit: "後味がさっぱりする" }
+    ]
+  },
+  {
+    id: "natto-pasta",
+    name: "納豆とねぎの和風パスタ",
+    minutes: 12,
+    required: [
+      { id: "natto", name: "納豆", quantity: 1, unit: "パック" },
+      { id: "pasta", name: "スパゲッティ", quantity: 100, unit: "g" }
+    ],
+    pantry: "醤油・油",
+    optional: [
+      { id: "green-onion", name: "ねぎ", quantity: 0.25, unit: "本", benefit: "香りと食感が加わる" },
+      { id: "nori", name: "のり", quantity: 0.1, unit: "袋", benefit: "磯の香りが加わる" },
+      { id: "eggs", name: "卵", quantity: 1, unit: "個", benefit: "まろやかさと満足感が増す" }
+    ]
+  },
+  {
+    id: "zaru-soba",
+    name: "ざるそば",
+    minutes: 10,
+    required: [
+      { id: "soba", name: "そば", quantity: 100, unit: "g" }
+    ],
+    pantry: "だし・醤油・みりん・水・わさび",
+    optional: [
+      { id: "green-onion", name: "ねぎ", quantity: 0.25, unit: "本", benefit: "定番の薬味になる" },
+      { id: "nori", name: "のり", quantity: 0.1, unit: "袋", benefit: "磯の香りが加わる" },
+      { id: "tenkasu", name: "天かす", quantity: 0.1, unit: "袋", benefit: "香ばしさと食べ応えが増す" }
+    ]
+  },
+  {
+    id: "pork-cold-soba",
+    name: "豚しゃぶおろしそば",
+    minutes: 18,
+    required: [
+      { id: "soba", name: "そば", quantity: 100, unit: "g" },
+      { id: "pork", name: "豚こま", quantity: 80, unit: "g" },
+      { id: "radish", name: "大根", quantity: 0.25, unit: "本" }
+    ],
+    pantry: "だし・醤油・みりん・水",
+    optional: [
+      { id: "shiso", name: "大葉", quantity: 0.25, unit: "袋", benefit: "香りが加わる" },
+      { id: "cucumber", name: "きゅうり", quantity: 0.5, unit: "本", benefit: "みずみずしい食感が増す" },
+      { id: "tomato", name: "トマト", quantity: 0.5, unit: "個", benefit: "彩りと酸味が加わる" }
+    ]
+  },
+  {
+    id: "salt-yakisoba",
+    name: "野菜の塩焼きそば",
+    minutes: 13,
+    required: [
+      { id: "yakisoba-noodles", name: "焼きそば麺", quantity: 1, unit: "袋" },
+      { id: "cabbage", name: "キャベツ", quantity: 100, unit: "g" }
+    ],
+    pantry: "塩・こしょう・鶏がらスープの素・油",
+    optional: [
+      { id: "bean-sprouts", name: "もやし", quantity: 0.5, unit: "袋", benefit: "食感と量が増す" },
+      { id: "pork", name: "豚こま", quantity: 80, unit: "g", benefit: "主菜らしい満足感が増す" },
+      { id: "green-onion", name: "ねぎ", quantity: 0.25, unit: "本", benefit: "香りが加わる" }
+    ]
+  },
+  {
+    id: "sobameshi",
+    name: "焼きそば麺のそばめし",
+    minutes: 15,
+    required: [
+      { id: "yakisoba-noodles", name: "焼きそば麺", quantity: 1, unit: "袋" },
+      { id: "rice", name: "ごはん", quantity: 1, unit: "膳" }
+    ],
+    pantry: "中濃ソース・塩・こしょう・油",
+    optional: [
+      { id: "cabbage", name: "キャベツ", quantity: 80, unit: "g", benefit: "食感と野菜量が増す" },
+      { id: "pork", name: "豚こま", quantity: 60, unit: "g", benefit: "うま味と満足感が増す" },
+      { id: "green-onion", name: "ねぎ", quantity: 0.25, unit: "本", benefit: "仕上げの香りが加わる" }
+    ]
+  },
+  {
+    id: "chilled-somen",
+    name: "冷やしそうめん",
+    minutes: 10,
+    required: [
+      { id: "somen", name: "そうめん", quantity: 1, unit: "袋" }
+    ],
+    pantry: "だし・醤油・みりん・水",
+    optional: [
+      { id: "cucumber", name: "きゅうり", quantity: 0.5, unit: "本", benefit: "涼しい食感が加わる" },
+      { id: "eggs", name: "卵", quantity: 1, unit: "個", benefit: "錦糸卵で彩りと満足感が増す" },
+      { id: "green-onion", name: "ねぎ", quantity: 0.25, unit: "本", benefit: "定番の薬味になる" }
+    ]
+  },
+  {
+    id: "tuna-tomato-somen",
+    name: "ツナトマトそうめん",
+    minutes: 12,
+    required: [
+      { id: "somen", name: "そうめん", quantity: 1, unit: "袋" },
+      { id: "tuna", name: "ツナ", quantity: 1, unit: "缶" },
+      { id: "tomato", name: "トマト", quantity: 1, unit: "個" }
+    ],
+    pantry: "めんつゆ・油",
+    optional: [
+      { id: "cucumber", name: "きゅうり", quantity: 0.5, unit: "本", benefit: "食感と清涼感が増す" },
+      { id: "shiso", name: "大葉", quantity: 0.25, unit: "袋", benefit: "香りが加わる" },
+      { id: "sesame", name: "ごま", quantity: 0.1, unit: "袋", benefit: "香ばしさが増す" }
+    ]
+  },
+  {
+    id: "pork-chinese-cabbage-hotpot",
+    name: "豚肉と白菜の重ね鍋",
+    minutes: 25,
+    required: [
+      { id: "pork", name: "豚こま", quantity: 120, unit: "g" },
+      { id: "chinese-cabbage", name: "白菜", quantity: 250, unit: "g" }
+    ],
+    pantry: "だし・醤油・酒・水",
+    optional: [
+      { id: "mushroom", name: "しめじ", quantity: 0.25, unit: "株", benefit: "うま味が増す" },
+      { id: "tofu", name: "豆腐", quantity: 0.5, unit: "個", benefit: "食べ応えが増す" },
+      { id: "green-onion", name: "ねぎ", quantity: 0.5, unit: "本", benefit: "甘みと香りが加わる" }
+    ]
+  },
+  {
+    id: "tofu-mushroom-hotpot",
+    name: "豆腐ときのこの寄せ鍋",
+    minutes: 20,
+    required: [
+      { id: "tofu", name: "豆腐", quantity: 1, unit: "個" },
+      { id: "mushroom", name: "しめじ", quantity: 0.5, unit: "株" }
+    ],
+    pantry: "だし・醤油・みりん・水",
+    optional: [
+      { id: "chinese-cabbage", name: "白菜", quantity: 150, unit: "g", benefit: "甘みと野菜量が増す" },
+      { id: "green-onion", name: "ねぎ", quantity: 0.5, unit: "本", benefit: "香りと甘みが加わる" },
+      { id: "chicken", name: "鶏むね肉", quantity: 100, unit: "g", benefit: "主菜らしい満足感が増す" }
+    ]
   }
 ];
 
@@ -1672,6 +1899,71 @@ const RECIPE_STEPS = {
     "トマトを厚めに切り、耐熱皿へ並べる。",
     "塩・こしょうをふり、チーズを全体へ散らす。",
     "トースターなどで、チーズに焼き色がつくまで焼く。"
+  ],
+  "mackerel-ginger-stew": [
+    "さばの水分を拭き、皮に浅く切り目を入れる。",
+    "鍋に醤油・砂糖・みりん・酒・水を煮立て、さばとしょうがを入れる。",
+    "落としぶたをして、中心まで火を通しながら煮汁をからめる。"
+  ],
+  "yellowtail-salt-grill": [
+    "ぶりの水分を拭き、両面に塩をふって少し置く。",
+    "出た水分を拭き、グリルまたは油を薄くひいたフライパンで焼く。",
+    "裏返して、中心まで十分に火を通す。"
+  ],
+  "shrimp-garlic-saute": [
+    "えびの水分を拭き、塩・こしょうをふる。",
+    "油とにんにくを弱火で温め、香りが出たらえびを加える。",
+    "えびの中心まで火を通し、好みでバターをからめる。"
+  ],
+  "natto-omelet": [
+    "納豆を混ぜ、溶いた卵と少量の醤油を合わせる。",
+    "油を熱したフライパンへ流し、周囲が固まったら大きく混ぜる。",
+    "納豆を包むように形を整え、卵に火を通す。"
+  ],
+  "natto-pasta": [
+    "スパゲッティを表示時間どおりにゆでる。",
+    "納豆に醤油と少量の油を混ぜ、使う薬味を用意する。",
+    "湯を切った麺と納豆を和え、ねぎやのりを添える。"
+  ],
+  "zaru-soba": [
+    "そばを袋の表示に合わせてゆでる。",
+    "冷水でよく洗ってぬめりを取り、水気を切る。",
+    "器に盛り、冷やしたつゆと薬味を添える。"
+  ],
+  "pork-cold-soba": [
+    "そばをゆでて冷水で洗い、水気を切る。",
+    "豚肉を熱湯で中心までゆで、冷まして大根をおろす。",
+    "そばに豚肉と大根おろしをのせ、冷たいつゆをかける。"
+  ],
+  "salt-yakisoba": [
+    "キャベツと使う具材を食べやすく切って炒める。",
+    "焼きそば麺と少量の水を加え、ほぐしながら火を通す。",
+    "塩・こしょうと鶏がらスープの素で味を整える。"
+  ],
+  sobameshi: [
+    "焼きそば麺を短く刻み、使う具材を炒める。",
+    "麺とごはんを加え、ほぐしながら炒め合わせる。",
+    "ソースを加え、水分を飛ばして香ばしく仕上げる。"
+  ],
+  "chilled-somen": [
+    "そうめんを袋の表示に合わせてゆでる。",
+    "冷水でよく洗い、氷水で冷やして水気を切る。",
+    "器に盛り、冷やしたつゆと好みの薬味を添える。"
+  ],
+  "tuna-tomato-somen": [
+    "そうめんをゆでて冷水で洗い、水気を切る。",
+    "トマトを切り、汁気を切ったツナとめんつゆを混ぜる。",
+    "そうめんと具を和え、好みで大葉やごまを添える。"
+  ],
+  "pork-chinese-cabbage-hotpot": [
+    "白菜と豚肉を食べやすい大きさに切り、交互に鍋へ詰める。",
+    "だし・醤油・酒・水を加え、ふたをして煮る。",
+    "白菜がやわらかくなり、豚肉の中心まで火が通ったら完成。"
+  ],
+  "tofu-mushroom-hotpot": [
+    "豆腐ときのこ、使う野菜を食べやすく切る。",
+    "鍋にだし・醤油・みりん・水を入れ、具材を加えて煮る。",
+    "全体が温まり、肉を使う場合は中心まで火を通す。"
   ]
 };
 
@@ -2198,6 +2490,24 @@ const RECIPE_ILLUSTRATIONS = {
   "tuna-toast": [2, 0, "r07"],
   "french-toast": [3, 0, "r07"],
   "egg-sandwich": [0, 1, "r07"]
+};
+
+// 完成イラストをまだ描いていない追加レシピは、空欄にせず主役食材を大きく見せる。
+// 完成絵を追加したらこの表から外し、RECIPE_ILLUSTRATIONSへ移す。
+const RECIPE_ILLUSTRATION_FALLBACKS = {
+  "mackerel-ginger-stew": "mackerel",
+  "yellowtail-salt-grill": "yellowtail",
+  "shrimp-garlic-saute": "shrimp",
+  "natto-omelet": "natto",
+  "natto-pasta": "natto",
+  "zaru-soba": "soba",
+  "pork-cold-soba": "soba",
+  "salt-yakisoba": "yakisoba-noodles",
+  sobameshi: "yakisoba-noodles",
+  "chilled-somen": "somen",
+  "tuna-tomato-somen": "somen",
+  "pork-chinese-cabbage-hotpot": "chinese-cabbage",
+  "tofu-mushroom-hotpot": "tofu"
 };
 
 const INGREDIENT_ILLUSTRATIONS = {
@@ -3156,6 +3466,7 @@ const state = {
   inventory: [],
   shopping: [],
   cookingHistory: [],
+  historyVisibleCount: HISTORY_PAGE_SIZE,
   location: "すべて",
   servings: 1,
   priority: "no-shop",
@@ -3239,6 +3550,7 @@ const elements = {
   todayIngredientArt: document.querySelector("#today-ingredient-art"),
   todayIngredientDialog: document.querySelector("#today-ingredient-dialog"),
   todayIngredientOptions: document.querySelector("#today-ingredient-options"),
+  seasonalGuide: document.querySelector("#seasonal-guide"),
   closeTodayIngredientDialog: document.querySelector("#close-today-ingredient-dialog"),
   clearTodayIngredient: document.querySelector("#clear-today-ingredient"),
   inventoryView: document.querySelector("#inventory-view"),
@@ -3792,11 +4104,23 @@ async function syncOnce() {
   renderHeaderSync();
   let completed = false;
   try {
-    const pulled = await shareFetch(
-      `/v1/fridges/${state.share.fridgeId}/changes?since=${state.share.seq}`
-    );
-    let touched = applyIncoming(pulled.changes || []);
-    state.share.seq = Number(pulled.seq) || state.share.seq;
+    let touched = false;
+    let hasMore = false;
+    do {
+      const previousSeq = state.share.seq;
+      const pulled = await shareFetch(
+        `/v1/fridges/${state.share.fridgeId}/changes?since=${previousSeq}`
+      );
+      touched = applyIncoming(pulled.changes || []) || touched;
+      const nextSeq = Number(pulled.seq);
+      if (Number.isFinite(nextSeq) && nextSeq >= previousSeq) {
+        state.share.seq = nextSeq;
+      }
+      hasMore = pulled.hasMore === true;
+      if (hasMore && state.share.seq <= previousSeq) {
+        throw new Error("同期の続き位置を更新できませんでした");
+      }
+    } while (hasMore);
 
     markSyncChanges();
     const pending = pendingSyncChanges();
@@ -4392,7 +4716,7 @@ function loadCookingHistory() {
     }
     const parsed = JSON.parse(saved);
     state.cookingHistory = Array.isArray(parsed)
-      ? parsed.filter((entry) => entry && Array.isArray(entry.changes)).slice(0, 50)
+      ? parsed.filter((entry) => entry && Array.isArray(entry.changes)).slice(0, HISTORY_STORAGE_LIMIT)
       : [];
   } catch {
     state.cookingHistory = [];
@@ -4402,7 +4726,10 @@ function loadCookingHistory() {
 function persistCookingHistory() {
   if (!state.storageEnabled) return;
   try {
-    localStorage.setItem(COOKING_HISTORY_STORAGE_KEY, JSON.stringify(state.cookingHistory.slice(0, 50)));
+    localStorage.setItem(
+      COOKING_HISTORY_STORAGE_KEY,
+      JSON.stringify(state.cookingHistory.slice(0, HISTORY_STORAGE_LIMIT))
+    );
   } catch {
     markStorageUnavailable();
   }
@@ -4978,10 +5305,16 @@ function inventoryLevelState(item) {
   return { label: "まだあります", width: 100, className: "" };
 }
 
-// 料理の完成イラスト。食材と同じアトラスの切り出し方で、無ければ空文字
+// 料理の完成イラスト。完成絵が準備中の追加レシピは主役食材を代わりに見せる。
 function renderRecipeIllustration(recipeId) {
   const illustration = RECIPE_ILLUSTRATIONS[recipeId];
-  if (!illustration) return "";
+  if (!illustration) {
+    const fallbackId = RECIPE_ILLUSTRATION_FALLBACKS[recipeId];
+    const item = fallbackId ? illustratedIngredientItem(fallbackId) : null;
+    return item
+      ? `<span class="recipe-illustration-fallback" aria-hidden="true">${renderIngredientIllustration(item.id, item.name, true)}</span>`
+      : "";
+  }
   const [column, row, sheet] = illustration;
   const x = ((4.4 * ((column + 0.5) / 4) - 0.5) / 3.4) * 100;
   const y = ((3.3 * ((row + 0.5) / 3) - 0.5) / 2.3) * 100;
@@ -5656,6 +5989,49 @@ function closeTodayIngredientDialog() {
   if (elements.todayIngredientDialog.open) elements.todayIngredientDialog.close();
 }
 
+function seasonalRecipeState(recipe, date = new Date()) {
+  const month = date.getMonth() + 1;
+  const seasonalIds = new Set(SEASONAL_INGREDIENTS[month] || []);
+  const explicit = (SEASONAL_RECIPE_MONTHS[recipe.id] || []).includes(month);
+  const ingredientHits = [...recipe.required, ...recipe.optional]
+    .filter((ingredient) => seasonalIds.has(ingredient.id)).length;
+  return {
+    month,
+    explicit,
+    ingredientHits,
+    boost: (explicit ? 14 : 0) + Math.min(ingredientHits, 3) * 3
+  };
+}
+
+function renderSeasonalGuide() {
+  const month = new Date().getMonth() + 1;
+  const inventoryIds = new Set(activeInventory().flatMap((item) => {
+    const generic = SUBSTITUTE_GENERICS.get(item.id);
+    return generic ? [item.id, generic] : [item.id];
+  }));
+  const items = (SEASONAL_INGREDIENTS[month] || [])
+    .map((id) => illustratedIngredientItem(id))
+    .filter(Boolean);
+  elements.seasonalGuide.innerHTML = `
+    <div class="seasonal-guide-heading">
+      <div>
+        <span>${month}月</span>
+        <strong>この時期のおすすめ</strong>
+      </div>
+      <small>旬は地域や品種で前後します</small>
+    </div>
+    <div class="seasonal-food-list">
+      ${items.map((item) => `
+        <span class="seasonal-food${inventoryIds.has(item.id) ? " is-stocked" : ""}">
+          ${renderIngredientIllustration(item.id, item.name, true)}
+          <span>${escapeHtml(item.name)}</span>
+          ${inventoryIds.has(item.id) ? "<em>在庫あり</em>" : ""}
+        </span>
+      `).join("")}
+    </div>
+  `;
+}
+
 function recipeScore(recipe) {
   const shortagePenalty = shortageFor(recipe, RECIPE_LIST_SERVINGS).length * 100;
   // 「先に使う」を指定した食材が部位・商品のときは、総称の要求にも効かせる
@@ -5667,12 +6043,14 @@ function recipeScore(recipe) {
   });
   const priorityUse = [...recipe.required, ...recipe.optional].filter((ingredient) => priorityIds.has(ingredient.id)).length;
   const priorityBoost = priorityUse * 40;
-  if (state.priority === "quick") return priorityBoost + 30 - recipe.minutes - shortagePenalty;
-  return priorityBoost + 50 - shortagePenalty - recipe.minutes / 10;
+  const seasonBoost = seasonalRecipeState(recipe).boost;
+  if (state.priority === "quick") return priorityBoost + seasonBoost + 30 - recipe.minutes - shortagePenalty;
+  return priorityBoost + seasonBoost + 50 - shortagePenalty - recipe.minutes / 10;
 }
 
 function renderRecipes() {
   renderTodayIngredientControl();
+  renderSeasonalGuide();
   const ordered = [...RECIPES].sort((a, b) => recipeScore(b) - recipeScore(a));
   const visibleCount = Math.min(state.visibleRecipeCount, ordered.length);
   const visible = ordered.slice(0, visibleCount);
@@ -5700,6 +6078,7 @@ function renderRecipe(recipe, index) {
   `).join("");
   const quickSteps = (RECIPE_STEPS[recipe.id] || []).map((step) => `<li>${escapeHtml(step)}</li>`).join("");
   const nutrition = estimateRecipeNutrition(recipe);
+  const seasonal = seasonalRecipeState(recipe);
 
   const requiredLines = recipe.required.map((requirement) => {
     const stock = stockForRequirement(requirement);
@@ -5743,6 +6122,7 @@ function renderRecipe(recipe, index) {
         <div>
           <p class="recipe-rank">${featured ? "今日のおすすめ" : "ほかの候補"}</p>
           <h3>${escapeHtml(recipe.name)}</h3>
+          ${seasonal.explicit ? `<span class="recipe-season-badge">${seasonal.month}月のおすすめ</span>` : ""}
         </div>
         <nav class="recipe-search-links" aria-label="${escapeHtml(recipe.name)}を外部サイトで検索">
           <a class="recipe-search-link is-google" href="${googleSearchUrl}" target="_blank" rel="noopener noreferrer" aria-label="${escapeHtml(recipe.name)}をGoogleで検索" title="Googleで検索">
@@ -5855,6 +6235,76 @@ function adjustmentSummary(change) {
   return parts.join("・") || "在庫情報を確認";
 }
 
+function historyMonthKey(entry) {
+  const date = new Date(historyEntryTime(entry));
+  if (Number.isNaN(date.getTime())) return "unknown";
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function historyMonthLabel(entry) {
+  const date = new Date(historyEntryTime(entry));
+  if (Number.isNaN(date.getTime())) return "日付不明";
+  return new Intl.DateTimeFormat("ja-JP", {
+    year: "numeric",
+    month: "long"
+  }).format(date);
+}
+
+function renderHistoryEntry(entry) {
+  const type = historyEntryType(entry);
+  const undone = Boolean(entry.undoneAt);
+  const isCooking = type === "cooking";
+  const isAdjustment = type === "adjustment";
+  const changes = isAdjustment
+    ? ""
+    : entry.changes.map((change) => `
+      <li>
+        ${renderIngredientIllustration(change.itemId, change.name, true)}
+        <span>${escapeHtml(change.name)}</span>
+        <strong>−${formatQuantity(change.quantity, change.unit)}</strong>
+      </li>
+    `).join("");
+  const title = isCooking
+    ? entry.recipeName
+    : entry.title || entry.changes?.[0]?.name || "在庫の変更";
+  const stateLabel = undone
+    ? "取り消し済み"
+    : isCooking
+      ? (entry.editedAt ? "修正済み" : "在庫に反映済み")
+      : type === "discard"
+        ? "廃棄"
+        : type === "consume"
+          ? "使い切り"
+          : "在庫修正";
+  const timeSuffix = isCooking ? `・${Number(entry.servings) || 1}人分` : "";
+  const adjustment = isAdjustment
+    ? `<p class="history-summary">${escapeHtml(adjustmentSummary(entry.changes[0] || {}))}</p>`
+    : `<ul class="history-changes" aria-label="減った食材">${changes}</ul>`;
+  const actions = isCooking
+    ? `<div class="history-entry-actions">
+        <button class="history-edit-button" type="button" data-history-edit="${escapeHtml(entry.id)}"${undone ? " disabled" : ""}>使った食材を修正</button>
+        <button class="history-undo-button" type="button" data-history-undo="${escapeHtml(entry.id)}"${undone ? " disabled" : ""}>
+          ${undone ? "取り消しました" : "この調理を取り消す"}
+        </button>
+      </div>`
+    : "";
+
+  return `
+    <article class="history-entry is-${escapeHtml(type)}${undone ? " is-undone" : ""}">
+      <div class="history-entry-heading">
+        <div>
+          <p class="history-time">${escapeHtml(formatCookingTime(historyEntryTime(entry)))}${timeSuffix}</p>
+          <h3>${escapeHtml(title)}</h3>
+          ${renderChangeAttribution("cooking", entry.id)}
+        </div>
+        <span class="history-state">${stateLabel}</span>
+      </div>
+      ${adjustment}
+      ${actions}
+    </article>
+  `;
+}
+
 function renderCookingHistory() {
   if (!state.cookingHistory.length) {
     elements.cookingHistoryList.innerHTML = `
@@ -5866,60 +6316,36 @@ function renderCookingHistory() {
     return;
   }
 
-  elements.cookingHistoryList.innerHTML = state.cookingHistory.map((entry) => {
-    const type = historyEntryType(entry);
-    const undone = Boolean(entry.undoneAt);
-    const isCooking = type === "cooking";
-    const isAdjustment = type === "adjustment";
-    const changes = isAdjustment
-      ? ""
-      : entry.changes.map((change) => `
-        <li>
-          ${renderIngredientIllustration(change.itemId, change.name, true)}
-          <span>${escapeHtml(change.name)}</span>
-          <strong>−${formatQuantity(change.quantity, change.unit)}</strong>
-        </li>
-      `).join("");
-    const title = isCooking
-      ? entry.recipeName
-      : entry.title || entry.changes?.[0]?.name || "在庫の変更";
-    const stateLabel = undone
-      ? "取り消し済み"
-      : isCooking
-        ? (entry.editedAt ? "修正済み" : "在庫に反映済み")
-        : type === "discard"
-          ? "廃棄"
-          : type === "consume"
-            ? "使い切り"
-            : "在庫修正";
-    const timeSuffix = isCooking ? `・${Number(entry.servings) || 1}人分` : "";
-    const adjustment = isAdjustment
-      ? `<p class="history-summary">${escapeHtml(adjustmentSummary(entry.changes[0] || {}))}</p>`
-      : `<ul class="history-changes" aria-label="減った食材">${changes}</ul>`;
-    const actions = isCooking
-      ? `<div class="history-entry-actions">
-          <button class="history-edit-button" type="button" data-history-edit="${escapeHtml(entry.id)}"${undone ? " disabled" : ""}>使った食材を修正</button>
-          <button class="history-undo-button" type="button" data-history-undo="${escapeHtml(entry.id)}"${undone ? " disabled" : ""}>
-            ${undone ? "取り消しました" : "この調理を取り消す"}
-          </button>
-        </div>`
-      : "";
-
-    return `
-      <article class="history-entry is-${escapeHtml(type)}${undone ? " is-undone" : ""}">
-        <div class="history-entry-heading">
-          <div>
-            <p class="history-time">${escapeHtml(formatCookingTime(historyEntryTime(entry)))}${timeSuffix}</p>
-            <h3>${escapeHtml(title)}</h3>
-            ${renderChangeAttribution("cooking", entry.id)}
-          </div>
-          <span class="history-state">${stateLabel}</span>
-        </div>
-        ${adjustment}
-        ${actions}
-      </article>
-    `;
-  }).join("");
+  const orderedHistory = [...state.cookingHistory].sort((a, b) => {
+    const aTime = Date.parse(historyEntryTime(a)) || 0;
+    const bTime = Date.parse(historyEntryTime(b)) || 0;
+    return bTime - aTime;
+  });
+  const visibleCount = Math.min(state.historyVisibleCount, orderedHistory.length);
+  const groups = [];
+  orderedHistory.slice(0, visibleCount).forEach((entry) => {
+    const key = historyMonthKey(entry);
+    let group = groups.at(-1);
+    if (!group || group.key !== key) {
+      group = { key, label: historyMonthLabel(entry), entries: [] };
+      groups.push(group);
+    }
+    group.entries.push(entry);
+  });
+  const remaining = orderedHistory.length - visibleCount;
+  const months = groups.map((group) => `
+    <section class="history-month" aria-labelledby="history-month-${escapeHtml(group.key)}">
+      <h3 class="history-month-title" id="history-month-${escapeHtml(group.key)}">${escapeHtml(group.label)}</h3>
+      <div class="history-month-entries">${group.entries.map(renderHistoryEntry).join("")}</div>
+    </section>
+  `).join("");
+  const more = remaining > 0
+    ? `<button class="history-more-button" type="button" data-history-more>
+        <span>さらに${Math.min(HISTORY_PAGE_SIZE, remaining)}件見る</span>
+        <small>${visibleCount} / ${state.cookingHistory.length}件を表示</small>
+      </button>`
+    : `<p class="history-count-note">${state.cookingHistory.length}件すべて表示しています</p>`;
+  elements.cookingHistoryList.innerHTML = months + more;
 }
 
 // ---- 初回登録 ------------------------------------------------------------
@@ -6854,7 +7280,7 @@ function makeCookingHistoryId(type = "cooking") {
 
 function addHistoryEntry(entry) {
   state.cookingHistory.unshift(entry);
-  state.cookingHistory = state.cookingHistory.slice(0, 50);
+  state.cookingHistory = state.cookingHistory.slice(0, HISTORY_STORAGE_LIMIT);
   return entry;
 }
 
@@ -8297,8 +8723,10 @@ function renderShare() {
       "在庫データは、この端末と、共有している相手の端末で見られます。"],
     "privacy-note-shopping": ["買い物リストも、この端末のブラウザ内だけに保存されます。",
       "買い物リストも、共有している相手と同じものを見ています。"],
-    "privacy-note-history": ["履歴も、この端末のブラウザ内だけに保存されます。",
-      "履歴も、共有している相手と同じものを見ています。"]
+    "privacy-note-history": [
+      "履歴は月ごとにまとめ、最大1000件までこの端末に保存します。1000件を超えると古いものから整理されます。",
+      "履歴は共有相手と同じものを月ごとにまとめ、最大1000件まで保存します。1000件を超えると古いものから整理されます。"
+    ]
   };
   for (const note of elements.privacyNotes) {
     if (!note) continue;
@@ -9004,6 +9432,15 @@ elements.clearBought.addEventListener("click", () => {
 });
 
 elements.cookingHistoryList.addEventListener("click", (event) => {
+  const moreButton = event.target.closest("[data-history-more]");
+  if (moreButton) {
+    state.historyVisibleCount = Math.min(
+      state.historyVisibleCount + HISTORY_PAGE_SIZE,
+      state.cookingHistory.length
+    );
+    renderCookingHistory();
+    return;
+  }
   const editButton = event.target.closest("[data-history-edit]");
   if (editButton) {
     openHistoryEdit(editButton.dataset.historyEdit);

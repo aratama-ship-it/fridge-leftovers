@@ -285,23 +285,34 @@ h3 {
 }
 
 .settings-help-button {
+  position: relative;
   display: grid;
   flex: none;
-  width: 28px;
-  height: 28px;
-  min-height: 28px;
+  width: 44px;
+  height: 44px;
+  min-height: 44px;
   place-items: center;
   padding: 0;
-  border: 1px solid #87958b;
+  border: 0;
   border-radius: 50%;
-  background: var(--paper-raised);
+  background: transparent;
   color: var(--leaf-dark);
   font-size: 0.78rem;
   font-weight: 900;
   line-height: 1;
 }
 
-.settings-help-button[aria-expanded="true"] {
+.settings-help-button::before {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  border: 1px solid #87958b;
+  border-radius: 50%;
+  background: var(--paper-raised);
+  content: "";
+}
+
+.settings-help-button[aria-expanded="true"]::before {
   border-color: var(--leaf);
   background: var(--leaf-soft);
 }
@@ -1577,6 +1588,94 @@ input[type="date"] {
   margin-top: 18px;
 }
 
+.seasonal-guide {
+  margin-top: 12px;
+  padding: 10px 11px;
+  border: 1px solid #c7b98e;
+  border-radius: 7px;
+  background: #fff9e8;
+}
+
+.seasonal-guide-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.seasonal-guide-heading > div {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+}
+
+.seasonal-guide-heading span {
+  color: var(--warm);
+  font-size: 0.7rem;
+  font-weight: 900;
+}
+
+.seasonal-guide-heading strong {
+  font-size: 0.88rem;
+}
+
+.seasonal-guide-heading small {
+  color: var(--muted);
+  font-size: 0.62rem;
+}
+
+.seasonal-food-list {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 4px;
+  margin-top: 8px;
+  padding-bottom: 2px;
+}
+
+.seasonal-food {
+  display: grid;
+  min-width: 0;
+  justify-items: center;
+  gap: 1px;
+  padding: 4px 1px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  color: var(--leaf-dark);
+  font-size: 0.62rem;
+  font-weight: 800;
+  line-height: 1.25;
+  text-align: center;
+}
+
+.seasonal-food.is-stocked {
+  border-color: rgb(47 100 75 / 28%);
+  background: var(--leaf-soft);
+}
+
+.seasonal-food .ingredient-illustration,
+.seasonal-food .ingredient-initial {
+  width: 38px;
+  height: 38px;
+}
+
+.seasonal-food em {
+  color: var(--leaf);
+  font-size: 0.56rem;
+  font-style: normal;
+}
+
+.recipe-season-badge {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 2px 5px;
+  border: 1px solid #c7b98e;
+  border-radius: 999px;
+  background: #fff9e8;
+  color: #7a5e20;
+  font-size: 0.62rem;
+  font-weight: 800;
+}
+
 .recipe-more {
   margin-top: 17px;
 }
@@ -2585,8 +2684,21 @@ input[type="date"] {
   margin-top: 8px;
 }
 
+.history-month {
+  margin-top: 12px;
+}
+
+.history-month-title {
+  margin: 0;
+  padding: 7px 2px;
+  border-bottom: 2px solid var(--leaf);
+  color: var(--leaf-dark);
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+}
+
 .history-entry {
-  padding: 18px 2px 20px;
+  padding: 12px 2px 14px;
   border-bottom: 1px solid var(--line-strong);
 }
 
@@ -2600,6 +2712,7 @@ input[type="date"] {
 
 .history-entry-heading h3 {
   margin: 2px 0 0;
+  font-size: 0.96rem;
 }
 
 .history-time {
@@ -2627,7 +2740,7 @@ input[type="date"] {
   display: flex;
   flex-wrap: wrap;
   gap: 7px 12px;
-  margin: 13px 0 15px;
+  margin: 9px 0 11px;
   padding: 0;
   list-style: none;
 }
@@ -2681,7 +2794,7 @@ input[type="date"] {
 }
 
 .history-summary {
-  margin: 12px 0 14px;
+  margin: 8px 0 10px;
   color: var(--leaf-dark);
   font-size: 0.78rem;
   line-height: 1.55;
@@ -2728,6 +2841,33 @@ input[type="date"] {
   margin: 0;
   font-size: 0.8rem;
   line-height: 1.7;
+}
+
+.history-more-button {
+  display: grid;
+  width: 100%;
+  min-height: 52px;
+  place-items: center;
+  gap: 1px;
+  margin-top: 14px;
+  padding: 7px 12px;
+  border: 2px dashed #718779;
+  border-radius: 6px;
+  background: #f2f3ea;
+  color: #405448;
+  font-weight: 800;
+}
+
+.history-more-button small,
+.history-count-note {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 600;
+}
+
+.history-count-note {
+  margin: 12px 0 0;
+  text-align: center;
 }
 
 /* display を持つ要素は hidden 属性だけでは消えないので明示する */
@@ -4935,6 +5075,23 @@ input[type="date"] {
   background-position: var(--atlas-x) var(--atlas-y);
 }
 
+.recipe-illustration-fallback {
+  display: grid;
+  flex: none;
+  width: 74px;
+  height: 74px;
+  place-items: center;
+  border: 1px solid rgb(47 100 75 / 18%);
+  border-radius: 50%;
+  background: var(--leaf-soft);
+}
+
+.recipe-illustration-fallback .ingredient-illustration,
+.recipe-illustration-fallback .ingredient-initial {
+  width: 66px;
+  height: 66px;
+}
+
 .recipe.is-featured .recipe-illustration {
   width: 108px;
   height: 108px;
@@ -5060,11 +5217,16 @@ input[type="date"] {
     border-bottom: 1px solid var(--line-strong);
   }
 
-  .cooking-history-list {
+  .history-month-entries {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     align-items: start;
     gap: 0 24px;
+  }
+
+  .history-more-button,
+  .history-count-note {
+    grid-column: 1 / -1;
   }
 
   .history-entry {
@@ -5209,7 +5371,7 @@ input[type="date"] {
     grid-template-columns: 1fr;
   }
 
-  .shopping-view {
+  .shopping-view:not([hidden]) {
     display: grid;
     grid-template-columns: minmax(0, 1.08fr) minmax(320px, 0.92fr);
     align-items: start;

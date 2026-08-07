@@ -98,8 +98,9 @@ if (process.argv.includes("--check")) {
     process.exit(1);
   }
   console.log(`主役リスト: OK（${ids.length}品）`);
-  console.log(`  候補が3件に届かない主役: ${thin.length}件 — ${thin.join("、")}`);
-  console.log("  （主役以外のレシピから補う前提。0件になったら失敗として扱う）");
+  console.log(thin.length
+    ? `  候補が3件に届かない主役: ${thin.length}件 — ${thin.join("、")}`
+    : "  すべての主役から3件以上のレシピへ直接つながります");
   process.exit(0);
 }
 

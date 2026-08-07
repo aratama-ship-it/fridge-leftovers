@@ -20,6 +20,9 @@ function readConstant(name, nextName) {
 }
 
 const recipes = readConstant("RECIPES", "RECIPE_STEPS");
+const recipeSteps = readConstant("RECIPE_STEPS", "NUTRITION_REFERENCES");
+const seasonalIngredients = readConstant("SEASONAL_INGREDIENTS", "SEASONAL_RECIPE_MONTHS");
+const seasonalRecipeMonths = readConstant("SEASONAL_RECIPE_MONTHS", "RECIPES");
 const receiptRules = readConstant("RECEIPT_RULES", "ILLUSTRATED_INGREDIENT_CATEGORIES");
 const allowedUnits = new Set(["個", "g", "ml", "本", "株", "袋", "パック", "膳", "切れ", "缶", "枚"]);
 const expectedInitialUnits = new Map([
@@ -62,7 +65,13 @@ expectedInitialUnits.forEach((expectedUnit, id) => {
   }
 });
 
+const recipeIds = new Set();
 recipes.forEach((recipe) => {
+  if (recipeIds.has(recipe.id)) errors.push(`レシピIDが重複しています: ${recipe.id}`);
+  recipeIds.add(recipe.id);
+  if (!Array.isArray(recipeSteps[recipe.id]) || recipeSteps[recipe.id].length !== 3) {
+    errors.push(`${recipe.name}: 3手順が登録されていません`);
+  }
   [...recipe.required, ...recipe.optional].forEach((ingredient) => {
     const rule = rulesById.get(ingredient.id);
     if (rule && ingredient.unit !== rule.unit) {
@@ -70,6 +79,22 @@ recipes.forEach((recipe) => {
         `${recipe.name}: ${ingredient.name} のレシピ単位「${ingredient.unit}」が初期単位「${rule.unit}」と一致しません`
       );
     }
+  });
+});
+
+Object.entries(seasonalRecipeMonths).forEach(([id, months]) => {
+  if (!recipeIds.has(id)) errors.push(`季節料理のレシピ「${id}」が登録されていません`);
+  if (!Array.isArray(months) || months.some((month) => !Number.isInteger(month) || month < 1 || month > 12)) {
+    errors.push(`季節料理「${id}」の月指定が不正です`);
+  }
+});
+
+Object.entries(seasonalIngredients).forEach(([month, ids]) => {
+  if (!Number.isInteger(Number(month)) || Number(month) < 1 || Number(month) > 12) {
+    errors.push(`旬の食材の月「${month}」が不正です`);
+  }
+  ids.forEach((id) => {
+    if (!rulesById.has(id)) errors.push(`${month}月の旬食材「${id}」が食材カタログにありません`);
   });
 });
 
