@@ -17,6 +17,9 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const app = readFileSync(path.join(ROOT, "app.js"), "utf8");
+const expansion = readFileSync(path.join(ROOT, "recipe-expansion.js"), "utf8");
+new Function(expansion)();
+globalThis.EXPANDED_RECIPE_PACK = globalThis.RECIPE_EXPANSION;
 
 // app.js から定数・関数を名前で切り出す
 function takeConst(name) {
@@ -54,7 +57,7 @@ const FUNCTIONS = [
   "availableForRequirement", "requiredAmount", "shortageFor", "unconfirmedFor",
   "cookBlockers", "confirmUnknownAmounts", "optionalReady",
   "inventoryLevel", "pendingDayAfterItems", "dayAfterCorrection",
-  "historyEntryType", "historyEntryTime", "addHistoryEntry", "seasonalRecipeState",
+  "historyEntryType", "historyEntryTime", "addHistoryEntry", "seasonalRecipeState", "recipeScore", "compareRecipes",
   "currentChangeAttribution", "markSyncChanges", "pendingSyncChanges", "applySyncResult", "mergeEntity"
 ];
 
@@ -64,6 +67,7 @@ const harness = `
 const todayIso = () => "2026-01-01";
 const state = { inventory: [], servings: 1, cookingHistory: [], shopping: [], shelfCounts: {}, syncMeta: {}, device: { id: "test-device", name: "テスト端末" }, settings: { dayAfterSkippedOn: "" } };
 const inventoryMap = () => new Map(state.inventory.filter((item) => item.active !== false).map((item) => [item.id, item]));
+const activeInventory = () => state.inventory.filter((item) => item.active !== false);
 ${CONSTANTS.map(takeConst).join("\n")}
 ${FUNCTIONS.map(takeFunction).join("\n")}
 return {
@@ -75,7 +79,7 @@ return {
   pendingDayAfterItems, dayAfterCorrection, DAY_AFTER_LEVELS,
   normalizedExpiryDate, expiryDayDifference, expiryAlertState,
   markSyncChanges, pendingSyncChanges, applySyncResult, mergeEntity,
-  addHistoryEntry, seasonalRecipeState, HISTORY_STORAGE_LIMIT, HISTORY_PAGE_SIZE
+  addHistoryEntry, seasonalRecipeState, compareRecipes, HISTORY_STORAGE_LIMIT, HISTORY_PAGE_SIZE
 };
 `;
 
@@ -88,7 +92,7 @@ const {
   pendingDayAfterItems, dayAfterCorrection, DAY_AFTER_LEVELS,
   normalizedExpiryDate, expiryDayDifference, expiryAlertState,
   markSyncChanges, pendingSyncChanges, applySyncResult, mergeEntity,
-  addHistoryEntry, seasonalRecipeState, HISTORY_STORAGE_LIMIT, HISTORY_PAGE_SIZE
+  addHistoryEntry, seasonalRecipeState, compareRecipes, HISTORY_STORAGE_LIMIT, HISTORY_PAGE_SIZE
 } = app_;
 
 const ruleFor = (id) => RECEIPT_RULES.find((rule) => rule.id === id);
@@ -543,6 +547,36 @@ check("片方しか無ければそれを採る", [
   mergeEntity("item", null, item({ quantity: 1 })).quantity,
   mergeEntity("item", item({ quantity: 5 }), null).quantity
 ], [1, 5]);
+
+// ---- 2026-08-07追加の時短料理 -----------------------------------------
+
+const originalQuickRecipeIds = [
+  "microwave-pork-kimchi", "microwave-cabbage-shumai", "microwave-eggplant-pork-ponzu",
+  "microwave-tofu-egg-soup", "microwave-salmon-mushroom", "microwave-bean-sprout-pork",
+  "microwave-chicken-cabbage", "microwave-tomato-cheese-rice", "microwave-sweet-potato-butter",
+  "microwave-potato-tuna-salad", "whitebait-green-onion-bowl", "tuna-cucumber-tofu",
+  "canned-mackerel-tomato", "kimchi-cheese-udon", "natto-kimchi-bowl",
+  "canned-sardine-cabbage-pasta", "bacon-spinach-egg", "chicken-tender-shiso-cheese",
+  "tofu-avocado-bowl", "salmon-flake-ochazuke", "tomato-shio-kombu-tofu",
+  "pumpkin-mince-microwave", "enoki-pork-roll-microwave", "chicken-tomato-microwave",
+  "tomato-miso-soup", "cabbage-sausage-soup", "tofu-kimchi-soup",
+  "avocado-tuna-toast", "egg-mayo-rice-bowl", "mushroom-butter-rice"
+];
+const quickRecipeIds = [...originalQuickRecipeIds, ...globalThis.RECIPE_EXPANSION.quickIds];
+check("追加データパックは120件", globalThis.RECIPE_EXPANSION.recipes.length, 120);
+check("追加データパックの時短料理は30件", globalThis.RECIPE_EXPANSION.quickIds.length, 30);
+check("時短料理60件が登録されている",
+  quickRecipeIds.filter((id) => !recipeFor(id)), []);
+check("時短料理はすべて15分以内",
+  quickRecipeIds.filter((id) => recipeFor(id)?.minutes > 15), []);
+const inventoryBeforeQuickSort = state.inventory;
+const priorityBeforeQuickSort = state.priority;
+state.inventory = RECEIPT_RULES.map((rule) => stock(rule.id, 1000));
+state.priority = "quick";
+const quickMinutes = quickRecipeIds.map(recipeFor).sort(compareRecipes).map((recipe) => recipe.minutes);
+check("短時間順では調理時間が昇順になる", quickMinutes, [...quickMinutes].sort((a, b) => a - b));
+state.inventory = inventoryBeforeQuickSort;
+state.priority = priorityBeforeQuickSort;
 
 // ---- 料理の完成イラストの割り当て --------------------------------------
 //

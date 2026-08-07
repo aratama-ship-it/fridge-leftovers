@@ -18,6 +18,9 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const app = readFileSync(path.join(ROOT, "app.js"), "utf8");
+const expansion = readFileSync(path.join(ROOT, "recipe-expansion.js"), "utf8");
+new Function(expansion)();
+globalThis.EXPANDED_RECIPE_PACK = globalThis.RECIPE_EXPANSION;
 
 function takeConst(name) {
   const start = app.indexOf(`const ${name} =`);

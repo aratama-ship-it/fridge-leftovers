@@ -1,6 +1,9 @@
 import fs from "node:fs";
 
 const source = fs.readFileSync(new URL("../app.js", import.meta.url), "utf8");
+const expansionSource = fs.readFileSync(new URL("../recipe-expansion.js", import.meta.url), "utf8");
+Function(expansionSource)();
+globalThis.EXPANDED_RECIPE_PACK = globalThis.RECIPE_EXPANSION;
 
 function readConstant(name, nextName) {
   const declaration = source.indexOf(`const ${name} =`);
@@ -21,6 +24,7 @@ function readConstant(name, nextName) {
 
 const recipes = readConstant("RECIPES", "RECIPE_STEPS");
 const recipeSteps = readConstant("RECIPE_STEPS", "NUTRITION_REFERENCES");
+const nutritionReferences = readConstant("NUTRITION_REFERENCES", "ALIASES");
 const seasonalIngredients = readConstant("SEASONAL_INGREDIENTS", "SEASONAL_RECIPE_MONTHS");
 const seasonalRecipeMonths = readConstant("SEASONAL_RECIPE_MONTHS", "RECIPES");
 const receiptRules = readConstant("RECEIPT_RULES", "ILLUSTRATED_INGREDIENT_CATEGORIES");
@@ -66,18 +70,37 @@ expectedInitialUnits.forEach((expectedUnit, id) => {
 });
 
 const recipeIds = new Set();
+const recipeNames = new Set();
 recipes.forEach((recipe) => {
   if (recipeIds.has(recipe.id)) errors.push(`レシピIDが重複しています: ${recipe.id}`);
   recipeIds.add(recipe.id);
-  if (!Array.isArray(recipeSteps[recipe.id]) || recipeSteps[recipe.id].length !== 3) {
+  if (recipeNames.has(recipe.name)) errors.push(`レシピ名が重複しています: ${recipe.name}`);
+  recipeNames.add(recipe.name);
+  if (!Number.isFinite(recipe.minutes) || recipe.minutes <= 0) {
+    errors.push(`${recipe.name}: 調理時間が不正です`);
+  }
+  if (!Array.isArray(recipe.required) || recipe.required.length === 0) {
+    errors.push(`${recipe.name}: 最低限必要な食材がありません`);
+  }
+  if (!Array.isArray(recipeSteps[recipe.id]) || recipeSteps[recipe.id].length !== 3
+    || recipeSteps[recipe.id].some((step) => typeof step !== "string" || !step.trim())) {
     errors.push(`${recipe.name}: 3手順が登録されていません`);
   }
   [...recipe.required, ...recipe.optional].forEach((ingredient) => {
+    if (!Number.isFinite(ingredient.quantity) || ingredient.quantity <= 0) {
+      errors.push(`${recipe.name}: ${ingredient.name} の数量が不正です`);
+    }
+    if (recipe.optional.includes(ingredient) && !ingredient.benefit?.trim()) {
+      errors.push(`${recipe.name}: ${ingredient.name} の追加効果がありません`);
+    }
     const rule = rulesById.get(ingredient.id);
     if (rule && ingredient.unit !== rule.unit) {
       errors.push(
         `${recipe.name}: ${ingredient.name} のレシピ単位「${ingredient.unit}」が初期単位「${rule.unit}」と一致しません`
       );
+    }
+    if (!nutritionReferences[ingredient.id]?.[ingredient.unit]) {
+      errors.push(`${recipe.name}: ${ingredient.name} ${ingredient.unit} の栄養参照値がありません`);
     }
   });
 });
