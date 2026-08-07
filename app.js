@@ -5,7 +5,11 @@ const SHELF_COUNTS_STORAGE_KEY = "fridge-leftovers-shelf-counts-v1";
 const RECENT_INGREDIENTS_STORAGE_KEY = "fridge-leftovers-recent-ingredients-v1";
 const SETTINGS_STORAGE_KEY = "fridge-leftovers-settings-v1";
 const DEVICE_STORAGE_KEY = "fridge-leftovers-device-v1";
-const APP_VERSION = "0.15.0";
+const APP_VERSION = "0.17.0";
+const EXPANDED_RECIPE_PACK = globalThis.RECIPE_EXPANSION;
+if (!EXPANDED_RECIPE_PACK || EXPANDED_RECIPE_PACK.recipes.length !== 120) {
+  throw new Error("追加レシピデータを読み込めませんでした");
+}
 const RECIPE_PAGE_SIZE = 3;
 const RECIPE_LIST_SERVINGS = 1;
 const HISTORY_STORAGE_LIMIT = 1000;
@@ -163,7 +167,19 @@ const SEASONAL_RECIPE_MONTHS = {
   "pumpkin-salad": [9, 10, 11],
   "eggplant-miso": [6, 7, 8, 9],
   "tomato-cheese-bake": [6, 7, 8],
-  "cream-stew": [11, 12, 1, 2]
+  "cream-stew": [11, 12, 1, 2],
+  "tuna-cucumber-tofu": [6, 7, 8],
+  "tofu-avocado-bowl": [6, 7, 8, 9],
+  "tomato-shio-kombu-tofu": [6, 7, 8],
+  "chicken-tomato-microwave": [6, 7, 8],
+  "tomato-miso-soup": [6, 7, 8],
+  "microwave-sweet-potato-butter": [9, 10, 11],
+  "pumpkin-mince-microwave": [9, 10, 11],
+  "mushroom-butter-rice": [9, 10, 11],
+  "microwave-chicken-cabbage": [11, 12, 1, 2],
+  "tofu-kimchi-soup": [11, 12, 1, 2],
+  "cabbage-sausage-soup": [11, 12, 1, 2],
+  ...EXPANDED_RECIPE_PACK.seasons
 };
 
 const RECIPES = [
@@ -1511,10 +1527,592 @@ const RECIPES = [
       { id: "green-onion", name: "ねぎ", quantity: 0.5, unit: "本", benefit: "香りと甘みが加わる" },
       { id: "chicken", name: "鶏むね肉", quantity: 100, unit: "g", benefit: "主菜らしい満足感が増す" }
     ]
-  }
+  },
+  {
+    id: "microwave-pork-kimchi",
+    name: "豚バラキムチのレンジ蒸し",
+    minutes: 9,
+    required: [
+      { id: "pork-belly", name: "豚バラ肉", quantity: 100, unit: "g" },
+      { id: "kimchi", name: "キムチ", quantity: 0.5, unit: "袋" }
+    ],
+    pantry: "醤油・ごま油",
+    optional: [
+      { id: "bean-sprouts", name: "もやし", quantity: 0.5, unit: "袋", benefit: "食感と野菜量が増す" },
+      { id: "green-onion-small", name: "小ねぎ", quantity: 0.25, unit: "袋", benefit: "仕上げの香りが加わる" }
+    ]
+  },
+  {
+    id: "microwave-cabbage-shumai",
+    name: "包まないキャベツ焼売",
+    minutes: 12,
+    required: [
+      { id: "pork-mince", name: "豚ひき肉", quantity: 120, unit: "g" },
+      { id: "cabbage", name: "キャベツ", quantity: 120, unit: "g" }
+    ],
+    pantry: "片栗粉・醤油・ごま油・塩",
+    optional: [
+      { id: "onion", name: "玉ねぎ", quantity: 0.25, unit: "個", benefit: "甘みと食感が増す" },
+      { id: "ginger", name: "しょうが", quantity: 0.25, unit: "個", benefit: "香りが締まる" }
+    ]
+  },
+  {
+    id: "microwave-eggplant-pork-ponzu",
+    name: "なすと豚バラのレンジ蒸し",
+    minutes: 10,
+    required: [
+      { id: "eggplant", name: "なす", quantity: 2, unit: "本" },
+      { id: "pork-belly", name: "豚バラ肉", quantity: 100, unit: "g" }
+    ],
+    pantry: "ポン酢・酒・ごま油",
+    optional: [
+      { id: "shiso", name: "大葉", quantity: 0.25, unit: "袋", benefit: "後味がさっぱりする" },
+      { id: "ginger", name: "しょうが", quantity: 0.25, unit: "個", benefit: "香りが加わる" }
+    ]
+  },
+  {
+    id: "microwave-tofu-egg-soup",
+    name: "豆腐と卵のレンジスープ",
+    minutes: 7,
+    required: [
+      { id: "tofu", name: "豆腐", quantity: 0.5, unit: "個" },
+      { id: "eggs", name: "卵", quantity: 1, unit: "個" }
+    ],
+    pantry: "鶏がらスープの素・醤油・水",
+    optional: [
+      { id: "wakame", name: "わかめ", quantity: 0.1, unit: "袋", benefit: "磯の香りと食感が加わる" },
+      { id: "green-onion-small", name: "小ねぎ", quantity: 0.25, unit: "袋", benefit: "彩りと香りが加わる" }
+    ]
+  },
+  {
+    id: "microwave-salmon-mushroom",
+    name: "鮭としめじのレンジ酒蒸し",
+    minutes: 12,
+    required: [
+      { id: "salmon", name: "鮭", quantity: 1, unit: "切れ" },
+      { id: "mushroom", name: "しめじ", quantity: 0.25, unit: "株" }
+    ],
+    pantry: "酒・塩・醤油",
+    optional: [
+      { id: "butter", name: "バター", quantity: 10, unit: "g", benefit: "コクと香りが増す" },
+      { id: "lemon", name: "レモン", quantity: 0.25, unit: "個", benefit: "後味が軽くなる" }
+    ]
+  },
+  {
+    id: "microwave-bean-sprout-pork",
+    name: "もやしと豚バラのレンジ蒸し",
+    minutes: 9,
+    required: [
+      { id: "bean-sprouts", name: "もやし", quantity: 1, unit: "袋" },
+      { id: "pork-belly", name: "豚バラ肉", quantity: 100, unit: "g" }
+    ],
+    pantry: "酒・塩・こしょう・ポン酢",
+    optional: [
+      { id: "garlic-chives", name: "にら", quantity: 0.25, unit: "袋", benefit: "香りと彩りが増す" },
+      { id: "sesame", name: "ごま", quantity: 0.1, unit: "袋", benefit: "香ばしさが加わる" }
+    ]
+  },
+  {
+    id: "microwave-chicken-cabbage",
+    name: "鶏むねと白菜のレンジ蒸し",
+    minutes: 12,
+    required: [
+      { id: "chicken", name: "鶏むね肉", quantity: 120, unit: "g" },
+      { id: "chinese-cabbage", name: "白菜", quantity: 150, unit: "g" }
+    ],
+    pantry: "酒・塩・鶏がらスープの素",
+    optional: [
+      { id: "mushroom", name: "しめじ", quantity: 0.25, unit: "株", benefit: "うま味が増す" },
+      { id: "green-onion", name: "ねぎ", quantity: 0.25, unit: "本", benefit: "甘みと香りが加わる" }
+    ]
+  },
+  {
+    id: "microwave-tomato-cheese-rice",
+    name: "トマトチーズのレンジごはん",
+    minutes: 10,
+    required: [
+      { id: "rice", name: "ごはん", quantity: 1, unit: "膳" },
+      { id: "tomato", name: "トマト", quantity: 1, unit: "個" },
+      { id: "cheese", name: "チーズ", quantity: 30, unit: "g" }
+    ],
+    pantry: "塩・こしょう・オリーブ油",
+    optional: [
+      { id: "tuna", name: "ツナ", quantity: 0.5, unit: "缶", benefit: "たんぱく質と満足感が増す" },
+      { id: "basil", name: "バジル", quantity: 0.25, unit: "袋", benefit: "香りが華やかになる" }
+    ]
+  },
+  {
+    id: "microwave-sweet-potato-butter",
+    name: "さつまいものレンジバター",
+    minutes: 10,
+    required: [
+      { id: "sweet-potato", name: "さつまいも", quantity: 1, unit: "本" }
+    ],
+    pantry: "塩・水",
+    optional: [
+      { id: "butter", name: "バター", quantity: 10, unit: "g", benefit: "甘みとコクが増す" },
+      { id: "sesame", name: "ごま", quantity: 0.1, unit: "袋", benefit: "香ばしい食感が加わる" }
+    ]
+  },
+  {
+    id: "microwave-potato-tuna-salad",
+    name: "レンジでツナポテトサラダ",
+    minutes: 12,
+    required: [
+      { id: "potato", name: "じゃがいも", quantity: 2, unit: "個" },
+      { id: "tuna", name: "ツナ", quantity: 1, unit: "缶" }
+    ],
+    pantry: "マヨネーズ・塩・こしょう",
+    optional: [
+      { id: "cucumber", name: "きゅうり", quantity: 0.5, unit: "本", benefit: "食感が軽くなる" },
+      { id: "corn", name: "とうもろこし", quantity: 0.5, unit: "本", benefit: "甘みと彩りが増す" }
+    ]
+  },
+  {
+    id: "whitebait-green-onion-bowl",
+    name: "しらすと小ねぎの即席丼",
+    minutes: 5,
+    required: [
+      { id: "rice", name: "ごはん", quantity: 1, unit: "膳" },
+      { id: "whitebait", name: "しらす", quantity: 0.5, unit: "パック" }
+    ],
+    pantry: "醤油・ごま油",
+    optional: [
+      { id: "green-onion-small", name: "小ねぎ", quantity: 0.25, unit: "袋", benefit: "香りと彩りが加わる" },
+      { id: "eggs", name: "卵", quantity: 1, unit: "個", benefit: "コクと満足感が増す" }
+    ]
+  },
+  {
+    id: "tuna-cucumber-tofu",
+    name: "ツナきゅうり冷ややっこ",
+    minutes: 5,
+    required: [
+      { id: "tofu", name: "豆腐", quantity: 1, unit: "個" },
+      { id: "tuna", name: "ツナ", quantity: 0.5, unit: "缶" },
+      { id: "cucumber", name: "きゅうり", quantity: 0.5, unit: "本" }
+    ],
+    pantry: "醤油・酢・ごま油",
+    optional: [
+      { id: "shiso", name: "大葉", quantity: 0.25, unit: "袋", benefit: "清涼感が増す" },
+      { id: "sesame", name: "ごま", quantity: 0.1, unit: "袋", benefit: "香ばしさが加わる" }
+    ]
+  },
+  {
+    id: "canned-mackerel-tomato",
+    name: "サバ缶のトマト煮",
+    minutes: 10,
+    required: [
+      { id: "canned-mackerel", name: "サバ缶", quantity: 1, unit: "缶" },
+      { id: "canned-tomato", name: "トマト缶", quantity: 0.5, unit: "缶" }
+    ],
+    pantry: "塩・こしょう・オリーブ油",
+    optional: [
+      { id: "onion", name: "玉ねぎ", quantity: 0.25, unit: "個", benefit: "甘みが加わる" },
+      { id: "cheese", name: "チーズ", quantity: 20, unit: "g", benefit: "まろやかなコクが増す" }
+    ]
+  },
+  {
+    id: "kimchi-cheese-udon",
+    name: "キムチーズうどん",
+    minutes: 10,
+    required: [
+      { id: "udon", name: "うどん", quantity: 1, unit: "袋" },
+      { id: "kimchi", name: "キムチ", quantity: 0.5, unit: "袋" },
+      { id: "cheese", name: "チーズ", quantity: 30, unit: "g" }
+    ],
+    pantry: "めんつゆ・水",
+    optional: [
+      { id: "eggs", name: "卵", quantity: 1, unit: "個", benefit: "辛みがまろやかになる" },
+      { id: "green-onion-small", name: "小ねぎ", quantity: 0.25, unit: "袋", benefit: "香りと彩りが加わる" }
+    ]
+  },
+  {
+    id: "natto-kimchi-bowl",
+    name: "納豆キムチ丼",
+    minutes: 5,
+    required: [
+      { id: "rice", name: "ごはん", quantity: 1, unit: "膳" },
+      { id: "natto", name: "納豆", quantity: 1, unit: "パック" },
+      { id: "kimchi", name: "キムチ", quantity: 0.25, unit: "袋" }
+    ],
+    pantry: "醤油・ごま油",
+    optional: [
+      { id: "eggs", name: "卵", quantity: 1, unit: "個", benefit: "コクと満足感が増す" },
+      { id: "nori", name: "のり", quantity: 0.1, unit: "袋", benefit: "磯の香りが加わる" }
+    ]
+  },
+  {
+    id: "canned-sardine-cabbage-pasta",
+    name: "いわし缶とキャベツのパスタ",
+    minutes: 12,
+    required: [
+      { id: "canned-sardine", name: "いわし缶", quantity: 1, unit: "缶" },
+      { id: "cabbage", name: "キャベツ", quantity: 100, unit: "g" },
+      { id: "pasta", name: "スパゲッティ", quantity: 100, unit: "g" }
+    ],
+    pantry: "醤油・油・こしょう",
+    optional: [
+      { id: "garlic", name: "にんにく", quantity: 0.25, unit: "個", benefit: "香りが立つ" },
+      { id: "lemon", name: "レモン", quantity: 0.25, unit: "個", benefit: "後味が軽くなる" }
+    ]
+  },
+  {
+    id: "bacon-spinach-egg",
+    name: "ベーコンとほうれん草の卵炒め",
+    minutes: 10,
+    required: [
+      { id: "bacon", name: "ベーコン", quantity: 50, unit: "g" },
+      { id: "spinach", name: "ほうれん草", quantity: 0.5, unit: "袋" },
+      { id: "eggs", name: "卵", quantity: 1, unit: "個" }
+    ],
+    pantry: "塩・こしょう・油",
+    optional: [
+      { id: "mushroom", name: "しめじ", quantity: 0.25, unit: "株", benefit: "うま味と量が増す" },
+      { id: "cheese", name: "チーズ", quantity: 20, unit: "g", benefit: "コクが増す" }
+    ]
+  },
+  {
+    id: "chicken-tender-shiso-cheese",
+    name: "ささみの大葉チーズ蒸し",
+    minutes: 12,
+    required: [
+      { id: "chicken-tender", name: "鶏ささみ", quantity: 120, unit: "g" },
+      { id: "shiso", name: "大葉", quantity: 0.25, unit: "袋" },
+      { id: "cheese", name: "チーズ", quantity: 30, unit: "g" }
+    ],
+    pantry: "酒・塩・こしょう",
+    optional: [
+      { id: "umeboshi", name: "梅干し", quantity: 1, unit: "個", benefit: "酸味で後味が軽くなる" },
+      { id: "nori", name: "のり", quantity: 0.1, unit: "袋", benefit: "磯の香りが加わる" }
+    ]
+  },
+  {
+    id: "tofu-avocado-bowl",
+    name: "豆腐とアボカドののっけ丼",
+    minutes: 6,
+    required: [
+      { id: "rice", name: "ごはん", quantity: 1, unit: "膳" },
+      { id: "tofu", name: "豆腐", quantity: 0.5, unit: "個" },
+      { id: "avocado", name: "アボカド", quantity: 1, unit: "個" }
+    ],
+    pantry: "醤油・わさび・ごま油",
+    optional: [
+      { id: "nori", name: "のり", quantity: 0.1, unit: "袋", benefit: "磯の香りが加わる" },
+      { id: "tuna", name: "ツナ", quantity: 0.5, unit: "缶", benefit: "たんぱく質と満足感が増す" }
+    ]
+  },
+  {
+    id: "salmon-flake-ochazuke",
+    name: "鮭とのりの即席茶漬け",
+    minutes: 5,
+    required: [
+      { id: "rice", name: "ごはん", quantity: 1, unit: "膳" },
+      { id: "salmon-flake", name: "鮭フレーク", quantity: 0.25, unit: "個" },
+      { id: "nori", name: "のり", quantity: 0.1, unit: "袋" }
+    ],
+    pantry: "だし・醤油・湯",
+    optional: [
+      { id: "green-onion-small", name: "小ねぎ", quantity: 0.25, unit: "袋", benefit: "香りと彩りが加わる" },
+      { id: "sesame", name: "ごま", quantity: 0.1, unit: "袋", benefit: "香ばしさが加わる" }
+    ]
+  },
+  {
+    id: "tomato-shio-kombu-tofu",
+    name: "トマト塩昆布の冷ややっこ",
+    minutes: 5,
+    required: [
+      { id: "tofu", name: "豆腐", quantity: 1, unit: "個" },
+      { id: "tomato", name: "トマト", quantity: 1, unit: "個" },
+      { id: "shio-kombu", name: "塩昆布", quantity: 0.1, unit: "袋" }
+    ],
+    pantry: "ごま油",
+    optional: [
+      { id: "shiso", name: "大葉", quantity: 0.25, unit: "袋", benefit: "清涼感が増す" },
+      { id: "sesame", name: "ごま", quantity: 0.1, unit: "袋", benefit: "香ばしさが加わる" }
+    ]
+  },
+  {
+    id: "pumpkin-mince-microwave",
+    name: "かぼちゃのレンジそぼろ",
+    minutes: 12,
+    required: [
+      { id: "pumpkin", name: "かぼちゃ", quantity: 200, unit: "g" },
+      { id: "pork-mince", name: "豚ひき肉", quantity: 80, unit: "g" }
+    ],
+    pantry: "醤油・砂糖・みりん・片栗粉・水",
+    optional: [
+      { id: "ginger", name: "しょうが", quantity: 0.25, unit: "個", benefit: "香りが締まる" },
+      { id: "green-onion-small", name: "小ねぎ", quantity: 0.25, unit: "袋", benefit: "彩りと香りが加わる" }
+    ]
+  },
+  {
+    id: "enoki-pork-roll-microwave",
+    name: "えのきの豚巻きレンジ蒸し",
+    minutes: 12,
+    required: [
+      { id: "enoki", name: "えのき", quantity: 0.5, unit: "袋" },
+      { id: "pork-belly", name: "豚バラ肉", quantity: 120, unit: "g" }
+    ],
+    pantry: "酒・塩・ポン酢",
+    optional: [
+      { id: "shiso", name: "大葉", quantity: 0.25, unit: "袋", benefit: "香りが加わる" },
+      { id: "green-onion-small", name: "小ねぎ", quantity: 0.25, unit: "袋", benefit: "仕上げの彩りになる" }
+    ]
+  },
+  {
+    id: "chicken-tomato-microwave",
+    name: "鶏ももとトマトのレンジ煮",
+    minutes: 15,
+    required: [
+      { id: "chicken-thigh", name: "鶏もも肉", quantity: 120, unit: "g" },
+      { id: "tomato", name: "トマト", quantity: 1, unit: "個" }
+    ],
+    pantry: "塩・こしょう・オリーブ油",
+    optional: [
+      { id: "onion", name: "玉ねぎ", quantity: 0.25, unit: "個", benefit: "甘みが加わる" },
+      { id: "cheese", name: "チーズ", quantity: 20, unit: "g", benefit: "まろやかなコクが増す" }
+    ]
+  },
+  {
+    id: "tomato-miso-soup",
+    name: "トマトとわかめの即席味噌汁",
+    minutes: 7,
+    required: [
+      { id: "tomato", name: "トマト", quantity: 0.5, unit: "個" },
+      { id: "wakame", name: "わかめ", quantity: 0.1, unit: "袋" }
+    ],
+    pantry: "味噌・だし・水",
+    optional: [
+      { id: "tofu", name: "豆腐", quantity: 0.25, unit: "個", benefit: "食べ応えが増す" },
+      { id: "green-onion-small", name: "小ねぎ", quantity: 0.25, unit: "袋", benefit: "香りと彩りが加わる" }
+    ]
+  },
+  {
+    id: "cabbage-sausage-soup",
+    name: "キャベツとソーセージのマグスープ",
+    minutes: 8,
+    required: [
+      { id: "cabbage", name: "キャベツ", quantity: 80, unit: "g" },
+      { id: "sausage", name: "ソーセージ", quantity: 0.5, unit: "袋" }
+    ],
+    pantry: "コンソメ・塩・こしょう・水",
+    optional: [
+      { id: "corn", name: "とうもろこし", quantity: 0.25, unit: "本", benefit: "甘みと彩りが増す" },
+      { id: "cheese", name: "チーズ", quantity: 20, unit: "g", benefit: "コクが増す" }
+    ]
+  },
+  {
+    id: "tofu-kimchi-soup",
+    name: "豆腐キムチスープ",
+    minutes: 8,
+    required: [
+      { id: "tofu", name: "豆腐", quantity: 0.5, unit: "個" },
+      { id: "kimchi", name: "キムチ", quantity: 0.5, unit: "袋" }
+    ],
+    pantry: "鶏がらスープの素・醤油・水",
+    optional: [
+      { id: "eggs", name: "卵", quantity: 1, unit: "個", benefit: "辛みがまろやかになる" },
+      { id: "green-onion", name: "ねぎ", quantity: 0.25, unit: "本", benefit: "香りと甘みが加わる" }
+    ]
+  },
+  {
+    id: "avocado-tuna-toast",
+    name: "アボカドツナトースト",
+    minutes: 8,
+    required: [
+      { id: "bread", name: "食パン", quantity: 2, unit: "枚" },
+      { id: "avocado", name: "アボカド", quantity: 1, unit: "個" },
+      { id: "tuna", name: "ツナ", quantity: 0.5, unit: "缶" }
+    ],
+    pantry: "マヨネーズ・塩・こしょう",
+    optional: [
+      { id: "cheese", name: "チーズ", quantity: 20, unit: "g", benefit: "焼いたコクが増す" },
+      { id: "lemon", name: "レモン", quantity: 0.25, unit: "個", benefit: "後味が軽くなる" }
+    ]
+  },
+  {
+    id: "egg-mayo-rice-bowl",
+    name: "レンジ卵マヨ丼",
+    minutes: 6,
+    required: [
+      { id: "rice", name: "ごはん", quantity: 1, unit: "膳" },
+      { id: "eggs", name: "卵", quantity: 2, unit: "個" }
+    ],
+    pantry: "マヨネーズ・醤油・塩",
+    optional: [
+      { id: "tuna", name: "ツナ", quantity: 0.5, unit: "缶", benefit: "うま味と満足感が増す" },
+      { id: "nori", name: "のり", quantity: 0.1, unit: "袋", benefit: "磯の香りが加わる" }
+    ]
+  },
+  {
+    id: "mushroom-butter-rice",
+    name: "きのこバター醤油ごはん",
+    minutes: 10,
+    required: [
+      { id: "rice", name: "ごはん", quantity: 1, unit: "膳" },
+      { id: "mushroom", name: "しめじ", quantity: 0.5, unit: "株" },
+      { id: "butter", name: "バター", quantity: 10, unit: "g" }
+    ],
+    pantry: "醤油・こしょう",
+    optional: [
+      { id: "bacon", name: "ベーコン", quantity: 40, unit: "g", benefit: "うま味と満足感が増す" },
+      { id: "green-onion-small", name: "小ねぎ", quantity: 0.25, unit: "袋", benefit: "彩りと香りが加わる" }
+    ]
+  },
+  ...EXPANDED_RECIPE_PACK.recipes
 ];
 
 const RECIPE_STEPS = {
+  "microwave-pork-kimchi": [
+    "耐熱皿にもやしなどの野菜、食べやすく切った豚肉、キムチの順に重ねる。",
+    "醤油と酒を回しかけ、ふんわりラップをして電子レンジで加熱する。",
+    "全体を混ぜ、豚肉の中心まで火が通っていなければ追加加熱し、ごま油を回しかける。"
+  ],
+  "microwave-cabbage-shumai": [
+    "豚ひき肉に醤油・ごま油・塩・片栗粉を混ぜ、ひと口大に丸める。",
+    "耐熱皿に刻んだキャベツを敷いて肉だねを置き、残りのキャベツをかぶせる。",
+    "ふんわりラップをして電子レンジで加熱し、肉の中心まで火が通ったことを確認する。"
+  ],
+  "microwave-eggplant-pork-ponzu": [
+    "なすと豚肉を食べやすく切り、耐熱皿へ交互に並べる。",
+    "酒とごま油を回しかけ、ふんわりラップをして電子レンジで加熱する。",
+    "豚肉の中心まで火が通ったことを確認し、ポン酢をかける。"
+  ],
+  "microwave-tofu-egg-soup": [
+    "大きめの耐熱容器に豆腐を崩し入れ、水・鶏がらスープの素・醤油を加える。",
+    "ふんわりラップをして電子レンジで温め、溶いた卵を細く回し入れる。",
+    "卵が固まるまで短時間ずつ追加加熱し、全体を軽く混ぜる。"
+  ],
+  "microwave-salmon-mushroom": [
+    "耐熱皿にほぐしたしめじと鮭を置き、塩と酒を振る。",
+    "ふんわりラップをして電子レンジで加熱する。",
+    "鮭の中心まで火が通ったことを確認し、醤油をたらす。"
+  ],
+  "microwave-bean-sprout-pork": [
+    "耐熱皿にもやしを広げ、食べやすく切った豚肉を重ならないようにのせる。",
+    "酒・塩・こしょうを振り、ふんわりラップをして電子レンジで加熱する。",
+    "豚肉の中心まで火が通ったことを確認し、ポン酢を添える。"
+  ],
+  "microwave-chicken-cabbage": [
+    "白菜を細めに切り、そぎ切りにした鶏肉と耐熱皿へ交互に重ねる。",
+    "酒・塩・鶏がらスープの素を加え、ふんわりラップをして電子レンジで加熱する。",
+    "鶏肉の中心まで火が通ったことを確認し、足りなければ追加加熱する。"
+  ],
+  "microwave-tomato-cheese-rice": [
+    "耐熱容器へごはんを広げ、角切りのトマトをのせて塩・こしょうを振る。",
+    "チーズをのせ、ふんわりラップをして電子レンジで温める。",
+    "チーズが溶けたらオリーブ油を回しかけ、全体を混ぜる。"
+  ],
+  "microwave-sweet-potato-butter": [
+    "さつまいもをよく洗って小さめの乱切りにし、水にさっとさらす。",
+    "水気を残したまま耐熱容器へ入れ、ふんわりラップをして電子レンジで加熱する。",
+    "竹串がすっと通ったら塩を振り、好みでバターをからめる。"
+  ],
+  "microwave-potato-tuna-salad": [
+    "じゃがいもを小さく切って耐熱容器へ入れ、ふんわりラップをして電子レンジで加熱する。",
+    "やわらかくなったら熱いうちに粗くつぶし、汁気を切ったツナを加える。",
+    "粗熱が取れてからマヨネーズ・塩・こしょうで和える。"
+  ],
+  "whitebait-green-onion-bowl": [
+    "温かいごはんを器によそう。",
+    "しらすと小ねぎなどの薬味をのせる。",
+    "醤油とごま油を少量ずつ回しかける。"
+  ],
+  "tuna-cucumber-tofu": [
+    "きゅうりを細切りにし、ツナの汁気を切る。",
+    "醤油・酢・ごま油を混ぜ、きゅうりとツナを和える。",
+    "水気を切った豆腐にのせる。"
+  ],
+  "canned-mackerel-tomato": [
+    "フライパンへトマト缶とサバ缶を汁ごと入れ、サバを大きくほぐす。",
+    "中火で混ぜながら、汁気が少し減るまで煮る。",
+    "塩・こしょうで味を整え、オリーブ油を回しかける。"
+  ],
+  "kimchi-cheese-udon": [
+    "耐熱容器へうどん、キムチ、めんつゆと少量の水を入れる。",
+    "ふんわりラップをして電子レンジで温め、一度よく混ぜる。",
+    "チーズをのせて再び短く加熱し、溶けたら完成。"
+  ],
+  "natto-kimchi-bowl": [
+    "納豆を付属のたれまたは少量の醤油と混ぜる。",
+    "温かいごはんへ納豆とキムチをのせる。",
+    "ごま油を少量回しかけ、好みで卵やのりを添える。"
+  ],
+  "canned-sardine-cabbage-pasta": [
+    "スパゲッティを表示時間に合わせてゆで、途中で食べやすく切ったキャベツも加える。",
+    "湯を切って鍋へ戻し、いわし缶を汁ごと加えて大きくほぐす。",
+    "醤油・油・こしょうを加え、全体を手早く混ぜる。"
+  ],
+  "bacon-spinach-egg": [
+    "ベーコンとほうれん草を食べやすく切り、卵を溶く。",
+    "フライパンでベーコンとほうれん草を炒め、塩・こしょうを振る。",
+    "溶き卵を加え、好みの固さになるまで大きく混ぜる。"
+  ],
+  "chicken-tender-shiso-cheese": [
+    "ささみを開いて筋を除き、塩・こしょうを振って大葉とチーズをのせる。",
+    "半分に折って耐熱皿へ置き、酒を振ってふんわりラップをし、電子レンジで加熱する。",
+    "ささみの中心まで火が通ったことを確認し、足りなければ追加加熱する。"
+  ],
+  "tofu-avocado-bowl": [
+    "豆腐の水気を切り、アボカドとともに食べやすく切る。",
+    "温かいごはんへ豆腐とアボカドをのせる。",
+    "醤油・わさび・ごま油を混ぜて回しかける。"
+  ],
+  "salmon-flake-ochazuke": [
+    "温かいごはんを器へ盛り、鮭フレークとのりをのせる。",
+    "だしと醤油を合わせ、熱い湯を注ぐ。",
+    "好みで小ねぎやごまを散らす。"
+  ],
+  "tomato-shio-kombu-tofu": [
+    "トマトを小さめの角切りにし、塩昆布とごま油で和える。",
+    "豆腐の水気を切って器へ盛る。",
+    "トマトと塩昆布を汁ごとのせる。"
+  ],
+  "pumpkin-mince-microwave": [
+    "かぼちゃを小さめに切り、豚ひき肉とともに耐熱容器へ入れる。",
+    "醤油・砂糖・みりん・水を混ぜて回しかけ、ふんわりラップをして電子レンジで加熱する。",
+    "ひき肉の中心まで火が通ったことを確認し、水溶き片栗粉を混ぜて短く追加加熱する。"
+  ],
+  "enoki-pork-roll-microwave": [
+    "石づきを落としたえのきを小分けにし、豚肉で巻く。",
+    "巻き終わりを下にして耐熱皿へ並べ、酒と塩を振ってふんわりラップをし、電子レンジで加熱する。",
+    "豚肉の中心まで火が通ったことを確認し、ポン酢をかける。"
+  ],
+  "chicken-tomato-microwave": [
+    "鶏肉とトマトをひと口大に切り、耐熱容器へ入れる。",
+    "塩・こしょう・オリーブ油を加えて混ぜ、ふんわりラップをして電子レンジで加熱する。",
+    "鶏肉の中心まで火が通ったことを確認し、足りなければ追加加熱する。"
+  ],
+  "tomato-miso-soup": [
+    "耐熱容器へ食べやすく切ったトマト、わかめ、水、だしを入れる。",
+    "ふんわりラップをして電子レンジで温める。",
+    "味噌を溶き入れ、必要なら短く温め直す。"
+  ],
+  "cabbage-sausage-soup": [
+    "大きめの耐熱マグへ刻んだキャベツ、切ったソーセージ、水、コンソメを入れる。",
+    "ふんわりラップをして電子レンジで、キャベツがやわらかくなるまで加熱する。",
+    "よく混ぜ、塩・こしょうで味を整える。"
+  ],
+  "tofu-kimchi-soup": [
+    "耐熱容器へ豆腐を大きく崩し入れ、キムチ、水、鶏がらスープの素を加える。",
+    "ふんわりラップをして電子レンジでしっかり温める。",
+    "醤油で味を整え、好みで小ねぎを散らす。"
+  ],
+  "avocado-tuna-toast": [
+    "アボカドを粗くつぶし、汁気を切ったツナ、マヨネーズ、塩・こしょうと混ぜる。",
+    "食パンへ均等に広げる。",
+    "トースターでパンの縁が色づくまで焼く。"
+  ],
+  "egg-mayo-rice-bowl": [
+    "耐熱容器へ卵を割り入れてよく溶き、塩とマヨネーズを混ぜる。",
+    "ラップをせず電子レンジで短時間ずつ加熱し、そのたびに混ぜて好みの固さにする。",
+    "温かいごはんへのせ、醤油を少量かける。"
+  ],
+  "mushroom-butter-rice": [
+    "しめじをほぐし、耐熱容器へ入れてふんわりラップをし、電子レンジで加熱する。",
+    "熱いうちにバターと醤油を混ぜる。",
+    "温かいごはんへ加えて混ぜ、こしょうを振る。"
+  ],
   "cheese-toast": [
     "食パンにチーズをのせ、はみ出さないよう軽く広げる。",
     "トースターか魚焼きグリルで、チーズが溶けて色づくまで焼く。",
@@ -1964,12 +2562,15 @@ const RECIPE_STEPS = {
     "豆腐ときのこ、使う野菜を食べやすく切る。",
     "鍋にだし・醤油・みりん・水を入れ、具材を加えて煮る。",
     "全体が温まり、肉を使う場合は中心まで火を通す。"
-  ]
+  ],
+  ...EXPANDED_RECIPE_PACK.steps
 };
 
 // Prototype estimates per common household unit. These values are deliberately
 // rounded and are shown as a guide, not as medical or package-label data.
 const NUTRITION_REFERENCES = {
+  avocado: { 個: [1, 246, 3.5, 24.7, 8.7] },
+  basil: { 袋: [1, 5, 0.4, 0.1, 0.8] },
   "boiled-bamboo": { 袋: [1, 30, 3.5, 0.2, 5.5] },
   "bok-choy": { 袋: [1, 18, 1.2, 0.2, 3.2] },
   burdock: { 本: [1, 130, 3.5, 0.2, 30.8] },
@@ -1986,6 +2587,7 @@ const NUTRITION_REFERENCES = {
   "freshwater-clam": { 袋: [1, 54, 7.5, 1.4, 4.3] },
   "fried-tofu": { 袋: [1, 190, 12.9, 16.4, 0.6] },
   "green-beans": { 袋: [1, 46, 3.6, 0.2, 10.2] },
+  "green-onion-small": { 袋: [1, 28, 1.7, 0.2, 7] },
   hanpen: { 枚: [1, 94, 9.9, 1.0, 11.4] },
   "horse-mackerel": { 本: [1, 76, 12.4, 2.7, 0.1] },
   kamaboko: { 本: [1, 285, 36, 2.7, 28.5] },
@@ -2024,6 +2626,7 @@ const NUTRITION_REFERENCES = {
   "broad-beans": { 袋: [1, 108, 10.9, 0.2, 15.5] },
   "canned-corn": { 缶: [1, 138, 3.2, 1.3, 29] },
   "canned-mackerel": { 缶: [1, 340, 31, 22, 0.5] },
+  "canned-sardine": { 缶: [1, 360, 32, 25, 0.6] },
   "canned-tomato": { 缶: [1, 80, 3.2, 0.4, 17] },
   "chinese-noodles": { 袋: [1, 300, 9.4, 1.6, 62] },
   "dried-radish": { 袋: [1, 168, 3.5, 0.4, 35] },
@@ -2056,14 +2659,17 @@ const NUTRITION_REFERENCES = {
   pear: { 個: [1, 110, 0.8, 0.3, 29] },
   pineapple: { 個: [1, 340, 2.6, 0.4, 85] },
   "potato-starch": { g: [100, 330, 0.1, 0.1, 81.6] },
+  "pork-mince": { g: [100, 221, 17.7, 17.2, 0.3] },
   sesame: { 袋: [1, 200, 6.5, 17, 6] },
   shiitake: { パック: [1, 25, 3, 0.4, 5.4] },
+  "shio-kombu": { 袋: [1, 55, 7, 0.2, 12] },
   shirataki: { 袋: [1, 12, 0.2, 0.1, 6] },
   "snow-peas": { 袋: [1, 38, 3, 0.2, 7.5] },
   somen: { 袋: [1, 350, 9.5, 1.1, 72] },
   "spring-roll-wrapper": { 袋: [1, 290, 8, 2, 58] },
   strawberry: { パック: [1, 68, 1.8, 0.2, 17] },
   takuan: { 袋: [1, 54, 1.5, 0.3, 12] },
+  tenkasu: { 袋: [1, 520, 7, 36, 45] },
   "tempura-flour": { g: [100, 350, 8.8, 1.3, 74] },
   umeboshi: { 個: [1, 6, 0.2, 0.1, 1.4] },
   watermelon: { 個: [1, 370, 1.2, 0.2, 95] },
@@ -2507,7 +3113,38 @@ const RECIPE_ILLUSTRATION_FALLBACKS = {
   "chilled-somen": "somen",
   "tuna-tomato-somen": "somen",
   "pork-chinese-cabbage-hotpot": "chinese-cabbage",
-  "tofu-mushroom-hotpot": "tofu"
+  "tofu-mushroom-hotpot": "tofu",
+  "microwave-pork-kimchi": "pork-belly",
+  "microwave-cabbage-shumai": "pork-mince",
+  "microwave-eggplant-pork-ponzu": "eggplant",
+  "microwave-tofu-egg-soup": "tofu",
+  "microwave-salmon-mushroom": "salmon",
+  "microwave-bean-sprout-pork": "bean-sprouts",
+  "microwave-chicken-cabbage": "chicken",
+  "microwave-tomato-cheese-rice": "tomato",
+  "microwave-sweet-potato-butter": "sweet-potato",
+  "microwave-potato-tuna-salad": "potato",
+  "whitebait-green-onion-bowl": "whitebait",
+  "tuna-cucumber-tofu": "tofu",
+  "canned-mackerel-tomato": "canned-mackerel",
+  "kimchi-cheese-udon": "udon",
+  "natto-kimchi-bowl": "natto",
+  "canned-sardine-cabbage-pasta": "canned-sardine",
+  "bacon-spinach-egg": "bacon",
+  "chicken-tender-shiso-cheese": "chicken-tender",
+  "tofu-avocado-bowl": "avocado",
+  "salmon-flake-ochazuke": "salmon-flake",
+  "tomato-shio-kombu-tofu": "tomato",
+  "pumpkin-mince-microwave": "pumpkin",
+  "enoki-pork-roll-microwave": "enoki",
+  "chicken-tomato-microwave": "chicken-thigh",
+  "tomato-miso-soup": "tomato",
+  "cabbage-sausage-soup": "cabbage",
+  "tofu-kimchi-soup": "tofu",
+  "avocado-tuna-toast": "avocado",
+  "egg-mayo-rice-bowl": "eggs",
+  "mushroom-butter-rice": "mushroom",
+  ...EXPANDED_RECIPE_PACK.fallbacks
 };
 
 const INGREDIENT_ILLUSTRATIONS = {
@@ -6048,10 +6685,21 @@ function recipeScore(recipe) {
   return priorityBoost + seasonBoost + 50 - shortagePenalty - recipe.minutes / 10;
 }
 
+function compareRecipes(a, b) {
+  if (state.priority === "quick") {
+    const shortageDifference = shortageFor(a, RECIPE_LIST_SERVINGS).length
+      - shortageFor(b, RECIPE_LIST_SERVINGS).length;
+    if (shortageDifference) return shortageDifference;
+    const minuteDifference = a.minutes - b.minutes;
+    if (minuteDifference) return minuteDifference;
+  }
+  return recipeScore(b) - recipeScore(a);
+}
+
 function renderRecipes() {
   renderTodayIngredientControl();
   renderSeasonalGuide();
-  const ordered = [...RECIPES].sort((a, b) => recipeScore(b) - recipeScore(a));
+  const ordered = [...RECIPES].sort(compareRecipes);
   const visibleCount = Math.min(state.visibleRecipeCount, ordered.length);
   const visible = ordered.slice(0, visibleCount);
   elements.recipeList.innerHTML = visible.map((recipe, index) => renderRecipe(recipe, index)).join("");
