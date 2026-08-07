@@ -5,7 +5,7 @@ const SHELF_COUNTS_STORAGE_KEY = "fridge-leftovers-shelf-counts-v1";
 const RECENT_INGREDIENTS_STORAGE_KEY = "fridge-leftovers-recent-ingredients-v1";
 const SETTINGS_STORAGE_KEY = "fridge-leftovers-settings-v1";
 const DEVICE_STORAGE_KEY = "fridge-leftovers-device-v1";
-const APP_VERSION = "0.17.0";
+const APP_VERSION = "0.18.0";
 const EXPANDED_RECIPE_PACK = globalThis.RECIPE_EXPANSION;
 if (!EXPANDED_RECIPE_PACK || EXPANDED_RECIPE_PACK.recipes.length !== 120) {
   throw new Error("追加レシピデータを読み込めませんでした");
@@ -6454,6 +6454,33 @@ function renderShoppingItem(item) {
   `;
 }
 
+function renderShoppingCheckItem(item) {
+  return `
+    <details class="shopping-check-item">
+      <summary aria-label="${escapeHtml(item.name)}の詳細を表示">
+        ${renderIngredientIllustration(item.ingredientId, item.name)}
+        <span class="visually-hidden">${escapeHtml(item.name)}</span>
+      </summary>
+      <div class="shopping-check-detail">
+        <div class="shopping-check-detail-copy">
+          <strong>${escapeHtml(item.name)}</strong>
+          <span>${formatQuantity(item.quantity, item.unit)}</span>
+          <small>${item.reason ? escapeHtml(item.reason) : "自分で追加"}</small>
+          ${renderChangeAttribution("shopping", item.id)}
+        </div>
+        <div class="shopping-check-detail-actions">
+          <label class="shopping-purchase-button">
+            <input type="checkbox" data-shopping-check="${escapeHtml(item.id)}">
+            <span class="check-mark" aria-hidden="true"></span>
+            <span>購入済みにする</span>
+          </label>
+          <button type="button" class="shopping-detail-delete" data-shopping-delete="${escapeHtml(item.id)}">削除</button>
+        </div>
+      </div>
+    </details>
+  `;
+}
+
 function renderShoppingPicker() {
   const category = ILLUSTRATED_INGREDIENT_CATEGORIES.find(
     (candidate) => candidate.id === state.shoppingPickerCategory
@@ -6534,9 +6561,20 @@ function renderShopping() {
     ? recommendations.map(renderShoppingRecommendation).join("")
     : '<p class="shopping-empty-recommendation">在庫を増やすと、組み合わせの候補がここに出ます。</p>';
 
-  elements.shoppingList.innerHTML = state.shopping.length
-    ? state.shopping.map(renderShoppingItem).join("")
-    : '<p class="shopping-empty-list">買うものを追加すると、ここが店内用のチェックリストになります。</p>';
+  const waitingItems = state.shopping.filter((item) => !item.checked);
+  const boughtItems = state.shopping.filter((item) => item.checked);
+  const waitingMarkup = waitingItems.length
+    ? `<div class="shopping-check-grid">${waitingItems.map(renderShoppingCheckItem).join("")}</div>`
+    : '<p class="shopping-empty-list">店内でチェックするものはありません。</p>';
+  const boughtMarkup = boughtItems.length
+    ? `
+      <details class="shopping-completed">
+        <summary>購入済み ${boughtItems.length}品</summary>
+        <div class="shopping-completed-list">${boughtItems.map(renderShoppingItem).join("")}</div>
+      </details>
+    `
+    : "";
+  elements.shoppingList.innerHTML = waitingMarkup + boughtMarkup;
 }
 
 function renderTodayIngredientControl() {

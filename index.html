@@ -12,10 +12,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="冷蔵庫の現在地">
-  <link rel="stylesheet" href="styles.css?v=7fa5ea9f">
+  <link rel="stylesheet" href="styles.css?v=2bd836b4">
   <script src="vendor/tesseract/tesseract.min.js?v=7.0.0" defer></script>
   <script src="recipe-expansion.js?v=3b6c805e" defer></script>
-  <script src="app.js?v=9e9374de" defer></script>
+  <script src="app.js?v=da4b51de" defer></script>
   <!--
     起動の読み込み画面は、外部CSS（styles.css）が届く前から出したいので、
     ここだけ色を直書きしている（:root の変数に頼らない）。回線が細いときほど
@@ -260,28 +260,42 @@
           <span class="shopping-pencil" aria-hidden="true">／</span>
         </div>
 
-        <section class="shopping-illustration-picker" aria-labelledby="shopping-picker-title">
-          <div class="shopping-picker-heading">
+        <section class="shopping-note" aria-labelledby="shopping-list-title">
+          <div class="shopping-section-heading">
             <div>
-              <p class="eyebrow">イラストから追加</p>
-              <h3 id="shopping-picker-title">売り場を選ぶ</h3>
+              <p class="eyebrow">現在、店内で確認するもの</p>
+              <h3 id="shopping-list-title">店内でチェック</h3>
             </div>
-            <small>タップで追加</small>
+            <button class="text-button" type="button" id="clear-bought" hidden>購入済みを消す</button>
           </div>
-
-          <div class="shopping-category-layer" id="shopping-category-layer">
-            <div class="shopping-category-grid" id="shopping-category-grid"></div>
-          </div>
-
-          <div class="shopping-item-layer" id="shopping-item-layer" hidden>
-            <button class="shopping-picker-back" type="button" id="shopping-picker-back">← 売り場へ戻る</button>
-            <div class="shopping-item-layer-heading">
-              <strong id="shopping-picker-category-title"></strong>
-              <small>買うものをタップ</small>
-            </div>
-            <div class="shopping-food-grid" id="shopping-food-grid"></div>
-          </div>
+          <p class="shopping-check-hint">食材のアイコンをタップすると、数量や操作を確認できます。</p>
+          <div class="shopping-list" id="shopping-list" aria-live="polite"></div>
         </section>
+
+        <details class="shopping-accordion shopping-illustration-picker">
+          <summary class="shopping-accordion-summary">
+            <span>
+              <span class="eyebrow">イラストから追加</span>
+              <strong id="shopping-picker-title">売り場を選ぶ</strong>
+            </span>
+            <small>タップで追加</small>
+          </summary>
+
+          <div class="shopping-accordion-body">
+            <div class="shopping-category-layer" id="shopping-category-layer">
+              <div class="shopping-category-grid" id="shopping-category-grid"></div>
+            </div>
+
+            <div class="shopping-item-layer" id="shopping-item-layer" hidden>
+              <button class="shopping-picker-back" type="button" id="shopping-picker-back">← 売り場へ戻る</button>
+              <div class="shopping-item-layer-heading">
+                <strong id="shopping-picker-category-title"></strong>
+                <small>買うものをタップ</small>
+              </div>
+              <div class="shopping-food-grid" id="shopping-food-grid"></div>
+            </div>
+          </div>
+        </details>
 
         <details class="shopping-manual">
           <summary>一覧にないものを文字で追加</summary>
@@ -319,28 +333,19 @@
           </form>
         </details>
 
-        <section class="shopping-recommendations" aria-labelledby="shopping-recommendations-title">
-          <div class="shopping-section-heading">
-            <div>
-              <p class="eyebrow">冷蔵庫との組み合わせ</p>
-              <h3 id="shopping-recommendations-title">今あるものに合う</h3>
-            </div>
-            <span>1人分を基準</span>
+        <details class="shopping-accordion shopping-recommendations">
+          <summary class="shopping-accordion-summary">
+            <span>
+              <span class="eyebrow">冷蔵庫との組み合わせ</span>
+              <strong id="shopping-recommendations-title">今あるものに合う</strong>
+            </span>
+            <small>1人分を基準</small>
+          </summary>
+          <div class="shopping-accordion-body">
+            <p class="shopping-intro">買い足すと、登録レシピにつながりやすい順です。</p>
+            <div class="shopping-recommendation-list" id="shopping-recommendations"></div>
           </div>
-          <p class="shopping-intro">買い足すと、登録レシピにつながりやすい順です。</p>
-          <div class="shopping-recommendation-list" id="shopping-recommendations"></div>
-        </section>
-
-        <section class="shopping-note" aria-labelledby="shopping-list-title">
-          <div class="shopping-section-heading">
-            <div>
-              <p class="eyebrow">店内でチェック</p>
-              <h3 id="shopping-list-title">買うもの</h3>
-            </div>
-            <button class="text-button" type="button" id="clear-bought" hidden>購入済みを消す</button>
-          </div>
-          <div class="shopping-list" id="shopping-list" aria-live="polite"></div>
-        </section>
+        </details>
 
         <p class="privacy-note" id="privacy-note-shopping">買い物リストも、この端末のブラウザ内だけに保存されます。</p>
       </section>
