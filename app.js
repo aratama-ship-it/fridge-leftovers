@@ -6,9 +6,16 @@ const RECENT_INGREDIENTS_STORAGE_KEY = "fridge-leftovers-recent-ingredients-v1";
 const SETTINGS_STORAGE_KEY = "fridge-leftovers-settings-v1";
 const DEVICE_STORAGE_KEY = "fridge-leftovers-device-v1";
 const APP_VERSION = "0.18.0";
-const EXPANDED_RECIPE_PACK = globalThis.RECIPE_EXPANSION;
-if (!EXPANDED_RECIPE_PACK || EXPANDED_RECIPE_PACK.recipes.length !== 120) {
-  throw new Error("追加レシピデータを読み込めませんでした");
+const recipeExpansion = globalThis.RECIPE_EXPANSION;
+const RECIPE_EXPANSION_UNAVAILABLE = !recipeExpansion
+  || typeof recipeExpansion !== "object"
+  || Array.isArray(recipeExpansion)
+  || !Array.isArray(recipeExpansion.recipes);
+const EXPANDED_RECIPE_PACK = RECIPE_EXPANSION_UNAVAILABLE
+  ? { recipes: [], steps: {}, seasons: {}, fallbacks: {} }
+  : recipeExpansion;
+if (!RECIPE_EXPANSION_UNAVAILABLE && EXPANDED_RECIPE_PACK.recipes.length !== 120) {
+  console.warn(`追加レシピは120件ではなく${EXPANDED_RECIPE_PACK.recipes.length}件です`);
 }
 const RECIPE_PAGE_SIZE = 3;
 const RECIPE_LIST_SERVINGS = 1;
@@ -4872,17 +4879,17 @@ const EXPORT_APP = "fridge-leftovers";
 
 // 書き出す中身。保存キーとの対応をここ1箇所にまとめる
 const EXPORT_SECTIONS = [
-  { key: "inventory", label: "冷蔵庫の中身", storage: STORAGE_KEY, get: () => state.inventory },
-  { key: "shopping", label: "買い物リスト", storage: SHOPPING_STORAGE_KEY, get: () => state.shopping },
-  { key: "cookingHistory", label: "履歴", storage: COOKING_HISTORY_STORAGE_KEY, get: () => state.cookingHistory },
-  { key: "shelfCounts", label: "棚の数", storage: SHELF_COUNTS_STORAGE_KEY, get: () => state.shelfCounts },
-  { key: "recentIngredientIds", label: "最近追加した食材", storage: RECENT_INGREDIENTS_STORAGE_KEY, get: () => state.recentIngredientIds },
-  { key: "settings", label: "設定", storage: SETTINGS_STORAGE_KEY, get: () => state.settings },
+  { key: "inventory", label: "冷蔵庫の中身", storage: STORAGE_KEY, expected: "array", itemsHaveId: true, get: () => state.inventory },
+  { key: "shopping", label: "買い物リスト", storage: SHOPPING_STORAGE_KEY, expected: "array", itemsHaveId: true, get: () => state.shopping },
+  { key: "cookingHistory", label: "履歴", storage: COOKING_HISTORY_STORAGE_KEY, expected: "array", itemsHaveId: true, get: () => state.cookingHistory },
+  { key: "shelfCounts", label: "棚の数", storage: SHELF_COUNTS_STORAGE_KEY, expected: "object", get: () => state.shelfCounts },
+  { key: "recentIngredientIds", label: "最近追加した食材", storage: RECENT_INGREDIENTS_STORAGE_KEY, expected: "array", get: () => state.recentIngredientIds },
+  { key: "settings", label: "設定", storage: SETTINGS_STORAGE_KEY, expected: "object", get: () => state.settings },
   // 同期の版も一緒に持ち出す。持ち越さないと、読み込んだ先で全部が
   // 「サーバーの知らない新しい行」になり、二重に登録されてしまう
-  { key: "syncMeta", label: "同期の記録", storage: SYNC_STORAGE_KEY, get: () => state.syncMeta },
+  { key: "syncMeta", label: "同期の記録", storage: SYNC_STORAGE_KEY, expected: "object", get: () => state.syncMeta },
   // 共有している冷蔵庫。機種変更したとき、同じ冷蔵庫へ戻れるように持ち出す
-  { key: "share", label: "共有の設定", storage: SHARE_STORAGE_KEY, get: () => state.share }
+  { key: "share", label: "共有の設定", storage: SHARE_STORAGE_KEY, expected: "object", get: () => state.share }
 ];
 
 function backupPayload() {
@@ -4938,6 +4945,19 @@ function readBackup(text) {
     .filter((section) => data[section.key] !== undefined)
     .map((section) => {
       const value = data[section.key];
+      const validType = section.expected === "array"
+        ? Array.isArray(value)
+        : value !== null && typeof value === "object" && !Array.isArray(value);
+      const validItems = !section.itemsHaveId || (Array.isArray(value) && value.every((item) =>
+        item !== null
+        && typeof item === "object"
+        && !Array.isArray(item)
+        && Object.prototype.hasOwnProperty.call(item, "id")
+        && item.id !== null
+        && item.id !== undefined));
+      if (!validType || !validItems) {
+        throw new Error(`ファイルの「${section.label}」が壊れています。`);
+      }
       const count = Array.isArray(value) ? value.length : null;
       return { section, value, count };
     });
@@ -4955,32 +4975,75 @@ function describeBackup({ payload, found }) {
 }
 
 function applyBackup({ found }) {
-  for (const { section, value } of found) {
-    try {
-      localStorage.setItem(section.storage, JSON.stringify(value));
-    } catch {
-      markStorageUnavailable();
-      return false;
-    }
+  let storedValues;
+  try {
+    storedValues = Object.fromEntries(
+      EXPORT_SECTIONS.map(({ storage }) => [storage, localStorage.getItem(storage)])
+    );
+  } catch {
+    markStorageUnavailable();
+    return false;
   }
-  // 保存し直したあとは、通常の読み込みをそのまま通す。
-  // ここで検証をやり直せるので、壊れた値が state へ入らない
-  loadSyncMeta();
-  loadShare();
-  loadSettings();
-  loadShelfCounts();
-  loadRecentIngredients();
-  loadInventory();
-  loadShoppingList();
-  loadCookingHistory();
-  state.needsOnboarding = false;
-  elements.settingShowNutrition.checked = state.settings.showNutrition;
-  setNutritionHelpExpanded(false);
-  renderAll();
-  renderRefineEntry();
-  renderDayAfterCheck();
-  renderSampleNotice();
-  return true;
+
+  let writing = true;
+  try {
+    for (const { section, value } of found) {
+      localStorage.setItem(section.storage, JSON.stringify(value));
+    }
+    writing = false;
+    // 保存し直したあとは、通常の読み込みをそのまま通す。
+    loadSyncMeta();
+    loadShare();
+    loadSettings();
+    loadShelfCounts();
+    loadRecentIngredients();
+    loadInventory();
+    loadShoppingList();
+    loadCookingHistory();
+    state.needsOnboarding = false;
+    elements.settingShowNutrition.checked = state.settings.showNutrition;
+    setNutritionHelpExpanded(false);
+    renderAll();
+    renderRefineEntry();
+    renderDayAfterCheck();
+    renderSampleNotice();
+    return true;
+  } catch {
+    let restoreFailed = false;
+    try {
+      for (const [key, value] of Object.entries(storedValues)) {
+        if (value === null) localStorage.removeItem(key);
+        else localStorage.setItem(key, value);
+      }
+    } catch {
+      restoreFailed = true;
+    }
+
+    try {
+      loadSyncMeta();
+      loadShare();
+      loadSettings();
+      loadShelfCounts();
+      loadRecentIngredients();
+      loadInventory();
+      loadShoppingList();
+      loadCookingHistory();
+    } catch {
+      // 復元できた範囲で画面を戻し、読み込み失敗として扱う
+    }
+    try {
+      elements.settingShowNutrition.checked = state.settings.showNutrition;
+      setNutritionHelpExpanded(false);
+      renderAll();
+      renderRefineEntry();
+      renderDayAfterCheck();
+      renderSampleNotice();
+    } catch {
+      // 画面の復元に失敗しても、壊れたバックアップは適用済みにしない
+    }
+    if (writing || restoreFailed) markStorageUnavailable();
+    return false;
+  }
 }
 
 // ---- 翌日の在庫確認・補正 ------------------------------------------------
@@ -10234,6 +10297,9 @@ scheduleInventoryScrollLock();
 // index.html 側にも時間切れで消す安全弁があるので、ここが例外で
 // 実行されなくても読み込み画面が残り続けることはない。
 document.getElementById("boot-loading")?.setAttribute("hidden", "");
+if (RECIPE_EXPANSION_UNAVAILABLE) {
+  showToast("追加レシピを読み込めませんでした。基本のレシピだけで表示しています。");
+}
 
 // 通信が無くても起動できるようにする。index.html を file:// で直接開いた
 // ときは Service Worker を登録できないので、その場合は何もしない。

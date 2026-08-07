@@ -4,7 +4,7 @@
 // このファイル自身の内容から書き込む。中身が変わればこのファイルも変わるので、
 // ブラウザが新しい Service Worker と見なして入れ替え、古いキャッシュを捨てる。
 // 手で番号を上げる必要はない。
-const VERSION = "4b2de748";
+const VERSION = "867650ad";
 const CACHE = `fridge-leftovers-${VERSION}`;
 
 // index.html が参照するファイル。?v= 付きの実物のパスでないとキャッシュに
@@ -16,7 +16,7 @@ const REFERENCED = [
   "./assets/icons/apple-touch-icon.png?v=0db390f0",
   "./styles.css?v=2bd836b4",
   "./recipe-expansion.js?v=3b6c805e",
-  "./app.js?v=88cbb37e"
+  "./app.js?v=6a93b181"
 ];
 // ここまで自動更新
 
@@ -31,20 +31,42 @@ const SHELL = ["./", "./index.html", ...REFERENCED];
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE)
-      // 1つ落ちても残りは入れたいので addAll は使わない
-      .then((cache) => Promise.all(SHELL.map((path) => cache.add(path).catch(() => {}))))
+      // 全件を試すが、揃わなければ乗り換えず、不完全なキャッシュで古い版を捨てない
+      .then(async (cache) => {
+        const failed = [];
+        await Promise.all(SHELL.map(async (path) => {
+          try {
+            await cache.add(path);
+          } catch {
+            failed.push(path);
+            console.warn(`キャッシュへ追加できませんでした: ${path}`);
+          }
+        }));
+        if (failed.length) {
+          throw new Error(`起動用キャッシュが${failed.length}件不足しています`);
+        }
+      })
       .then(() => self.skipWaiting())
   );
 });
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches.keys()
-      .then((keys) => Promise.all(
+    (async () => {
+      const cache = await caches.open(CACHE);
+      const missing = (await Promise.all(
+        SHELL.map(async (path) => await cache.match(path) ? null : path)
+      )).filter(Boolean);
+      if (missing.length) {
+        console.warn(`起動用キャッシュが不足しているため古いキャッシュを残します: ${missing.join(", ")}`);
+        return;
+      }
+      const keys = await caches.keys();
+      await Promise.all(
         keys.filter((key) => key.startsWith("fridge-leftovers-") && key !== CACHE)
           .map((key) => caches.delete(key))
-      ))
-      .then(() => self.clients.claim())
+      );
+    })().finally(() => self.clients.claim())
   );
 });
 

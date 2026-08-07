@@ -49,7 +49,10 @@ const CONSTANTS = [
   "CONFIDENCE_ORDER", "quantityConfidence", "quantityUnknown", "lessCertain",
   "RECIPES", "RECEIPT_RULES", "INGREDIENT_SUBSTITUTES", "UNIT_CONVERSIONS",
   "SUBSTITUTE_GENERICS", "RECIPE_LIST_SERVINGS", "RECIPE_ILLUSTRATIONS",
-  "RECIPE_ILLUSTRATION_FALLBACKS"
+  "RECIPE_ILLUSTRATION_FALLBACKS",
+  "STORAGE_KEY", "SHOPPING_STORAGE_KEY", "COOKING_HISTORY_STORAGE_KEY",
+  "SHELF_COUNTS_STORAGE_KEY", "RECENT_INGREDIENTS_STORAGE_KEY", "SETTINGS_STORAGE_KEY",
+  "SYNC_STORAGE_KEY", "SHARE_STORAGE_KEY", "EXPORT_FORMAT", "EXPORT_APP", "EXPORT_SECTIONS"
 ];
 const FUNCTIONS = [
   "normalizedExpiryDate", "localDateIso", "expiryDayDifference", "expiryAlertState",
@@ -59,7 +62,7 @@ const FUNCTIONS = [
   "inventoryLevel", "pendingDayAfterItems", "dayAfterCorrection",
   "historyEntryType", "historyEntryTime", "addHistoryEntry", "seasonalRecipeState", "recipeScore", "compareRecipes",
   "currentChangeAttribution", "markSyncChanges", "pendingSyncChanges", "applySyncResult", "mergeEntity",
-  "applyOneIncoming"
+  "applyOneIncoming", "readBackup"
 ];
 
 // stockForRequirement は inventoryMap() と state を使う。テスト側で差し替える。
@@ -80,7 +83,8 @@ return {
   pendingDayAfterItems, dayAfterCorrection, DAY_AFTER_LEVELS,
   normalizedExpiryDate, expiryDayDifference, expiryAlertState,
   markSyncChanges, pendingSyncChanges, applySyncResult, mergeEntity, applyOneIncoming,
-  addHistoryEntry, seasonalRecipeState, compareRecipes, HISTORY_STORAGE_LIMIT, HISTORY_PAGE_SIZE
+  addHistoryEntry, seasonalRecipeState, compareRecipes, HISTORY_STORAGE_LIMIT, HISTORY_PAGE_SIZE,
+  EXPORT_SECTIONS, readBackup
 };
 `;
 
@@ -93,7 +97,8 @@ const {
   pendingDayAfterItems, dayAfterCorrection, DAY_AFTER_LEVELS,
   normalizedExpiryDate, expiryDayDifference, expiryAlertState,
   markSyncChanges, pendingSyncChanges, applySyncResult, mergeEntity, applyOneIncoming,
-  addHistoryEntry, seasonalRecipeState, compareRecipes, HISTORY_STORAGE_LIMIT, HISTORY_PAGE_SIZE
+  addHistoryEntry, seasonalRecipeState, compareRecipes, HISTORY_STORAGE_LIMIT, HISTORY_PAGE_SIZE,
+  EXPORT_SECTIONS, readBackup
 } = app_;
 
 const ruleFor = (id) => RECEIPT_RULES.find((rule) => rule.id === id);
@@ -122,6 +127,44 @@ function check(label, actual, expected) {
     console.log(`✗ ${label}\n    実際: ${JSON.stringify(actual)}\n    期待: ${JSON.stringify(expected)}`);
   }
 }
+
+// ---- バックアップの事前検証 ----------------------------------------------
+const backupText = (data) => JSON.stringify({
+  app: "fridge-leftovers",
+  format: 1,
+  data
+});
+const backupError = (data) => {
+  try {
+    readBackup(backupText(data));
+    return "";
+  } catch (error) {
+    return error.message;
+  }
+};
+
+check("バックアップの在庫が配列でなければ拒否する",
+  backupError({ inventory: {} }),
+  "ファイルの「冷蔵庫の中身」が壊れています。");
+check("バックアップの棚の数が配列なら拒否する",
+  backupError({ shelfCounts: [] }),
+  "ファイルの「棚の数」が壊れています。");
+check("バックアップの在庫にidの無い要素があれば拒否する",
+  backupError({ inventory: [{ name: "卵" }] }),
+  "ファイルの「冷蔵庫の中身」が壊れています。");
+check("正しいバックアップは全セクションを読み出す", (() => {
+  const backup = readBackup(backupText({
+    inventory: [{ id: "eggs" }],
+    shopping: [{ id: "shopping-eggs" }],
+    cookingHistory: [{ id: "history-eggs" }],
+    shelfCounts: { 冷蔵: 3, 冷凍: 1, 常温: 2 },
+    recentIngredientIds: ["eggs"],
+    settings: { showNutrition: false },
+    syncMeta: {},
+    share: { fridgeId: "", seq: 0, syncedAt: "" }
+  }));
+  return backup.found.map(({ section }) => section.key);
+})(), EXPORT_SECTIONS.map(({ key }) => key));
 
 // ---- 賞味期限 ------------------------------------------------------------
 check("正しい賞味期限の日付を保存できる", normalizedExpiryDate("2026-08-10"), "2026-08-10");
