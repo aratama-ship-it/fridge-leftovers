@@ -7,5 +7,8 @@
 # 05〜13ぶんは追跡してしまったので履歴には残っている。
 assets/atlas-src/
 
+# レシートOCRの私的テスト画像。購入情報を含むため公開リポジトリへ入れない。
+private-test-fixtures/
+
 # macOSが勝手に作るもの
 .DS_Store

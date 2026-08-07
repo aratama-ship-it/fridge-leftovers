@@ -53,6 +53,8 @@
 
 定番料理から食材イラストの追加範囲を決めた記録は[RECIPE_RESEARCH.md](RECIPE_RESEARCH.md)にまとめています。
 
+旧ワークスペース直下に残っていた食材画像候補は、既存の同名画像へ上書きせず `assets/workspace-import-2026-08-02/` へ保全しています（ローカル作業ツリーのみ・未コミット。採用判断までは通常のアトラス生成入力へ混ぜません）。
+
 公開前の初期単位確認は[RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md)にまとめています。
 
 二人で1つの冷蔵庫を共有する仕組みは[CLOUDFLARE_SYNC.md](CLOUDFLARE_SYNC.md)にまとめています（Cloudflare Workers + D1、サーバーは`worker/`）。先に検討したSupabase版は[SUPABASE_SETUP.md](SUPABASE_SETUP.md)に保留として残しています。

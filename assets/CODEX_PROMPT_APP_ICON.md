@@ -15,7 +15,7 @@ Android用の maskable を組み立てるため（下の「なぜこの形で渡
 あのアプリのアイコン。
 
 作業場所:
-`/Users/arata/Library/Mobile Documents/com~apple~CloudDocs/claude code files/app-dev/fridge-leftovers`
+`/Users/arata/Library/Mobile Documents/com~apple~CloudDocs/claude code files/apps/life-app/fridge-leftovers`
 
 ### いまのアイコンと、直したいこと
 
