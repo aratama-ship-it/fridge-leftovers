@@ -106,6 +106,34 @@ function changeAttribution(change, now) {
   };
 }
 
+async function readEntity(env, fridgeId, kind, id) {
+  return env.DB.prepare(
+    `select body, version, change_seq, deleted_at,
+            changed_at, device_id, device_name, updated_at
+       from entities where fridge_id = ? and kind = ? and id = ?`
+  ).bind(fridgeId, kind, id).first();
+}
+
+function conflictResult(kind, id, current) {
+  if (!current) return { kind, id, status: "conflict", server: null };
+  return {
+    kind,
+    id,
+    status: "conflict",
+    server: {
+      body: current.body ? JSON.parse(current.body) : null,
+      version: current.version,
+      changeSeq: current.change_seq,
+      deleted: Boolean(current.deleted_at),
+      changedAt: new Date(current.changed_at || current.updated_at).toISOString(),
+      changedBy: current.device_id || current.device_name
+        ? { id: current.device_id || "", name: current.device_name || "" }
+        : null,
+      receivedAt: new Date(current.updated_at).toISOString()
+    }
+  };
+}
+
 // 1件を適用する。端末が申告した版と食い違えば、書き換えずにサーバー側を返す。
 async function applyOne(env, fridgeId, change) {
   const { kind, id, body = null, baseVersion = 0, deleted = false } = change;
@@ -116,36 +144,18 @@ async function applyOne(env, fridgeId, change) {
     return { kind, id, status: "rejected", reason: "id" };
   }
 
-  const current = await env.DB.prepare(
-    `select body, version, change_seq, deleted_at,
-            changed_at, device_id, device_name, updated_at
-       from entities where fridge_id = ? and kind = ? and id = ?`
-  ).bind(fridgeId, kind, id).first();
+  const current = await readEntity(env, fridgeId, kind, id);
 
   if (current && current.version !== baseVersion) {
-    return {
-      kind,
-      id,
-      status: "conflict",
-      server: {
-        body: current.body ? JSON.parse(current.body) : null,
-        version: current.version,
-        changeSeq: current.change_seq,
-        deleted: Boolean(current.deleted_at),
-        changedAt: new Date(current.changed_at || current.updated_at).toISOString(),
-        changedBy: current.device_id || current.device_name
-          ? { id: current.device_id || "", name: current.device_name || "" }
-          : null,
-        receivedAt: new Date(current.updated_at).toISOString()
-      }
-    };
+    return conflictResult(kind, id, current);
   }
   if (!current && baseVersion) {
     // サーバーに無いのに版を申告している＝端末の想定とずれている
-    return { kind, id, status: "conflict", server: null };
+    return conflictResult(kind, id, null);
   }
 
   // 通し番号は冷蔵庫ごとに1つ。追加でも更新でも必ず進める
+  // CASで書けなかった場合は欠番になるが、取得はchange_seqの大小だけを見るので害はない
   const bumped = await env.DB.prepare(
     "update fridges set seq = seq + 1, touched_at = ? where id = ? returning seq"
   ).bind(Date.now(), fridgeId).first();
@@ -157,25 +167,34 @@ async function applyOne(env, fridgeId, change) {
   const text = deleted ? null : JSON.stringify(body);
   const version = (current?.version || 0) + 1;
 
-  await env.DB.prepare(
-    `insert into entities (
-       fridge_id, kind, id, body, version, change_seq, deleted_at,
-       changed_at, device_id, device_name, updated_at
-     )
-     values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-     on conflict (fridge_id, kind, id) do update set
-       body = excluded.body,
-       version = excluded.version,
-       change_seq = excluded.change_seq,
-       deleted_at = excluded.deleted_at,
-       changed_at = excluded.changed_at,
-       device_id = excluded.device_id,
-       device_name = excluded.device_name,
-       updated_at = excluded.updated_at`
-  ).bind(
-    fridgeId, kind, id, text, version, seq, deleted ? now : null,
-    attribution.changedAt, attribution.deviceId, attribution.deviceName, now
-  ).run();
+  const written = current
+    ? await env.DB.prepare(
+        `update entities set
+           body = ?, version = ?, change_seq = ?, deleted_at = ?,
+           changed_at = ?, device_id = ?, device_name = ?, updated_at = ?
+         where fridge_id = ? and kind = ? and id = ? and version = ?`
+      ).bind(
+        text, version, seq, deleted ? now : null,
+        attribution.changedAt, attribution.deviceId, attribution.deviceName, now,
+        fridgeId, kind, id, current.version
+      ).run()
+    : await env.DB.prepare(
+        `insert into entities (
+           fridge_id, kind, id, body, version, change_seq, deleted_at,
+           changed_at, device_id, device_name, updated_at
+         )
+         values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         on conflict (fridge_id, kind, id) do nothing`
+      ).bind(
+        fridgeId, kind, id, text, version, seq, deleted ? now : null,
+        attribution.changedAt, attribution.deviceId, attribution.deviceName, now
+      ).run();
+
+  const writtenRows = Number(written?.meta?.changes ?? written?.changes ?? 0);
+  if (writtenRows === 0) {
+    const latest = await readEntity(env, fridgeId, kind, id);
+    return conflictResult(kind, id, latest);
+  }
 
   return {
     kind,

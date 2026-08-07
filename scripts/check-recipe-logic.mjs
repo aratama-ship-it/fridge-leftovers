@@ -58,7 +58,8 @@ const FUNCTIONS = [
   "cookBlockers", "confirmUnknownAmounts", "optionalReady",
   "inventoryLevel", "pendingDayAfterItems", "dayAfterCorrection",
   "historyEntryType", "historyEntryTime", "addHistoryEntry", "seasonalRecipeState", "recipeScore", "compareRecipes",
-  "currentChangeAttribution", "markSyncChanges", "pendingSyncChanges", "applySyncResult", "mergeEntity"
+  "currentChangeAttribution", "markSyncChanges", "pendingSyncChanges", "applySyncResult", "mergeEntity",
+  "applyOneIncoming"
 ];
 
 // stockForRequirement は inventoryMap() と state を使う。テスト側で差し替える。
@@ -78,7 +79,7 @@ return {
   confirmUnknownAmounts, optionalReady, requiredAmount,
   pendingDayAfterItems, dayAfterCorrection, DAY_AFTER_LEVELS,
   normalizedExpiryDate, expiryDayDifference, expiryAlertState,
-  markSyncChanges, pendingSyncChanges, applySyncResult, mergeEntity,
+  markSyncChanges, pendingSyncChanges, applySyncResult, mergeEntity, applyOneIncoming,
   addHistoryEntry, seasonalRecipeState, compareRecipes, HISTORY_STORAGE_LIMIT, HISTORY_PAGE_SIZE
 };
 `;
@@ -91,7 +92,7 @@ const {
   shortageFor, unconfirmedFor, cookBlockers, confirmUnknownAmounts,
   pendingDayAfterItems, dayAfterCorrection, DAY_AFTER_LEVELS,
   normalizedExpiryDate, expiryDayDifference, expiryAlertState,
-  markSyncChanges, pendingSyncChanges, applySyncResult, mergeEntity,
+  markSyncChanges, pendingSyncChanges, applySyncResult, mergeEntity, applyOneIncoming,
   addHistoryEntry, seasonalRecipeState, compareRecipes, HISTORY_STORAGE_LIMIT, HISTORY_PAGE_SIZE
 } = app_;
 
@@ -514,6 +515,41 @@ check("棚の数も1行として扱う", (() => {
 // 迷ったら少ないほう・確かでないほう・無いほうを採る。多く見積もると
 // 「材料あり」と出て買い物に行かず、帰ってから足りないと分かるため。
 const item = (extra) => ({ id: "eggs", name: "卵", unit: "個", active: true, ...extra });
+
+check("dirtyな在庫へ競合を混ぜ、相手の版でdirtyのまま残す", (() => {
+  syncSetup([stock("eggs", 6, { name: "卵（自分）" })]);
+  pendingSyncChanges().forEach((change) => applySyncResult(change.key, 1));
+  state.inventory[0].quantity = 4;
+  markSyncChanges();
+  applyOneIncoming({
+    kind: "item",
+    id: "eggs",
+    body: stock("eggs", 2, { name: "卵（相手）" }),
+    version: 7,
+    deleted: false,
+    changedAt: "2026-08-08T01:00:00.000Z",
+    changedBy: { id: "other-device", name: "相手端末" }
+  });
+  const meta = state.syncMeta["item:eggs"];
+  return [state.inventory[0].quantity, state.inventory[0].name, meta.version, meta.dirty];
+})(), [2, "卵（自分）", 7, true]);
+
+check("dirtyでなければ相手の中身をそのまま採用する", (() => {
+  syncSetup([stock("eggs", 6)]);
+  pendingSyncChanges().forEach((change) => applySyncResult(change.key, 1));
+  const theirs = stock("eggs", 2, { name: "卵（相手）" });
+  applyOneIncoming({
+    kind: "item",
+    id: "eggs",
+    body: theirs,
+    version: 8,
+    deleted: false,
+    changedAt: "2026-08-08T02:00:00.000Z",
+    changedBy: { id: "other-device", name: "相手端末" }
+  });
+  const meta = state.syncMeta["item:eggs"];
+  return [state.inventory[0], JSON.parse(meta.body), meta.version, meta.dirty];
+})(), [stock("eggs", 2, { name: "卵（相手）" }), stock("eggs", 2, { name: "卵（相手）" }), 8, false]);
 
 check("在庫は少ないほうの数量を採る",
   mergeEntity("item", item({ quantity: 6 }), item({ quantity: 2 })).quantity, 2);
