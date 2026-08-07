@@ -2090,11 +2090,71 @@ input[type="date"] {
   text-align: center;
 }
 
-.shopping-illustration-picker {
+.shopping-accordion {
   margin-bottom: 10px;
-  padding: 12px 10px 11px;
-  border: 2px solid #718a7a;
+  border: 1px solid var(--line-strong);
   border-radius: 8px;
+  background: rgb(251 250 245 / 58%);
+}
+
+.shopping-accordion-summary {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 58px;
+  padding: 9px 42px 9px 12px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.shopping-accordion-summary::-webkit-details-marker {
+  display: none;
+}
+
+.shopping-accordion-summary::after {
+  position: absolute;
+  top: 50%;
+  right: 14px;
+  color: var(--leaf);
+  content: "⌄";
+  font-family: sans-serif;
+  font-size: 1.15rem;
+  font-weight: 900;
+  transform: translateY(-54%);
+}
+
+.shopping-accordion[open] > .shopping-accordion-summary::after {
+  content: "⌃";
+}
+
+.shopping-accordion-summary > span {
+  display: grid;
+  gap: 2px;
+}
+
+.shopping-accordion-summary .eyebrow {
+  margin: 0;
+}
+
+.shopping-accordion-summary strong {
+  font-size: 1rem;
+}
+
+.shopping-accordion-summary small {
+  color: var(--muted);
+  font-size: 0.63rem;
+  font-weight: 800;
+}
+
+.shopping-accordion-body {
+  padding: 0 10px 11px;
+}
+
+.shopping-illustration-picker {
+  padding: 0;
+  border: 2px solid #718a7a;
   background:
     linear-gradient(90deg, rgb(255 255 255 / 35%) 1px, transparent 1px),
     #e5ede5;
@@ -2332,7 +2392,7 @@ input[type="date"] {
 }
 
 .shopping-manual {
-  margin-bottom: 27px;
+  margin-bottom: 10px;
   border-bottom: 1px solid #c9c3af;
 }
 
@@ -2443,7 +2503,7 @@ input[type="date"] {
 }
 
 .shopping-recommendations {
-  margin-bottom: 28px;
+  margin-bottom: 10px;
 }
 
 .shopping-section-heading h3 {
@@ -2521,7 +2581,8 @@ input[type="date"] {
 
 .shopping-note {
   position: relative;
-  padding: 17px 12px 7px 25px;
+  margin-bottom: 12px;
+  padding: 14px 12px 12px 25px;
   border: 1px solid #c9c3af;
   background:
     linear-gradient(90deg, transparent 17px, rgb(190 102 86 / 36%) 18px, transparent 19px),
@@ -2537,11 +2598,177 @@ input[type="date"] {
 }
 
 .shopping-note .shopping-section-heading {
-  margin-bottom: 9px;
+  margin-bottom: 3px;
 }
 
 .shopping-list {
+  min-width: 0;
+}
+
+.shopping-check-hint {
+  margin: 4px 0 10px;
+  color: var(--muted);
+  font-size: 0.67rem;
+  line-height: 1.4;
+}
+
+.shopping-check-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(62px, 1fr));
+  gap: 8px;
+  padding-top: 10px;
   border-top: 1px solid var(--line-strong);
+}
+
+.shopping-check-item {
+  min-width: 0;
+}
+
+.shopping-check-item > summary {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  min-height: 68px;
+  padding: 4px;
+  border: 1px solid rgb(126 146 132 / 48%);
+  border-radius: 8px;
+  background: rgb(255 255 255 / 66%);
+  cursor: pointer;
+  list-style: none;
+}
+
+.shopping-check-item > summary::-webkit-details-marker {
+  display: none;
+}
+
+.shopping-check-item > summary:focus-visible {
+  outline: 3px solid rgb(47 100 75 / 35%);
+  outline-offset: 2px;
+}
+
+.shopping-check-item > summary .ingredient-illustration,
+.shopping-check-item > summary .ingredient-initial {
+  width: 56px;
+  height: 56px;
+  filter: drop-shadow(0 2px 1px rgb(40 52 43 / 14%));
+}
+
+.shopping-check-item[open] {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: 68px minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+  padding: 8px;
+  border: 1px solid #879b8d;
+  border-radius: 9px;
+  background: rgb(239 245 238 / 92%);
+}
+
+.shopping-check-item[open] > summary {
+  min-height: 68px;
+  border-color: transparent;
+  background: rgb(255 255 255 / 78%);
+}
+
+.shopping-check-detail {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.shopping-check-detail-copy {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 2px 8px;
+  min-width: 0;
+}
+
+.shopping-check-detail-copy > strong {
+  overflow: hidden;
+  font-size: 0.9rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shopping-check-detail-copy > span:not(.change-attribution) {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.shopping-check-detail-copy > small,
+.shopping-check-detail-copy > .change-attribution {
+  grid-column: 1 / -1;
+}
+
+.shopping-check-detail-copy > small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.65rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shopping-check-detail-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.shopping-purchase-button {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 44px;
+  color: var(--leaf-dark);
+  cursor: pointer;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.shopping-purchase-button input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.shopping-purchase-button input:focus-visible + .check-mark {
+  outline: 3px solid rgb(47 100 75 / 35%);
+  outline-offset: 2px;
+}
+
+.shopping-detail-delete {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 4px;
+  background: transparent;
+  color: var(--warm);
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-decoration: underline;
+}
+
+.shopping-completed {
+  margin-top: 10px;
+  border-top: 1px solid var(--line-strong);
+}
+
+.shopping-completed > summary {
+  min-height: 44px;
+  padding: 11px 2px;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.7rem;
+  font-weight: 800;
+  list-style-position: inside;
+}
+
+.shopping-completed-list {
+  border-top: 1px solid rgb(157 168 157 / 55%);
 }
 
 .shopping-item {
@@ -5389,29 +5616,30 @@ input[type="date"] {
 
   .shopping-illustration-picker {
     grid-column: 1;
-    grid-row: 2;
+    grid-row: 3;
     margin-bottom: 0;
   }
 
   .shopping-manual {
     grid-column: 1;
-    grid-row: 3;
+    grid-row: 4;
     margin-top: 0;
   }
 
   .shopping-recommendations {
     grid-column: 2;
-    grid-row: 2;
-    margin-top: 0;
-  }
-
-  .shopping-note {
-    grid-column: 2;
     grid-row: 3;
     margin-top: 0;
   }
 
+  .shopping-note {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    margin-top: 0;
+  }
+
   .shopping-view > .privacy-note {
+    grid-row: 5;
     margin-top: 0;
   }
 
