@@ -11,7 +11,7 @@
 冷蔵庫アプリの食材イラストの続きを作ってほしい。
 
 作業場所:
-`/Users/arata/Library/Mobile Documents/com~apple~CloudDocs/claude code files/app-dev/fridge-leftovers`
+`/Users/arata/Library/Mobile Documents/com~apple~CloudDocs/claude code files/apps/life-app/fridge-leftovers`
 
 ### 前回（シート06〜13）の結果
 
