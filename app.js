@@ -3478,7 +3478,43 @@ const INGREDIENT_ILLUSTRATIONS = {
   "bean-sprouts": [0, 2, "expanded"],
   "garlic-chives": [1, 2, "expanded"],
   pumpkin: [2, 2, "expanded"],
-  konnyaku: [3, 2, "expanded"]
+  konnyaku: [3, 2, "expanded"],
+  fettuccine: [0, 0, "s28"],
+  linguine: [1, 0, "s28"],
+  lasagna: [2, 0, "s28"],
+  fusilli: [3, 0, "s28"],
+  farfalle: [0, 1, "s28"],
+  capellini: [1, 1, "s28"],
+  gnocchi: [2, 1, "s28"],
+  ravioli: [3, 1, "s28"],
+  hiyamugi: [0, 2, "s28"],
+  "instant-ramen": [1, 2, "s28"],
+  "cup-noodles": [2, 2, "s28"],
+  "frozen-udon": [3, 2, "s28"],
+  "yakitori-can": [0, 0, "s29"],
+  "saury-can": [1, 0, "s29"],
+  "oil-sardine": [2, 0, "s29"],
+  anchovy: [3, 0, "s29"],
+  "clam-can": [0, 1, "s29"],
+  "scallop-can": [1, 1, "s29"],
+  "crab-can": [2, 1, "s29"],
+  "meat-sauce": [3, 1, "s29"],
+  "white-sauce": [0, 2, "s29"],
+  demiglace: [1, 2, "s29"],
+  "mushroom-can": [2, 2, "s29"],
+  "mandarin-can": [3, 2, "s29"],
+  kanpyo: [0, 0, "s30"],
+  "dried-scallop": [1, 0, "s30"],
+  surume: [2, 0, "s30"],
+  tazukuri: [3, 0, "s30"],
+  aosa: [0, 1, "s30"],
+  "white-kikurage": [1, 1, "s30"],
+  "cut-kombu": [2, 1, "s30"],
+  "dashi-pack": [3, 1, "s30"],
+  peanut: [0, 2, "s30"],
+  pistachio: [1, 2, "s30"],
+  "pine-nut": [2, 2, "s30"],
+  "dried-sweet-potato": [3, 2, "s30"]
 };
 
 const RECEIPT_RULES = [
@@ -3596,19 +3632,46 @@ const RECEIPT_RULES = [
   { id: "ginger", name: "しょうが", pattern: /(?:しょうが|ショウガ|生姜)/, quantity: 1, unit: "個", location: "冷蔵" },
   // 生パスタをスパゲッティとして拾わないよう前に置く
   { id: "fresh-pasta", name: "生パスタ", pattern: /(?:生パスタ|生スパゲッティ|フレッシュパスタ)/, quantity: 1, unit: "袋", location: "冷蔵" },
+  { id: "fettuccine", name: "フェットチーネ", pattern: /(?:フェットチーネ|フェットチーニ|フェトチーネ|ふぇっとちーね)/, quantity: 100, unit: "g", location: "常温" },
+  { id: "linguine", name: "リングイネ", pattern: /(?:リングイネ|リングイーネ|りんぐいね)/, quantity: 100, unit: "g", location: "常温" },
+  { id: "lasagna", name: "ラザニア", pattern: /(?:ラザニア|ラザーニャ|らざにあ)/, quantity: 1, unit: "袋", location: "常温" },
+  { id: "fusilli", name: "フジッリ", pattern: /(?:フジッリ|フジリ|ふじっり|ふじり)/, quantity: 100, unit: "g", location: "常温" },
+  { id: "farfalle", name: "ファルファッレ", pattern: /(?:ファルファッレ|ファルファレ|ふぁるふぁっれ)/, quantity: 100, unit: "g", location: "常温" },
+  { id: "capellini", name: "カッペリーニ", pattern: /(?:カッペリーニ|カペリーニ|カッペリーネ|かっぺりーに)/, quantity: 100, unit: "g", location: "常温" },
+  { id: "gnocchi", name: "ニョッキ", pattern: /(?:ニョッキ|にょっき)/, quantity: 1, unit: "袋", location: "冷蔵" },
+  { id: "ravioli", name: "ラビオリ", pattern: /(?:ラビオリ|らびおり)/, quantity: 1, unit: "袋", location: "冷蔵" },
   { id: "pasta", name: "スパゲッティ", pattern: /(?:スパゲッティ|スパゲティ|パスタ)/, quantity: 100, unit: "g", location: "常温" },
   // バターより前に置く。「バターロール」はパンであってバターではないため、
   // 先に当てて誤登録を防ぐ（バター側にも除外を入れて二重に守る）。
   { id: "butter-roll", name: "バターロール", pattern: /(?:バターロール|ばたーろーる|ロールパン|ろーるぱん)/, quantity: 6, unit: "個", location: "常温" },
   // ピーナッツバターをバターとして拾わないよう前に置く
   { id: "peanut-butter", name: "ピーナッツバター", pattern: /(?:ピーナッツバター|ピーナツバター|落花生バター)/, quantity: 1, unit: "個", location: "常温" },
+  { id: "peanut", name: "ピーナッツ", pattern: /(?:ピーナッツ(?!バター|クリーム)|ピーナツ(?!バター|クリーム)|落花生(?!バター)|バタピー)/, quantity: 1, unit: "袋", location: "常温" },
   { id: "butter", name: "バター", pattern: /(?:バター|ばたー)(?!ロール|ろーる)/, quantity: 100, unit: "g", location: "冷蔵" },
   { id: "breadcrumbs", name: "パン粉", pattern: /(?:パン粉|ぱん粉)/, quantity: 100, unit: "g", location: "常温" },
   // サバ缶はさば・味噌より前に置く（「さば味噌煮」を味噌として拾わないため）
+  // シート29の缶詰は、同名の生鮮食材より先に判定する
+  { id: "yakitori-can", name: "焼き鳥缶", pattern: /(?:焼き鳥缶|焼鳥缶|やきとり缶|ヤキトリ缶)/, quantity: 1, unit: "缶", location: "常温" },
+  { id: "saury-can", name: "さんま蒲焼き缶", pattern: /(?:さんま蒲焼き缶|さんま蒲焼缶|サンマ蒲焼き缶|秋刀魚蒲焼缶|さんま缶)/, quantity: 1, unit: "缶", location: "常温" },
+  { id: "oil-sardine", name: "オイルサーディン", pattern: /(?:オイルサーディン|オイルサーデン|いわし油漬け|イワシ油漬け)/, quantity: 1, unit: "缶", location: "常温" },
+  { id: "anchovy", name: "アンチョビ", pattern: /(?:アンチョビ|アンチョビー|あんちょび)/, quantity: 1, unit: "缶", location: "冷蔵" },
+  { id: "clam-can", name: "あさり水煮缶", pattern: /(?:あさり水煮缶|アサリ水煮缶|浅利水煮缶|あさり缶)/, quantity: 1, unit: "缶", location: "常温" },
+  { id: "scallop-can", name: "ホタテ缶", pattern: /(?:ホタテ缶|ほたて缶|帆立缶|ほたて水煮缶)/, quantity: 1, unit: "缶", location: "常温" },
+  { id: "crab-can", name: "カニ缶", pattern: /(?:カニ缶|かに缶|蟹缶|ずわいがに缶|ズワイガニ缶)/, quantity: 1, unit: "缶", location: "常温" },
+  { id: "meat-sauce", name: "ミートソース缶", pattern: /(?:ミートソース缶|ミートソース|みーとそーす)/, quantity: 1, unit: "缶", location: "常温" },
+  { id: "white-sauce", name: "ホワイトソース缶", pattern: /(?:ホワイトソース缶|ホワイトソース|白ソース)/, quantity: 1, unit: "缶", location: "常温" },
+  { id: "demiglace", name: "デミグラスソース缶", pattern: /(?:デミグラスソース缶|デミグラスソース|デミソース|ドミグラスソース)/, quantity: 1, unit: "缶", location: "常温" },
+  { id: "mushroom-can", name: "マッシュルーム缶", pattern: /(?:マッシュルーム缶|まっしゅるーむ缶|マッシュルーム水煮)/, quantity: 1, unit: "缶", location: "常温" },
+  { id: "mandarin-can", name: "みかん缶", pattern: /(?:みかん缶|ミカン缶|蜜柑缶|みかんシロップ漬)/, quantity: 1, unit: "缶", location: "常温" },
   { id: "canned-mackerel", name: "サバ缶", pattern: /(?:さば缶|サバ缶|鯖缶|さば水煮|さば味噌煮)/, quantity: 1, unit: "缶", location: "常温" },
   { id: "miso", name: "味噌", pattern: /(?:味噌|みそ|ミソ)/, quantity: 300, unit: "g", location: "冷蔵" },
   { id: "wakame", name: "わかめ", pattern: /(?:わかめ|ワカメ|若布)/, quantity: 1, unit: "袋", location: "常温" },
+  // 冷凍うどんをうどんとして拾わないよう前に置く
+  { id: "frozen-udon", name: "冷凍うどん", pattern: /(?:冷凍うどん|冷凍ウドン|れいとううどん)/, quantity: 1, unit: "袋", location: "冷凍" },
   { id: "udon", name: "うどん", pattern: /(?:うどん|ウドン|饂飩)/, quantity: 1, unit: "袋", location: "冷蔵" },
+  // 即席麺を中華麺として拾わないよう前に置く
+  { id: "instant-ramen", name: "即席ラーメン", pattern: /(?:即席ラーメン|即席らーめん|インスタントラーメン|袋麺|袋めん)/, quantity: 1, unit: "袋", location: "常温" },
+  { id: "cup-noodles", name: "カップ麺", pattern: /(?:カップ麺|カップめん|カップラーメン|即席カップ麺)/, quantity: 1, unit: "個", location: "常温" },
   // 中華麺は焼きそば麺より前に置く
   { id: "chinese-noodles", name: "中華麺", pattern: /(?:中華麺|中華めん|生ラーメン|ラーメン用麺)/, quantity: 1, unit: "袋", location: "冷蔵" },
   { id: "yakisoba-noodles", name: "焼きそば麺", pattern: /(?:焼き?そば(?:.*麺)?|中華麺|蒸し麺)/, quantity: 1, unit: "袋", location: "冷蔵" },
@@ -3646,10 +3709,12 @@ const RECEIPT_RULES = [
   // いわし缶をいわしとして拾わないよう前に置く
   { id: "canned-sardine", name: "いわし缶", pattern: /(?:いわし缶|イワシ缶|鰯缶|オイルサーディン)/, quantity: 1, unit: "缶", location: "常温" },
   { id: "sardine", name: "いわし", pattern: /(?:いわし|イワシ|鰯)/, quantity: 1, unit: "本", location: "冷蔵" },
+  { id: "surume", name: "するめ", pattern: /(?:するめ(?!いか)|スルメ(?!イカ)|干し(?:いか|イカ)|干烏賊)/, quantity: 1, unit: "枚", location: "常温" },
   { id: "squid", name: "いか", pattern: /(?:するめいか|スルメイカ|やりいか|ヤリイカ|烏賊|イカ(?!リ))/, quantity: 1, unit: "本", location: "冷蔵" },
   { id: "octopus", name: "たこ", pattern: /(?:ゆでだこ|ゆでタコ|茹でだこ|真だこ|マダコ|蛸|タコ(?!ス|ヤ))/, quantity: 100, unit: "g", location: "冷蔵" },
   { id: "clam", name: "あさり", pattern: /(?:あさり|アサリ|浅利)/, quantity: 1, unit: "袋", location: "冷蔵" },
   { id: "freshwater-clam", name: "しじみ", pattern: /(?:しじみ|シジミ|蜆)/, quantity: 1, unit: "袋", location: "冷蔵" },
+  { id: "dried-scallop", name: "干し貝柱", pattern: /(?:干し貝柱|干貝柱|ほし貝柱|乾燥貝柱)/, quantity: 1, unit: "袋", location: "常温" },
   { id: "scallop", name: "ホタテ", pattern: /(?:ほたて|ホタテ|帆立)/, quantity: 1, unit: "パック", location: "冷蔵" },
   { id: "oyster", name: "かき", pattern: /(?:牡蠣|カキ(?!氷|フライ))/, quantity: 1, unit: "パック", location: "冷蔵" },
   { id: "whitebait", name: "しらす", pattern: /(?:しらす|シラス|白子干)/, quantity: 1, unit: "パック", location: "冷蔵" },
@@ -3679,6 +3744,8 @@ const RECEIPT_RULES = [
   { id: "pea-sprouts", name: "豆苗", pattern: /(?:豆苗|とうみょう)/, quantity: 1, unit: "パック", location: "冷蔵" },
   { id: "shiso", name: "大葉", pattern: /(?:大葉|おおば|青じそ|青シソ)/, quantity: 1, unit: "袋", location: "冷蔵" },
   { id: "parsley", name: "パセリ", pattern: /(?:パセリ|ぱせり)/, quantity: 1, unit: "袋", location: "冷蔵" },
+  // 干し芋をさつまいもとして拾わないよう前に置く
+  { id: "dried-sweet-potato", name: "干し芋", pattern: /(?:干し芋|ほしいも|干しいも|乾燥さつまいも)/, quantity: 1, unit: "袋", location: "常温" },
   { id: "sweet-potato", name: "さつまいも", pattern: /(?:さつまいも|サツマイモ|薩摩芋|紅あずま|べにはるか)/, quantity: 1, unit: "本", location: "常温" },
   { id: "taro", name: "里芋", pattern: /(?:里芋|さといも|サトイモ)/, quantity: 1, unit: "袋", location: "常温" },
   { id: "yam", name: "長芋", pattern: /(?:長芋|ながいも|ナガイモ|山芋|やまいも)/, quantity: 1, unit: "本", location: "冷蔵" },
@@ -3727,6 +3794,8 @@ const RECEIPT_RULES = [
   { id: "pineapple", name: "パイナップル", pattern: /(?:パイナップル|パイン(?!ミール))/, quantity: 1, unit: "個", location: "常温" },
   { id: "blueberry", name: "ブルーベリー", pattern: /(?:ブルーベリー|ぶるーべりー)/, quantity: 1, unit: "パック", location: "冷蔵" },
   { id: "french-bread", name: "フランスパン", pattern: /(?:フランスパン|バゲット|バタール)/, quantity: 1, unit: "本", location: "常温" },
+  // 冷麦をそうめんとして拾わないよう前に置く
+  { id: "hiyamugi", name: "冷麦", pattern: /(?:冷麦|ひやむぎ|ヒヤムギ)/, quantity: 1, unit: "袋", location: "常温" },
   { id: "somen", name: "そうめん", pattern: /(?:そうめん|ソウメン|素麺|冷麦|ひやむぎ)/, quantity: 1, unit: "袋", location: "常温" },
   { id: "gyoza-wrapper", name: "餃子の皮", pattern: /(?:餃子の皮|ぎょうざの皮|餃子皮)/, quantity: 1, unit: "袋", location: "冷蔵" },
   { id: "spring-roll-wrapper", name: "春巻きの皮", pattern: /(?:春巻きの皮|春巻の皮|はるまきの皮)/, quantity: 1, unit: "袋", location: "冷蔵" },
@@ -3742,6 +3811,8 @@ const RECEIPT_RULES = [
   { id: "hijiki", name: "ひじき", pattern: /(?:ひじき|ヒジキ|鹿尾菜)/, quantity: 1, unit: "袋", location: "常温" },
   { id: "glass-noodles", name: "春雨", pattern: /(?:春雨|はるさめ|ハルサメ)/, quantity: 1, unit: "袋", location: "常温" },
   // とろろ昆布を昆布として拾わないよう前に置く
+  // 刻み昆布を昆布として拾わないよう前に置く
+  { id: "cut-kombu", name: "刻み昆布", pattern: /(?:刻み昆布|きざみ昆布|刻みこんぶ|きざみこんぶ|カット昆布)/, quantity: 1, unit: "袋", location: "常温" },
   { id: "tororo-kombu", name: "とろろ昆布", pattern: /(?:とろろ昆布|トロロ昆布)/, quantity: 1, unit: "袋", location: "常温" },
   // 塩昆布を昆布として拾わないよう前に置く
   { id: "shio-kombu", name: "塩昆布", pattern: /(?:塩昆布|しお昆布)/, quantity: 1, unit: "袋", location: "常温" },
@@ -3827,6 +3898,8 @@ const RECEIPT_RULES = [
   { id: "azuki", name: "小豆", pattern: /(?:小豆|あずき|アズキ)/, quantity: 1, unit: "袋", location: "常温" },
   { id: "chickpeas", name: "ひよこ豆", pattern: /(?:ひよこ豆|ヒヨコ豆|ガルバンゾ)/, quantity: 1, unit: "袋", location: "常温" },
   { id: "lentils", name: "レンズ豆", pattern: /(?:レンズ豆|れんず豆)/, quantity: 1, unit: "袋", location: "常温" },
+  // 白きくらげをきくらげとして拾わないよう前に置く
+  { id: "white-kikurage", name: "白きくらげ", pattern: /(?:白きくらげ|白キクラゲ|白木耳|しろきくらげ)/, quantity: 1, unit: "袋", location: "常温" },
   { id: "kikurage", name: "きくらげ", pattern: /(?:きくらげ|キクラゲ|木耳)/, quantity: 1, unit: "袋", location: "常温" },
   { id: "kanten", name: "寒天", pattern: /(?:寒天|かんてん)/, quantity: 1, unit: "袋", location: "常温" },
   { id: "gelatin", name: "ゼラチン", pattern: /(?:ゼラチン|ぜらちん)/, quantity: 1, unit: "袋", location: "常温" },
@@ -3876,6 +3949,12 @@ const RECEIPT_RULES = [
   { id: "cashew", name: "カシューナッツ", pattern: /(?:カシューナッツ|カシュ-ナッツ)/, quantity: 1, unit: "袋", location: "常温" },
   { id: "barley", name: "押し麦", pattern: /(?:押し麦|押麦|もち麦)/, quantity: 500, unit: "g", location: "常温" },
   { id: "couscous", name: "クスクス", pattern: /(?:クスクス)/, quantity: 300, unit: "g", location: "常温" },
+  { id: "kanpyo", name: "かんぴょう", pattern: /(?:かんぴょう|カンピョウ|干瓢|乾瓢)/, quantity: 1, unit: "袋", location: "常温" },
+  { id: "tazukuri", name: "田作り", pattern: /(?:田作り|たづくり|たつくり|ごまめ)/, quantity: 1, unit: "袋", location: "常温" },
+  { id: "aosa", name: "あおさ", pattern: /(?:あおさ|アオサ|石蓴)/, quantity: 1, unit: "袋", location: "常温" },
+  { id: "dashi-pack", name: "出汁パック", pattern: /(?:出汁パック|だしパック|ダシパック|だし袋)/, quantity: 1, unit: "袋", location: "常温" },
+  { id: "pistachio", name: "ピスタチオ", pattern: /(?:ピスタチオ|ぴすたちお)/, quantity: 1, unit: "袋", location: "常温" },
+  { id: "pine-nut", name: "松の実", pattern: /(?:松の実|まつの実|マツの実|松実)/, quantity: 1, unit: "袋", location: "常温" },
   { id: "furikake", name: "ふりかけ", pattern: /(?:ふりかけ|フリカケ)/, quantity: 1, unit: "袋", location: "常温" }
 ];
 
@@ -4016,7 +4095,7 @@ const ILLUSTRATED_INGREDIENT_CATEGORIES = [
       },
       {
         name: "麺",
-        items: ["pasta", "fresh-pasta", "penne", "macaroni", "udon", "soba", "somen", "kishimen", "yakisoba-noodles", "chinese-noodles", "bifun", "pho-noodles"]
+        items: ["pasta", "fresh-pasta", "fettuccine", "linguine", "capellini", "penne", "fusilli", "farfalle", "macaroni", "lasagna", "gnocchi", "ravioli", "udon", "frozen-udon", "soba", "somen", "hiyamugi", "kishimen", "yakisoba-noodles", "chinese-noodles", "instant-ramen", "cup-noodles", "bifun", "pho-noodles"]
       },
       {
         name: "皮",
@@ -4040,11 +4119,11 @@ const ILLUSTRATED_INGREDIENT_CATEGORIES = [
     groups: [
       {
         name: "海藻",
-        items: ["wakame", "kombu", "tororo-kombu", "nori", "aonori", "hijiki", "mozuku", "mekabu", "shio-kombu"]
+        items: ["wakame", "kombu", "cut-kombu", "tororo-kombu", "nori", "aonori", "aosa", "hijiki", "mozuku", "mekabu", "shio-kombu"]
       },
       {
         name: "乾物",
-        items: ["bonito", "dried-sardine", "dried-shiitake", "dried-radish", "kikurage", "sakura-shrimp", "dried-shrimp", "dried-tomato", "kanten", "gelatin", "fu", "glass-noodles", "sesame"]
+        items: ["bonito", "dashi-pack", "dried-sardine", "tazukuri", "dried-scallop", "surume", "dried-shiitake", "dried-radish", "kanpyo", "dried-sweet-potato", "kikurage", "white-kikurage", "sakura-shrimp", "dried-shrimp", "dried-tomato", "kanten", "gelatin", "fu", "glass-noodles", "sesame"]
       },
       {
         name: "豆",
@@ -4052,7 +4131,7 @@ const ILLUSTRATED_INGREDIENT_CATEGORIES = [
       },
       {
         name: "ナッツ",
-        items: ["almond", "walnut", "cashew"]
+        items: ["almond", "peanut", "walnut", "cashew", "pistachio", "pine-nut"]
       }
     ]
   },
@@ -4064,7 +4143,7 @@ const ILLUSTRATED_INGREDIENT_CATEGORIES = [
     groups: [
       {
         name: "缶詰",
-        items: ["canned-tomato", "canned-corn", "canned-mackerel", "canned-sardine", "canned-peach", "coconut-milk", "corned-beef", "spam"]
+        items: ["canned-tomato", "meat-sauce", "white-sauce", "demiglace", "canned-corn", "mushroom-can", "canned-mackerel", "saury-can", "canned-sardine", "oil-sardine", "anchovy", "clam-can", "scallop-can", "crab-can", "canned-peach", "mandarin-can", "coconut-milk", "yakitori-can", "corned-beef", "spam"]
       },
       {
         name: "瓶詰・その他",
