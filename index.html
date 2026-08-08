@@ -12,10 +12,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="冷蔵庫の現在地">
-  <link rel="stylesheet" href="styles.css?v=2bd836b4">
+  <link rel="stylesheet" href="styles.css?v=1338a0bf">
   <script src="vendor/tesseract/tesseract.min.js?v=7.0.0" defer></script>
   <script src="recipe-expansion.js?v=3b6c805e" defer></script>
-  <script src="app.js?v=6a93b181" defer></script>
+  <script src="app.js?v=be4a36d3" defer></script>
   <!--
     起動の読み込み画面は、外部CSS（styles.css）が届く前から出したいので、
     ここだけ色を直書きしている（:root の変数に頼らない）。回線が細いときほど
@@ -132,6 +132,10 @@
       </section>
 
       <section class="view" id="inventory-view" aria-label="冷蔵庫">
+        <div class="fridge-visual-heading">
+          <h3 id="fridge-visual-title">わたしの冷蔵庫</h3>
+        </div>
+
         <!-- 昨日以前に作った分の在庫を、実物と突き合わせる -->
         <section class="day-after-check" id="day-after-check" aria-labelledby="day-after-title" hidden>
           <p class="eyebrow">昨日の料理のあと</p>
@@ -167,12 +171,6 @@
         </section>
 
         <section class="fridge-visual" aria-labelledby="fridge-visual-title">
-          <div class="fridge-visual-heading">
-            <div>
-              <h3 id="fridge-visual-title">わたしの冷蔵庫</h3>
-            </div>
-            <p>タップで編集<br>長押しして棚を移動</p>
-          </div>
           <div id="fridge-scene"></div>
         </section>
       </section>
@@ -576,7 +574,6 @@
           <div class="ingredient-picker-lead">
             <p class="eyebrow">2. 食材を選ぶ</p>
             <strong id="ingredient-picker-category-title"></strong>
-            <small>イラストをタップしてください</small>
           </div>
           <div class="ingredient-item-grid" id="ingredient-item-grid"></div>
         </div>
