@@ -4,8 +4,9 @@
 // このファイル自身の内容から書き込む。中身が変わればこのファイルも変わるので、
 // ブラウザが新しい Service Worker と見なして入れ替え、古いキャッシュを捨てる。
 // 手で番号を上げる必要はない。
-const VERSION = "867650ad";
-const CACHE = `fridge-leftovers-${VERSION}`;
+const VERSION = "2e19f5b2";
+const SHELL_CACHE = `fridge-leftovers-${VERSION}`;
+const ASSET_CACHE = "fridge-leftovers-assets";
 
 // index.html が参照するファイル。?v= 付きの実物のパスでないとキャッシュに
 // 入らないので、scripts/cache-version.mjs がここへ書き込む。手で直さない。
@@ -24,13 +25,17 @@ const REFERENCED = [
 // 画面が出ないので必ず含める（実測では、初回の読み込みは Service Worker が
 // 制御を取る前に走ってしまい、あとから溜まる保証が無かった）。
 //
-// イラスト（14MB・styles.css から参照）とTesseract（21MB・vendor/）は
+// イラスト（28MB・styles.css から参照）とTesseract（21MB・vendor/）は
 // 全部先に落とすと初回が重いので、使われたものだけ後から溜める。
+// 起動用キャッシュと分けて長く残し、版が変わっても中身の変わらない
+// イラストを捨てて取り直さない。
 const SHELL = ["./", "./index.html", ...REFERENCED];
+const SHELL_URLS = new Set(SHELL.map((path) => new URL(path, self.location.href).href));
+const SHELL_PATHNAMES = new Set([...SHELL_URLS].map((url) => new URL(url).pathname));
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE)
+    caches.open(SHELL_CACHE)
       // 全件を試すが、揃わなければ乗り換えず、不完全なキャッシュで古い版を捨てない
       .then(async (cache) => {
         const failed = [];
@@ -53,7 +58,7 @@ self.addEventListener("install", (event) => {
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     (async () => {
-      const cache = await caches.open(CACHE);
+      const cache = await caches.open(SHELL_CACHE);
       const missing = (await Promise.all(
         SHELL.map(async (path) => await cache.match(path) ? null : path)
       )).filter(Boolean);
@@ -62,9 +67,27 @@ self.addEventListener("activate", (event) => {
         return;
       }
       const keys = await caches.keys();
+      const oldCacheNames = keys.filter(
+        (key) => key.startsWith("fridge-leftovers-") && key !== SHELL_CACHE && key !== ASSET_CACHE
+      );
+      // 古い版に溜まっていたイラストを捨てず、固定アセットキャッシュへ引き継ぐ
+      try {
+        const assetCache = await caches.open(ASSET_CACHE);
+        for (const cacheName of oldCacheNames) {
+          const oldCache = await caches.open(cacheName);
+          for (const request of await oldCache.keys()) {
+            const url = new URL(request.url);
+            if (SHELL_URLS.has(url.href) || SHELL_PATHNAMES.has(url.pathname)) continue;
+            if (await assetCache.match(request)) continue;
+            const response = await oldCache.match(request);
+            if (response) await assetCache.put(request, response);
+          }
+        }
+      } catch {
+        console.warn("古い版に溜まっていたイラストを引き継げませんでした");
+      }
       await Promise.all(
-        keys.filter((key) => key.startsWith("fridge-leftovers-") && key !== CACHE)
-          .map((key) => caches.delete(key))
+        oldCacheNames.map((key) => caches.delete(key))
       );
     })().finally(() => self.clients.claim())
   );
@@ -81,7 +104,7 @@ async function html(request) {
   try {
     const response = await fetch(request);
     if (storable(response)) {
-      const cache = await caches.open(CACHE);
+      const cache = await caches.open(SHELL_CACHE);
       cache.put("./index.html", response.clone());
     }
     return response;
@@ -99,8 +122,19 @@ async function asset(request) {
   if (cached) return cached;
   const response = await fetch(request);
   if (storable(response)) {
-    const cache = await caches.open(CACHE);
-    cache.put(request, response.clone());
+    const cacheName = SHELL_URLS.has(request.url) ? SHELL_CACHE : ASSET_CACHE;
+    const cache = await caches.open(cacheName);
+    if (cacheName === ASSET_CACHE) {
+      const requestUrl = new URL(request.url);
+      const keys = await cache.keys();
+      await Promise.all(
+        keys.filter((key) => {
+          const url = new URL(key.url);
+          return url.pathname === requestUrl.pathname && url.href !== requestUrl.href;
+        }).map((key) => cache.delete(key))
+      );
+    }
+    await cache.put(request, response.clone());
   }
   return response;
 }
