@@ -3011,7 +3011,8 @@ const UNIT_CONVERSIONS = {
   bread: { 袋: 6 },
   milk: { ml: 1 / 1000 },
   tofu: { g: 1 / 300 },
-  rice: { g: 1 / 150 }
+  rice: { g: 1 / 150 },
+  "sesame-oil": { 小さじ: 1 / 30 }
 };
 
 // 代用の逆引き（例 chicken-thigh → chicken）。部位を持っていることを、
@@ -3514,10 +3515,38 @@ const INGREDIENT_ILLUSTRATIONS = {
   peanut: [0, 2, "s30"],
   pistachio: [1, 2, "s30"],
   "pine-nut": [2, 2, "s30"],
-  "dried-sweet-potato": [3, 2, "s30"]
+  "dried-sweet-potato": [3, 2, "s30"],
+  "soy-sauce": [0, 0, "s31"],
+  "sesame-oil": [1, 0, "s31"],
+  "olive-oil": [2, 0, "s31"],
+  "salad-oil": [3, 0, "s31"],
+  mayonnaise: [0, 1, "s31"],
+  ketchup: [1, 1, "s31"],
+  sauce: [2, 1, "s31"],
+  ponzu: [3, 1, "s31"],
+  mentsuyu: [0, 2, "s31"],
+  "dashi-powder": [1, 2, "s31"],
+  consomme: [2, 2, "s31"],
+  "curry-roux": [3, 2, "s31"],
+  salt: [0, 0, "s32"],
+  sugar: [1, 0, "s32"],
+  vinegar: [2, 0, "s32"],
+  mirin: [3, 0, "s32"],
+  "cooking-sake": [0, 1, "s32"],
+  pepper: [1, 1, "s32"],
+  honey: [2, 1, "s32"],
+  jam: [3, 1, "s32"],
+  "canned-tomato-cut": [0, 2, "s32"],
+  "canned-pineapple": [1, 2, "s32"],
+  "dried-mango": [2, 2, "s32"],
+  "soy-meat": [3, 2, "s32"]
 };
 
 const RECEIPT_RULES = [
+  // 複合語を「酢」や既存の果物・麺として拾わないよう前に置く
+  { id: "ponzu", name: "ポン酢", pattern: /(?:ポン酢|ぽん酢|ポンズ|味付けぽん酢|ゆずぽん)/, quantity: 1, unit: "本", location: "冷蔵" },
+  { id: "vinegar", name: "酢", pattern: /(?:米酢|穀物酢|りんご酢|黒酢|すし酢|お酢|酢|ビネガー)/, quantity: 1, unit: "本", location: "常温" },
+  { id: "mentsuyu", name: "めんつゆ", pattern: /(?:めんつゆ|麺つゆ|メンツユ|そうめんつゆ|そばつゆ)/, quantity: 1, unit: "本", location: "常温" },
   // うずらの卵を卵として拾わないよう前に置く
   { id: "quail-egg", name: "うずらの卵", pattern: /(?:うずらの卵|ウズラの卵|うずら卵|鶉卵)/, quantity: 1, unit: "パック", location: "冷蔵" },
   // 卵豆腐を卵・豆腐として拾わないよう前に置く（卵は豆腐より前にある）
@@ -3548,11 +3577,13 @@ const RECEIPT_RULES = [
   // ミニトマトはトマトより前に置く（トマトとして拾われるのを防ぐ）
   { id: "cherry-tomato", name: "ミニトマト", pattern: /(?:ミニトマト|プチトマト|みにとまと)/, quantity: 1, unit: "パック", location: "冷蔵" },
   // トマト缶はトマトより前に置く
+  { id: "canned-tomato-cut", name: "カットトマト缶", pattern: /(?:カットトマト缶|カットトマト|ダイストマト缶|ダイストマト)/, quantity: 1, unit: "缶", location: "常温" },
   { id: "canned-tomato", name: "トマト缶", pattern: /(?:トマト缶|カットトマト|ホールトマト|ダイストマト)/, quantity: 1, unit: "缶", location: "常温" },
   // ドライトマトをトマトとして拾わないよう前に置く
   { id: "dried-tomato", name: "ドライトマト", pattern: /(?:ドライトマト|乾燥トマト|セミドライトマト)/, quantity: 1, unit: "袋", location: "常温" },
   // トマトピューレをトマトとして拾わないよう前に置く
   { id: "tomato-puree", name: "トマトピューレ", pattern: /(?:トマトピューレ|トマトペースト)/, quantity: 1, unit: "個", location: "常温" },
+  { id: "ketchup", name: "ケチャップ", pattern: /(?:ケチャップ|トマトケチャップ)/, quantity: 1, unit: "本", location: "冷蔵" },
   { id: "tomato", name: "トマト", pattern: /(?:トマト|とまと)/, quantity: 1, unit: "個", location: "冷蔵" },
   { id: "chicken", name: "鶏むね肉", pattern: /(?:鶏|若鶏).*(?:むね|ムネ|胸)/, quantity: 100, unit: "g", location: "冷蔵" },
   { id: "chicken-thigh", name: "鶏もも肉", pattern: /(?:鶏|若鶏|とり).*(?:もも|モモ|腿)/, quantity: 100, unit: "g", location: "冷蔵" },
@@ -3615,6 +3646,7 @@ const RECEIPT_RULES = [
   { id: "cheese", name: "チーズ", pattern: /(?:チーズ|ちーず)/, quantity: 100, unit: "g", location: "冷蔵" },
   { id: "bonito", name: "かつお節", pattern: /(?:かつお節|カツオ節|鰹節)/, quantity: 1, unit: "袋", location: "常温" },
   // 部位つきのひき肉を、総称の「ひき肉」より先に判定させる
+  { id: "soy-meat", name: "大豆ミート", pattern: /(?:大豆ミート|だいずミート|ソイミート|ソイミンチ)/, quantity: 1, unit: "袋", location: "常温" },
   { id: "pork-mince", name: "豚ひき肉", pattern: /(?:豚ひき|豚挽|ぶたひき|豚ミンチ)/, quantity: 100, unit: "g", location: "冷蔵" },
   { id: "chicken-mince", name: "鶏ひき肉", pattern: /(?:鶏ひき|鶏挽|とりひき|鶏ミンチ)/, quantity: 100, unit: "g", location: "冷蔵" },
   { id: "ground-meat", name: "ひき肉", pattern: /(?:ひき肉|挽き肉|挽肉|ミンチ)/, quantity: 100, unit: "g", location: "冷蔵" },
@@ -3774,6 +3806,7 @@ const RECEIPT_RULES = [
   { id: "mushroom-button", name: "マッシュルーム", pattern: /(?:マッシュルーム|まっしゅるーむ)/, quantity: 1, unit: "パック", location: "冷蔵" },
   { id: "nameko", name: "なめこ", pattern: /(?:なめこ|ナメコ|滑子)/, quantity: 1, unit: "袋", location: "冷蔵" },
   { id: "mandarin", name: "みかん", pattern: /(?:みかん|ミカン|蜜柑|温州)/, quantity: 1, unit: "個", location: "常温" },
+  { id: "jam", name: "ジャム", pattern: /(?:ジャム|いちごジャム|苺ジャム|ブルーベリージャム|マーマレード)/, quantity: 1, unit: "個", location: "冷蔵" },
   { id: "strawberry", name: "いちご", pattern: /(?:いちご|イチゴ|苺|とちおとめ|あまおう)/, quantity: 1, unit: "パック", location: "冷蔵" },
   // 干しぶどうをぶどうとして拾わないよう前に置く
   { id: "raisin", name: "レーズン", pattern: /(?:レーズン|干しぶどう|干しブドウ)/, quantity: 1, unit: "袋", location: "常温" },
@@ -3791,6 +3824,7 @@ const RECEIPT_RULES = [
   { id: "orange", name: "オレンジ", pattern: /(?:オレンジ|ネーブル|バレンシア)/, quantity: 1, unit: "個", location: "常温" },
   { id: "melon", name: "メロン", pattern: /(?:メロン|めろん)/, quantity: 1, unit: "個", location: "常温" },
   { id: "watermelon", name: "すいか", pattern: /(?:すいか|スイカ|西瓜)/, quantity: 1, unit: "個", location: "冷蔵" },
+  { id: "canned-pineapple", name: "パイナップル缶", pattern: /(?:パイナップル缶|パイン缶|パインアップル缶|パインシロップ漬)/, quantity: 1, unit: "缶", location: "常温" },
   { id: "pineapple", name: "パイナップル", pattern: /(?:パイナップル|パイン(?!ミール))/, quantity: 1, unit: "個", location: "常温" },
   { id: "blueberry", name: "ブルーベリー", pattern: /(?:ブルーベリー|ぶるーべりー)/, quantity: 1, unit: "パック", location: "冷蔵" },
   { id: "french-bread", name: "フランスパン", pattern: /(?:フランスパン|バゲット|バタール)/, quantity: 1, unit: "本", location: "常温" },
@@ -3818,6 +3852,10 @@ const RECEIPT_RULES = [
   { id: "shio-kombu", name: "塩昆布", pattern: /(?:塩昆布|しお昆布)/, quantity: 1, unit: "袋", location: "常温" },
   { id: "kombu", name: "昆布", pattern: /(?:だし昆布|出汁昆布|こんぶ|昆布(?!茶|巻))/, quantity: 1, unit: "袋", location: "常温" },
   { id: "dried-sardine", name: "煮干し", pattern: /(?:煮干|にぼし|いりこ)/, quantity: 1, unit: "袋", location: "常温" },
+  // 油は「ごま」より先に判定する
+  { id: "sesame-oil", name: "ごま油", pattern: /(?:ごま油|ゴマ油|胡麻油|セサミオイル)/, quantity: 1, unit: "本", location: "常温" },
+  { id: "olive-oil", name: "オリーブオイル", pattern: /(?:オリーブオイル|オリーブ油)/, quantity: 1, unit: "本", location: "常温" },
+  { id: "salad-oil", name: "サラダ油", pattern: /(?:サラダ油|サラダオイル|調合油)/, quantity: 1, unit: "本", location: "常温" },
   { id: "sesame", name: "ごま", pattern: /(?:白ごま|黒ごま|いりごま|すりごま|ゴマ|胡麻)/, quantity: 1, unit: "袋", location: "常温" },
   { id: "fu", name: "麩", pattern: /(?:小町麩|車麩|焼き麩|お麩)/, quantity: 1, unit: "袋", location: "常温" },
   { id: "canned-corn", name: "コーン缶", pattern: /(?:コーン缶|ホールコーン|スイートコーン)/, quantity: 1, unit: "缶", location: "常温" },
@@ -3841,6 +3879,7 @@ const RECEIPT_RULES = [
   { id: "persimmon", name: "柿", pattern: /(?:富有柿|次郎柿|柿(?!の種|ピー))/, quantity: 1, unit: "個", location: "常温" },
   { id: "chestnut", name: "栗", pattern: /(?:むき栗|甘栗|(?<!片)栗(?!粉))/, quantity: 1, unit: "袋", location: "常温" },
   { id: "cherry", name: "さくらんぼ", pattern: /(?:さくらんぼ|サクランボ|チェリー|佐藤錦)/, quantity: 1, unit: "パック", location: "冷蔵" },
+  { id: "dried-mango", name: "ドライマンゴー", pattern: /(?:ドライマンゴー|乾燥マンゴー|マンゴードライ)/, quantity: 1, unit: "袋", location: "常温" },
   { id: "mango", name: "マンゴー", pattern: /(?:マンゴー|まんごー)/, quantity: 1, unit: "個", location: "常温" },
   { id: "grapefruit", name: "グレープフルーツ", pattern: /(?:グレープフルーツ|グレープフル|ルビーグレープ)/, quantity: 1, unit: "個", location: "冷蔵" },
   { id: "lime", name: "ライム", pattern: /(?:ライム|らいむ)/, quantity: 1, unit: "個", location: "冷蔵" },
@@ -3952,10 +3991,23 @@ const RECEIPT_RULES = [
   { id: "kanpyo", name: "かんぴょう", pattern: /(?:かんぴょう|カンピョウ|干瓢|乾瓢)/, quantity: 1, unit: "袋", location: "常温" },
   { id: "tazukuri", name: "田作り", pattern: /(?:田作り|たづくり|たつくり|ごまめ)/, quantity: 1, unit: "袋", location: "常温" },
   { id: "aosa", name: "あおさ", pattern: /(?:あおさ|アオサ|石蓴)/, quantity: 1, unit: "袋", location: "常温" },
+  { id: "dashi-powder", name: "だしの素", pattern: /(?:だしの素|ダシの素|出汁の素|顆粒だし|顆粒ダシ)/, quantity: 1, unit: "袋", location: "常温" },
   { id: "dashi-pack", name: "出汁パック", pattern: /(?:出汁パック|だしパック|ダシパック|だし袋)/, quantity: 1, unit: "袋", location: "常温" },
   { id: "pistachio", name: "ピスタチオ", pattern: /(?:ピスタチオ|ぴすたちお)/, quantity: 1, unit: "袋", location: "常温" },
   { id: "pine-nut", name: "松の実", pattern: /(?:松の実|まつの実|マツの実|松実)/, quantity: 1, unit: "袋", location: "常温" },
-  { id: "furikake", name: "ふりかけ", pattern: /(?:ふりかけ|フリカケ)/, quantity: 1, unit: "袋", location: "常温" }
+  { id: "furikake", name: "ふりかけ", pattern: /(?:ふりかけ|フリカケ)/, quantity: 1, unit: "袋", location: "常温" },
+  // 一般語は既存の具体的な加工品・複合語より後に置く
+  { id: "soy-sauce", name: "醤油", pattern: /(?:醤油|しょうゆ|しょう油|正油)/, quantity: 1, unit: "本", location: "常温" },
+  { id: "mayonnaise", name: "マヨネーズ", pattern: /(?:マヨネーズ|マヨネ-ズ|マヨネ－ズ|マヨ)/, quantity: 1, unit: "本", location: "冷蔵" },
+  { id: "consomme", name: "コンソメ", pattern: /(?:コンソメ|コンソメキューブ|固形コンソメ)/, quantity: 1, unit: "袋", location: "常温" },
+  { id: "curry-roux", name: "カレールー", pattern: /(?:カレールー|カレールウ|カレー・ルー|カレー・ルウ)/, quantity: 1, unit: "個", location: "常温" },
+  { id: "pepper", name: "こしょう", pattern: /(?:(?<!柚子|ゆず|ユズ)(?:こしょう|コショウ|胡椒)|ブラックペッパー|ホワイトペッパー)/, quantity: 1, unit: "個", location: "常温" },
+  { id: "honey", name: "はちみつ", pattern: /(?:はちみつ|ハチミツ|蜂蜜)/, quantity: 1, unit: "個", location: "常温" },
+  { id: "sugar", name: "砂糖", pattern: /(?:砂糖|さとう|サトウ|上白糖|グラニュー糖|三温糖)/, quantity: 1, unit: "袋", location: "常温" },
+  { id: "mirin", name: "みりん", pattern: /(?:みりん|ミリン|味醂|本みりん|みりん風調味料)/, quantity: 1, unit: "本", location: "常温" },
+  { id: "cooking-sake", name: "料理酒", pattern: /(?:料理酒|調理酒|加塩料理酒|清酒)/, quantity: 1, unit: "本", location: "常温" },
+  { id: "sauce", name: "ソース", pattern: /(?:中濃ソース|ウスターソース|とんかつソース|お好みソース|焼きそばソース|ソース)/, quantity: 1, unit: "本", location: "常温" },
+  { id: "salt", name: "塩", pattern: /(?:食塩|あら塩|粗塩|岩塩|塩|しお|ソルト)/, quantity: 1, unit: "袋", location: "常温" }
 ];
 
 const ILLUSTRATED_INGREDIENT_CATEGORIES = [
@@ -4123,11 +4175,11 @@ const ILLUSTRATED_INGREDIENT_CATEGORIES = [
       },
       {
         name: "乾物",
-        items: ["bonito", "dashi-pack", "dried-sardine", "tazukuri", "dried-scallop", "surume", "dried-shiitake", "dried-radish", "kanpyo", "dried-sweet-potato", "kikurage", "white-kikurage", "sakura-shrimp", "dried-shrimp", "dried-tomato", "kanten", "gelatin", "fu", "glass-noodles", "sesame"]
+        items: ["bonito", "dashi-pack", "dried-sardine", "tazukuri", "dried-scallop", "surume", "dried-shiitake", "dried-radish", "kanpyo", "dried-sweet-potato", "kikurage", "white-kikurage", "sakura-shrimp", "dried-shrimp", "dried-tomato", "kanten", "gelatin", "fu", "glass-noodles", "sesame", "dried-mango"]
       },
       {
         name: "豆",
-        items: ["dried-soybeans", "azuki", "chickpeas", "lentils"]
+        items: ["dried-soybeans", "azuki", "chickpeas", "lentils", "soy-meat"]
       },
       {
         name: "ナッツ",
@@ -4143,7 +4195,7 @@ const ILLUSTRATED_INGREDIENT_CATEGORIES = [
     groups: [
       {
         name: "缶詰",
-        items: ["canned-tomato", "meat-sauce", "white-sauce", "demiglace", "canned-corn", "mushroom-can", "canned-mackerel", "saury-can", "canned-sardine", "oil-sardine", "anchovy", "clam-can", "scallop-can", "crab-can", "canned-peach", "mandarin-can", "coconut-milk", "yakitori-can", "corned-beef", "spam"]
+        items: ["canned-tomato", "canned-tomato-cut", "canned-pineapple", "meat-sauce", "white-sauce", "demiglace", "canned-corn", "mushroom-can", "canned-mackerel", "saury-can", "canned-sardine", "oil-sardine", "anchovy", "clam-can", "scallop-can", "crab-can", "canned-peach", "mandarin-can", "coconut-milk", "yakitori-can", "corned-beef", "spam"]
       },
       {
         name: "瓶詰・その他",
@@ -4173,6 +4225,18 @@ const ILLUSTRATED_INGREDIENT_CATEGORIES = [
         name: "冷凍",
         items: ["mixed-vegetables", "frozen-seafood-mix", "frozen-potato"]
       }
+    ]
+  },
+  {
+    id: "seasoning",
+    name: "調味料",
+    note: "醤油・油・粉・ルー",
+    representatives: ["soy-sauce", "salt"],
+    groups: [
+      { name: "液体調味料", items: ["soy-sauce", "sauce", "ponzu", "mentsuyu", "vinegar", "mirin", "cooking-sake"] },
+      { name: "油", items: ["sesame-oil", "olive-oil", "salad-oil"] },
+      { name: "チューブ・瓶", items: ["mayonnaise", "ketchup", "honey", "jam"] },
+      { name: "粉・だし・ルー", items: ["salt", "sugar", "pepper", "dashi-powder", "consomme", "curry-roux"] }
     ]
   }
 ];
@@ -6314,12 +6378,25 @@ function normalizedSubstitute(entry) {
   return typeof entry === "string" ? { id: entry, ratio: null } : entry;
 }
 
+// 初期単位（＝標準の単位）を id から引く。換算のたびに配列を走査しないよう一度だけ作る。
+const INITIAL_UNIT_BY_ID = new Map(RECEIPT_RULES.map((rule) => [rule.id, rule.unit]));
+
 // 在庫1つ分が、要求の単位でいくつ分に相当するか。換算できなければ null。
 function conversionRatio(item, requirement) {
   if (item.id === requirement.id) {
     if (item.unit === requirement.unit) return 1;
-    // 同じ食材を別の単位で登録した場合（キャベツを「1個」で入れた等）
-    return UNIT_CONVERSIONS[requirement.id]?.[item.unit] ?? null;
+    // 同じ食材を別の単位で登録した場合（キャベツを「1個」で入れた等）。
+    // 換算表は標準の単位を基準に書いてあるので、在庫側と要求側の両方を
+    // 標準の単位へ寄せてから割る。こうするとレシピ側が標準でない単位を
+    // 使う場合（ごま油の「小さじ」）も扱える。
+    const conversions = UNIT_CONVERSIONS[requirement.id] || {};
+    const standardUnit = INITIAL_UNIT_BY_ID.get(item.id);
+    // ごはんのように、買うものでないため初期単位を持たない食材は
+    // 従来どおり「在庫の単位」を引くだけにする
+    if (!standardUnit) return conversions[item.unit] ?? null;
+    const itemRatio = item.unit === standardUnit ? 1 : conversions[item.unit];
+    const requirementRatio = requirement.unit === standardUnit ? 1 : conversions[requirement.unit];
+    return itemRatio && requirementRatio ? itemRatio / requirementRatio : null;
   }
 
   const entry = (INGREDIENT_SUBSTITUTES[requirement.id] || [])

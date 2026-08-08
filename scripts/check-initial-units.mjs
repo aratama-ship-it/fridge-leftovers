@@ -28,7 +28,13 @@ const nutritionReferences = readConstant("NUTRITION_REFERENCES", "ALIASES");
 const seasonalIngredients = readConstant("SEASONAL_INGREDIENTS", "SEASONAL_RECIPE_MONTHS");
 const seasonalRecipeMonths = readConstant("SEASONAL_RECIPE_MONTHS", "RECIPES");
 const receiptRules = readConstant("RECEIPT_RULES", "ILLUSTRATED_INGREDIENT_CATEGORIES");
+const substitutes = readConstant("INGREDIENT_SUBSTITUTES", "UNIT_CONVERSIONS");
+const conversions = readConstant("UNIT_CONVERSIONS", "SUBSTITUTE_GENERICS");
 const allowedUnits = new Set(["個", "g", "ml", "本", "株", "袋", "パック", "膳", "切れ", "缶", "枚"]);
+const conversionUnits = new Set([
+  ...allowedUnits,
+  ...recipes.flatMap((recipe) => [...recipe.required, ...recipe.optional].map((ingredient) => ingredient.unit))
+]);
 const expectedInitialUnits = new Map([
   ["cabbage", "g"],
   ["carrot", "本"],
@@ -94,7 +100,7 @@ recipes.forEach((recipe) => {
       errors.push(`${recipe.name}: ${ingredient.name} の追加効果がありません`);
     }
     const rule = rulesById.get(ingredient.id);
-    if (rule && ingredient.unit !== rule.unit) {
+    if (rule && ingredient.unit !== rule.unit && !conversions[ingredient.id]?.[ingredient.unit]) {
       errors.push(
         `${recipe.name}: ${ingredient.name} のレシピ単位「${ingredient.unit}」が初期単位「${rule.unit}」と一致しません`
       );
@@ -122,8 +128,6 @@ Object.entries(seasonalIngredients).forEach(([month, ids]) => {
 });
 
 // 代替関係の検証。単位が違うものを代用に入れると、照合されず黙って無視される。
-const substitutes = readConstant("INGREDIENT_SUBSTITUTES", "UNIT_CONVERSIONS");
-const conversions = readConstant("UNIT_CONVERSIONS", "SUBSTITUTE_GENERICS");
 const pendingSubstitutes = [];
 
 // 単位換算の検証。標準と同じ単位を書いても意味がなく、
@@ -138,8 +142,8 @@ Object.entries(conversions).forEach(([id, table]) => {
     if (unit === rule.unit) {
       errors.push(`単位換算: ${rule.name} の「${unit}」は標準の単位と同じです`);
     }
-    if (!allowedUnits.has(unit)) {
-      errors.push(`単位換算: ${rule.name} の「${unit}」は在庫の単位の選択肢にありません`);
+    if (!conversionUnits.has(unit)) {
+      errors.push(`単位換算: ${rule.name} の「${unit}」は在庫またはレシピの単位にありません`);
     }
     if (!Number.isFinite(ratio) || ratio <= 0) {
       errors.push(`単位換算: ${rule.name} の「${unit}」の倍率が不正です（${ratio}）`);
