@@ -1846,6 +1846,15 @@ input[type="date"] {
   font-size: 0.78rem;
 }
 
+/* 手順は3つに絞っているので、詳しく知りたい人を検索へ送る。
+   加熱時間を全レシピへ書く方針は取らない（2026-08-08 決定） */
+.recipe-steps-note {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.55;
+}
+
 .recipe-nutrition {
   display: flex;
   flex-wrap: wrap;

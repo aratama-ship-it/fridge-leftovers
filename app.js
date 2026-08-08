@@ -7005,6 +7005,7 @@ function renderRecipe(recipe, index) {
           <small>3手順を見る</small>
         </summary>
         <ol>${quickSteps}</ol>
+        <p class="recipe-steps-note">手順は要点だけの簡易版です。加熱時間や細かい下ごしらえは、検索ボタンから詳しいレシピを見てください。肉・魚は中心まで火を通してください。</p>
         <div class="ingredient-groups">
           <section class="ingredient-group">
             <h4>最低限必要</h4>

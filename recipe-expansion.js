@@ -31,16 +31,23 @@
     "pork", "pork-belly", "pork-loin", "pork-mince", "ground-meat", "chicken", "chicken-thigh", "chicken-tender",
     "beef", "salmon", "mackerel", "yellowtail", "cod", "shrimp", "clam"
   ]);
+  // 貝は「中心まで」が言葉として合わない。開いたかどうかが加熱の目安になる
+  const SHELLFISH = new Set(["clam"]);
 
   function generatedSteps(method, recipe) {
     const names = recipe.required.map((item) => item.name).join("、");
-    const needsFullHeat = recipe.required.some((item) => RAW_MEAT_OR_FISH.has(item.id));
-    const heatedNames = recipe.required
-      .filter((item) => RAW_MEAT_OR_FISH.has(item.id))
-      .map((item) => item.name)
-      .join("・");
+    const heatedItems = recipe.required.filter((item) => RAW_MEAT_OR_FISH.has(item.id));
+    const needsFullHeat = heatedItems.length > 0;
+    const heatedNames = heatedItems.map((item) => item.name).join("・");
+    const shellOnly = needsFullHeat && heatedItems.every((item) => SHELLFISH.has(item.id));
+    // 各テンプレートが差し込む「火を通す」の言い回し
+    const heatCore = shellOnly
+      ? `${heatedNames}の殻が開くまで加熱し、開かないものは取り除く。`
+      : `${heatedNames}の中心まで火を通す。`;
     const heatFinish = needsFullHeat
-      ? `${heatedNames}の中心まで火が通ったことを確認し、足りなければ追加加熱する。`
+      ? (shellOnly
+          ? `${heatedNames}の殻が開いたことを確認し、開かないものは取り除く。`
+          : `${heatedNames}の中心まで火が通ったことを確認し、足りなければ追加加熱する。`)
       : recipe.required.some((item) => item.id === "eggs")
         ? "卵が好みの固さになるまで加熱し、全体を整える。"
         : "全体を混ぜて味をなじませ、器へ盛る。";
@@ -68,17 +75,19 @@
       ],
       soup: [
         `${names}を使いやすい大きさと分量に整える。`,
-        `鍋へ水と材料を入れ、火が通るまで煮る。`,
+        // 他の調理法と揃える。ここだけ heatFinish を使っておらず、生の肉・魚を
+        // 使うスープ4件で「中心まで」の確認が抜けていた（2026-08-08の監査）
+        `鍋へ水と材料を入れ、${needsFullHeat ? heatCore : "火が通るまで煮る。"}`,
         `${season}で味を整えて温かいうちに盛る。`
       ],
       bowl: [
-        `${names}を整え、${needsFullHeat ? `${heatedNames}は中心まで火を通す。` : "加熱が必要な具材を先に調理する。"}`,
+        `${names}を整え、${needsFullHeat ? heatCore : "加熱が必要な具材を先に調理する。"}`,
         `温かいごはんを器へ盛り、具材を彩りよくのせる。`,
         `${season}で味を整え、全体を軽く混ぜながら食べる。`
       ],
       noodle: [
         `麺を袋の表示に合わせてゆでるか、電子レンジで温める。`,
-        `${names}の具材を整え、${needsFullHeat ? `${heatedNames}は中心まで火を通す。` : "必要なものは火を通す。"}`,
+        `${names}の具材を整え、${needsFullHeat ? heatCore : "必要なものは火を通す。"}`,
         `${season}で麺と具材を手早く和える。`
       ],
       toast: [
@@ -87,7 +96,7 @@
         `トースターでパンの縁が色づくまで焼く。`
       ],
       salad: [
-        `${names}を整え、${needsFullHeat ? `${heatedNames}は中心まで火を通す。` : "加熱が必要な材料は先に火を通す。"}`,
+        `${names}を整え、${needsFullHeat ? heatCore : "加熱が必要な材料は先に火を通す。"}`,
         `水気と粗熱を取り、ボウルへ入れる。`,
         `${season}で和え、味をなじませる。`
       ],
