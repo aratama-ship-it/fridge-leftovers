@@ -4,7 +4,7 @@
 // このファイル自身の内容から書き込む。中身が変わればこのファイルも変わるので、
 // ブラウザが新しい Service Worker と見なして入れ替え、古いキャッシュを捨てる。
 // 手で番号を上げる必要はない。
-const VERSION = "3772a6e6";
+const VERSION = "d310921f";
 const SHELL_CACHE = `fridge-leftovers-${VERSION}`;
 const ASSET_CACHE = "fridge-leftovers-assets";
 
@@ -17,7 +17,7 @@ const REFERENCED = [
   "./assets/icons/apple-touch-icon.png?v=0db390f0",
   "./styles.css?v=656d991b",
   "./recipe-expansion.js?v=3e0c5a6c",
-  "./app.js?v=858552e4"
+  "./app.js?v=8ba79e57"
 ];
 // ここまで自動更新
 
