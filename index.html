@@ -15,7 +15,7 @@
   <link rel="stylesheet" href="styles.css?v=656d991b">
   <script src="vendor/tesseract/tesseract.min.js?v=7.0.0" defer></script>
   <script src="recipe-expansion.js?v=3e0c5a6c" defer></script>
-  <script src="app.js?v=8ba79e57" defer></script>
+  <script src="app.js?v=636de25b" defer></script>
   <!--
     起動の読み込み画面は、外部CSS（styles.css）が届く前から出したいので、
     ここだけ色を直書きしている（:root の変数に頼らない）。回線が細いときほど
@@ -149,13 +149,13 @@
         <section class="expiry-alert" id="expiry-alert" aria-labelledby="expiry-alert-title" hidden>
           <div class="expiry-alert-heading">
             <div>
-              <p class="eyebrow">賞味期限のお知らせ</p>
-              <h3 id="expiry-alert-title">賞味期限が近い食材があります</h3>
+              <p class="eyebrow">使いきりのお知らせ</p>
+              <h3 id="expiry-alert-title">そろそろ使いたい食材があります</h3>
             </div>
             <span id="expiry-alert-summary"></span>
           </div>
           <div class="expiry-alert-list" id="expiry-alert-list"></div>
-          <p class="expiry-alert-note">食材をタップすると、期限を変更できます。</p>
+          <p class="expiry-alert-note">「買って◯日」は購入からの日数です。食材をタップすると残量や期限を直せます。</p>
         </section>
 
         <!-- 保存済みデータにサンプルの5品が残っている人へ、一度だけ出す -->
@@ -194,7 +194,7 @@
         </div>
 
         <section class="management-expiring" id="management-expiring" aria-labelledby="management-expiring-title" hidden>
-          <h3 id="management-expiring-title">期限が近いもの</h3>
+          <h3 id="management-expiring-title">そろそろ使いたいもの</h3>
           <div class="management-expiring-list" id="management-expiring-list"></div>
         </section>
 

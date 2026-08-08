@@ -58,6 +58,10 @@ function localDateIso(date = new Date()) {
 // 在庫確認・使い切り・買い物・翌日確認も、UTCではなく端末の暦日でそろえる。
 const todayIso = () => localDateIso();
 
+function purchasedOn(item) {
+  return item.addedAt || item.confirmedAt || todayIso();
+}
+
 function expiryDayDifference(value, today = localDateIso()) {
   const expiry = normalizedExpiryDate(value);
   const base = normalizedExpiryDate(today);
@@ -118,11 +122,11 @@ const lessCertain = (a, b) =>
 const SAMPLE_ORIGIN = "sample";
 
 const DEFAULT_INVENTORY = [
-  { id: "cabbage", name: "キャベツ", quantity: 180, unit: "g", location: "冷蔵", priority: true, active: true, confirmedAt: todayIso(), step: 50, origin: SAMPLE_ORIGIN },
-  { id: "eggs", name: "卵", quantity: 3, unit: "個", location: "冷蔵", priority: false, active: true, confirmedAt: todayIso(), step: 1, origin: SAMPLE_ORIGIN },
-  { id: "mushroom", name: "しめじ", quantity: 0.5, unit: "株", location: "冷蔵", priority: false, active: true, confirmedAt: todayIso(), step: 0.25, origin: SAMPLE_ORIGIN },
-  { id: "pork", name: "豚こま", quantity: 120, unit: "g", location: "冷蔵", priority: false, active: true, confirmedAt: todayIso(), step: 50, origin: SAMPLE_ORIGIN },
-  { id: "rice", name: "ごはん", quantity: 1, unit: "膳", location: "冷凍", priority: false, active: true, confirmedAt: todayIso(), step: 1, origin: SAMPLE_ORIGIN }
+  { id: "cabbage", name: "キャベツ", quantity: 180, unit: "g", location: "冷蔵", priority: true, active: true, addedAt: todayIso(), confirmedAt: todayIso(), step: 50, origin: SAMPLE_ORIGIN },
+  { id: "eggs", name: "卵", quantity: 3, unit: "個", location: "冷蔵", priority: false, active: true, addedAt: todayIso(), confirmedAt: todayIso(), step: 1, origin: SAMPLE_ORIGIN },
+  { id: "mushroom", name: "しめじ", quantity: 0.5, unit: "株", location: "冷蔵", priority: false, active: true, addedAt: todayIso(), confirmedAt: todayIso(), step: 0.25, origin: SAMPLE_ORIGIN },
+  { id: "pork", name: "豚こま", quantity: 120, unit: "g", location: "冷蔵", priority: false, active: true, addedAt: todayIso(), confirmedAt: todayIso(), step: 50, origin: SAMPLE_ORIGIN },
+  { id: "rice", name: "ごはん", quantity: 1, unit: "膳", location: "冷凍", priority: false, active: true, addedAt: todayIso(), confirmedAt: todayIso(), step: 1, origin: SAMPLE_ORIGIN }
 ];
 
 // 初回に「今夜使えそうな主役」として見せる食材。
@@ -4240,6 +4244,52 @@ const ILLUSTRATED_INGREDIENT_CATEGORIES = [
     ]
   }
 ];
+
+const FRESHNESS_GROUP_DAYS = {
+  "vegetables/葉物・茎": 4,
+  "vegetables/根菜・いも": 14,
+  "vegetables/果菜・豆": 7,
+  "vegetables/きのこ": 5,
+  "vegetables/香味・薬味": 7,
+  "fruit/定番": 7,
+  "fruit/柑橘": 14,
+  "fruit/ベリー・ドライ": 4,
+  "meat/豚": 3,
+  "meat/鶏": 2,
+  "meat/牛": 3,
+  "meat/ひき肉": 2,
+  "meat/加工肉": 7,
+  "meat/その他": 3,
+  "seafood/魚": 2,
+  "seafood/貝・えび・いか・たこ": 2,
+  "seafood/練り物": 7,
+  "seafood/魚卵・魚加工": 5
+};
+
+const FRESHNESS_DAYS_BY_ID = {
+  "bean-sprouts": 2, "cut-vegetables": 2, "salad-greens": 3, "baby-leaf": 3,
+  kaiware: 3, "broccoli-sprout": 3, "pea-sprouts": 4, nameko: 3,
+  potato: 30, onion: 30, "sweet-potato": 30, taro: 14, yam: 14, pumpkin: 14,
+  garlic: 60, ginger: 21, "new-ginger": 14,
+  avocado: 4, banana: 5, lemon: 21, lime: 21, chestnut: 14, ume: 5,
+  raisin: null, prune: null
+};
+
+const FRESHNESS_GROUP_BY_ID = new Map(
+  ILLUSTRATED_INGREDIENT_CATEGORIES.flatMap((category) =>
+    category.groups.flatMap((group) =>
+      group.items.map((id) => [id, `${category.id}/${group.name}`])
+    )
+  )
+);
+
+function freshnessDays(id) {
+  if (Object.prototype.hasOwnProperty.call(FRESHNESS_DAYS_BY_ID, id)) {
+    return FRESHNESS_DAYS_BY_ID[id];
+  }
+  return FRESHNESS_GROUP_DAYS[FRESHNESS_GROUP_BY_ID.get(id)] ?? null;
+}
+
 // 文字入力された名前から食材idを引く表。
 //
 // ★ALIASES は手で足した別名（「たまご」→ eggs など）だけを持っていて、
@@ -6049,31 +6099,55 @@ function activeInventory() {
 
 function expiringItems(today = localDateIso()) {
   return activeInventory()
-    .map((item) => ({ item, status: expiryAlertState(item.expiryDate, today) }))
-    .filter(({ status }) => status)
-    .sort((a, b) => a.status.days - b.status.days || a.item.name.localeCompare(b.item.name, "ja"));
+    .map((item) => {
+      const expiry = expiryAlertState(item.expiryDate, today);
+      const expectedDays = freshnessDays(item.id);
+      const elapsedDays = typeof expectedDays === "number"
+        ? expiryDayDifference(today, purchasedOn(item))
+        : null;
+      const left = elapsedDays === null ? null : expectedDays - elapsedDays;
+      const freshness = elapsedDays !== null && elapsedDays >= 1 && left <= 2
+        ? {
+            days: elapsedDays,
+            left,
+            kind: left < 0 ? "over" : "soon",
+            label: `買って${elapsedDays}日`
+          }
+        : null;
+      return { item, expiry, freshness };
+    })
+    .filter(({ expiry, freshness }) => expiry || freshness)
+    .sort((a, b) => {
+      const urgencyA = Math.min(a.expiry?.days ?? Infinity, a.freshness?.left ?? Infinity);
+      const urgencyB = Math.min(b.expiry?.days ?? Infinity, b.freshness?.left ?? Infinity);
+      return urgencyA - urgencyB || a.item.name.localeCompare(b.item.name, "ja");
+    });
 }
 
 function renderExpiringList() {
   const alerts = expiringItems();
   elements.managementExpiring.hidden = alerts.length === 0;
-  elements.managementExpiringTitle.textContent = `期限が近いもの ${alerts.length}件`;
+  elements.managementExpiringTitle.textContent = `そろそろ使いたいもの ${alerts.length}件`;
 
   if (!alerts.length) {
     elements.managementExpiringList.innerHTML = "";
     return;
   }
 
-  elements.managementExpiringList.innerHTML = alerts.map(({ item, status }) => `
-    <button class="management-expiring-item is-${status.kind}" type="button" data-fridge-edit="${escapeHtml(item.id)}">
+  elements.managementExpiringList.innerHTML = alerts.map(({ item, expiry, freshness }) => {
+    const alertKind = expiry?.kind || (freshness.kind === "over" ? "today" : "soon");
+    const labels = [expiry?.label, freshness?.label].filter(Boolean).join("・");
+    return `
+    <button class="management-expiring-item is-${alertKind}" type="button" data-fridge-edit="${escapeHtml(item.id)}">
       ${renderIngredientIllustration(item.id, item.name)}
       <span class="management-expiring-copy">
         <strong>${escapeHtml(item.name)}</strong>
-        <small>${escapeHtml(item.location)}・${escapeHtml(formatExpiryDate(item.expiryDate))}</small>
+        <small>${escapeHtml(item.location)}${expiry ? `・${escapeHtml(formatExpiryDate(item.expiryDate))}` : ""}</small>
       </span>
-      <span class="management-expiring-state">${escapeHtml(status.label)}</span>
+      <span class="management-expiring-state">${escapeHtml(labels)}</span>
     </button>
-  `).join("");
+  `;
+  }).join("");
 }
 
 function inventoryMap() {
@@ -6178,21 +6252,22 @@ function renderExpiryAlerts() {
     return;
   }
 
-  const expiredCount = alerts.filter(({ status }) => status.kind === "expired").length;
-  elements.expiryAlertTitle.textContent = expiredCount
-    ? "期限を過ぎた食材があります"
-    : "賞味期限が近い食材があります";
+  elements.expiryAlertTitle.textContent = "そろそろ使いたい食材があります";
   elements.expiryAlertSummary.textContent = `${alerts.length}品`;
-  elements.expiryAlertList.innerHTML = alerts.map(({ item, status }) => `
-    <button class="expiry-alert-item is-${status.kind}" type="button" data-expiry-edit="${escapeHtml(item.id)}">
+  elements.expiryAlertList.innerHTML = alerts.map(({ item, expiry, freshness }) => {
+    const alertKind = expiry?.kind || (freshness.kind === "over" ? "today" : "soon");
+    const labels = [expiry?.label, freshness?.label].filter(Boolean).join("・");
+    return `
+    <button class="expiry-alert-item is-${alertKind}" type="button" data-expiry-edit="${escapeHtml(item.id)}">
       ${renderIngredientIllustration(item.id, item.name)}
       <span class="expiry-alert-copy">
         <strong>${escapeHtml(item.name)}</strong>
-        <small>賞味期限 ${escapeHtml(formatExpiryDate(item.expiryDate))}</small>
+        ${expiry ? `<small>賞味期限 ${escapeHtml(formatExpiryDate(item.expiryDate))}</small>` : ""}
       </span>
-      <span class="expiry-alert-state">${escapeHtml(status.label)}</span>
+      <span class="expiry-alert-state">${escapeHtml(labels)}</span>
     </button>
-  `).join("");
+  `;
+  }).join("");
 }
 
 function inventoryLevel(item) {
@@ -7975,6 +8050,7 @@ function addOrMergeInventoryItem({
     location,
     priority,
     active: true,
+    addedAt: todayIso(),
     confirmedAt: todayIso(),
     step: stepForUnit(unit),
     maxQuantity: quantity,

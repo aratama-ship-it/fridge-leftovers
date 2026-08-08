@@ -48,6 +48,7 @@ const CONSTANTS = [
   "HISTORY_STORAGE_LIMIT", "HISTORY_PAGE_SIZE", "SEASONAL_INGREDIENTS", "SEASONAL_RECIPE_MONTHS",
   "CONFIDENCE_ORDER", "quantityConfidence", "quantityUnknown", "lessCertain",
   "RECIPES", "RECEIPT_RULES", "INITIAL_UNIT_BY_ID", "ALIASES", "NAME_TO_ID", "INGREDIENT_SUBSTITUTES", "UNIT_CONVERSIONS",
+  "ILLUSTRATED_INGREDIENT_CATEGORIES", "FRESHNESS_GROUP_DAYS", "FRESHNESS_DAYS_BY_ID", "FRESHNESS_GROUP_BY_ID",
   "SUBSTITUTE_GENERICS", "RECIPE_LIST_SERVINGS", "RECIPE_ILLUSTRATIONS",
   "RECIPE_ILLUSTRATION_FALLBACKS",
   "STORAGE_KEY", "SHOPPING_STORAGE_KEY", "COOKING_HISTORY_STORAGE_KEY",
@@ -55,7 +56,7 @@ const CONSTANTS = [
   "SYNC_STORAGE_KEY", "SHARE_STORAGE_KEY", "EXPORT_FORMAT", "EXPORT_APP", "EXPORT_SECTIONS"
 ];
 const FUNCTIONS = [
-  "normalizedExpiryDate", "localDateIso", "expiryDayDifference", "expiryAlertState", "expiringItems",
+  "normalizedExpiryDate", "localDateIso", "purchasedOn", "expiryDayDifference", "expiryAlertState", "freshnessDays", "expiringItems",
   "normalizedSubstitute", "conversionRatio", "stockForRequirement",
   "availableForRequirement", "requiredAmount", "shortageFor", "unconfirmedFor",
   "cookBlockers", "confirmUnknownAmounts", "optionalReady",
@@ -81,7 +82,7 @@ return {
   availableForRequirement, shortageFor, unconfirmedFor, cookBlockers,
   confirmUnknownAmounts, optionalReady, requiredAmount,
   pendingDayAfterItems, dayAfterCorrection, DAY_AFTER_LEVELS,
-  normalizedExpiryDate, expiryDayDifference, expiryAlertState, expiringItems,
+  normalizedExpiryDate, purchasedOn, expiryDayDifference, expiryAlertState, freshnessDays, expiringItems,
   markSyncChanges, pendingSyncChanges, applySyncResult, mergeEntity, applyOneIncoming,
   addHistoryEntry, seasonalRecipeState, priorityIngredientUse, compareRecipes, HISTORY_STORAGE_LIMIT, HISTORY_PAGE_SIZE,
   EXPORT_SECTIONS, readBackup, NAME_TO_ID, ALIASES
@@ -95,7 +96,7 @@ const {
   quantityConfidence, lessCertain, stockForRequirement,
   shortageFor, unconfirmedFor, cookBlockers, confirmUnknownAmounts,
   pendingDayAfterItems, dayAfterCorrection, DAY_AFTER_LEVELS,
-  normalizedExpiryDate, expiryDayDifference, expiryAlertState, expiringItems,
+  normalizedExpiryDate, purchasedOn, expiryDayDifference, expiryAlertState, freshnessDays, expiringItems,
   markSyncChanges, pendingSyncChanges, applySyncResult, mergeEntity, applyOneIncoming,
   addHistoryEntry, seasonalRecipeState, priorityIngredientUse, compareRecipes, HISTORY_STORAGE_LIMIT, HISTORY_PAGE_SIZE,
   EXPORT_SECTIONS, readBackup, NAME_TO_ID, ALIASES
@@ -186,21 +187,21 @@ check("4日以上先はアラートに出さない", expiryAlertState("2026-08-1
 check("未設定はアラートに出さない", expiryAlertState("", "2026-08-07"), null);
 check("期限が3日以内・当日・超過の在庫だけを集める", (() => {
   state.inventory = [
-    stock("eggs", 1, { expiryDate: "2026-08-10" }),
-    stock("tofu", 1, { expiryDate: "2026-08-07" }),
-    stock("mushroom", 1, { expiryDate: "2026-08-06" }),
-    stock("onion", 1, { expiryDate: "2026-08-11" }),
-    stock("carrot", 1, { expiryDate: "" })
+    stock("eggs", 1, { expiryDate: "2026-08-10", addedAt: "2026-08-07" }),
+    stock("tofu", 1, { expiryDate: "2026-08-07", addedAt: "2026-08-07" }),
+    stock("mushroom", 1, { expiryDate: "2026-08-06", addedAt: "2026-08-07" }),
+    stock("onion", 1, { expiryDate: "2026-08-11", addedAt: "2026-08-07" }),
+    stock("carrot", 1, { expiryDate: "", addedAt: "2026-08-07" })
   ];
   return expiringItems("2026-08-07").map(({ item }) => item.id);
 })(), ["mushroom", "tofu", "eggs"]);
 check("期限が近い在庫は日数の少ない順に並ぶ", (() => {
   state.inventory = [
-    stock("eggs", 1, { name: "卵", expiryDate: "2026-08-09" }),
-    stock("tofu", 1, { name: "豆腐", expiryDate: "2026-08-05" }),
-    stock("mushroom", 1, { name: "きのこ", expiryDate: "2026-08-07" }),
-    stock("onion", 1, { name: "い", expiryDate: "2026-08-08" }),
-    stock("carrot", 1, { name: "あ", expiryDate: "2026-08-08" })
+    stock("eggs", 1, { name: "卵", expiryDate: "2026-08-09", addedAt: "2026-08-07" }),
+    stock("tofu", 1, { name: "豆腐", expiryDate: "2026-08-05", addedAt: "2026-08-07" }),
+    stock("mushroom", 1, { name: "きのこ", expiryDate: "2026-08-07", addedAt: "2026-08-07" }),
+    stock("onion", 1, { name: "い", expiryDate: "2026-08-08", addedAt: "2026-08-07" }),
+    stock("carrot", 1, { name: "あ", expiryDate: "2026-08-08", addedAt: "2026-08-07" })
   ];
   return expiringItems("2026-08-07").map(({ item }) => item.id);
 })(), ["tofu", "mushroom", "carrot", "onion", "eggs"]);
@@ -211,6 +212,44 @@ check("使い切った在庫は期限が近い一覧に入れない", (() => {
   ];
   return expiringItems("2026-08-07").map(({ item }) => item.id);
 })(), ["eggs"]);
+
+// ---- 購入からの経過 ------------------------------------------------------
+check("食材ごとの目安日数と通知なしの上書きを使う",
+  [freshnessDays("bean-sprouts"), freshnessDays("potato"), freshnessDays("raisin")],
+  [2, 30, null]);
+check("分類グループから葉物の目安日数を引く", freshnessDays("spinach"), 4);
+check("目安表に無い調味料と乾物は通知しない",
+  [freshnessDays("soy-sauce"), freshnessDays("dried-shiitake")],
+  [null, null]);
+check("購入日はaddedAtを優先し、既存データはconfirmedAtで読み替える", [
+  purchasedOn({ addedAt: "2026-08-01", confirmedAt: "2026-08-02" }),
+  purchasedOn({ confirmedAt: "2026-08-02" })
+], ["2026-08-01", "2026-08-02"]);
+check("購入当日は一覧に出さない", (() => {
+  state.inventory = [stock("spinach", 1, { addedAt: "2026-08-07" })];
+  return expiringItems("2026-08-07").map(({ item }) => item.id);
+})(), []);
+check("目安を過ぎた食材は購入からの経過を持って一覧に出す", (() => {
+  state.inventory = [stock("spinach", 1, { addedAt: "2026-08-02" })];
+  return expiringItems("2026-08-07").map(({ item, freshness }) => ({ id: item.id, freshness }));
+})(), [{
+  id: "spinach",
+  freshness: { days: 5, left: -1, kind: "over", label: "買って5日" }
+}]);
+check("期限と購入経過の両方がある食材は差し迫っているほうで並ぶ", (() => {
+  state.inventory = [
+    stock("tofu", 1, { expiryDate: "2026-08-06", addedAt: "2026-08-07" }),
+    stock("spinach", 1, { expiryDate: "2026-08-10", addedAt: "2026-08-01" })
+  ];
+  return expiringItems("2026-08-07").map(({ item, expiry, freshness }) => ({
+    id: item.id,
+    expiry: expiry?.days ?? null,
+    freshness: freshness?.left ?? null
+  }));
+})(), [
+  { id: "spinach", expiry: 3, freshness: -2 },
+  { id: "tofu", expiry: -1, freshness: null }
+]);
 
 // ---- 履歴の保存上限 ------------------------------------------------------
 state.cookingHistory = [];
