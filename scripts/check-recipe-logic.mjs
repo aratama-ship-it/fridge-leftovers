@@ -60,7 +60,7 @@ const FUNCTIONS = [
   "availableForRequirement", "requiredAmount", "shortageFor", "unconfirmedFor",
   "cookBlockers", "confirmUnknownAmounts", "optionalReady",
   "inventoryLevel", "pendingDayAfterItems", "dayAfterCorrection",
-  "historyEntryType", "historyEntryTime", "addHistoryEntry", "seasonalRecipeState", "recipeScore", "compareRecipes",
+  "historyEntryType", "historyEntryTime", "addHistoryEntry", "seasonalRecipeState", "priorityIngredientUse", "recipeScore", "compareRecipes",
   "currentChangeAttribution", "markSyncChanges", "pendingSyncChanges", "applySyncResult", "mergeEntity",
   "applyOneIncoming", "readBackup"
 ];
@@ -83,7 +83,7 @@ return {
   pendingDayAfterItems, dayAfterCorrection, DAY_AFTER_LEVELS,
   normalizedExpiryDate, expiryDayDifference, expiryAlertState,
   markSyncChanges, pendingSyncChanges, applySyncResult, mergeEntity, applyOneIncoming,
-  addHistoryEntry, seasonalRecipeState, compareRecipes, HISTORY_STORAGE_LIMIT, HISTORY_PAGE_SIZE,
+  addHistoryEntry, seasonalRecipeState, priorityIngredientUse, compareRecipes, HISTORY_STORAGE_LIMIT, HISTORY_PAGE_SIZE,
   EXPORT_SECTIONS, readBackup
 };
 `;
@@ -97,7 +97,7 @@ const {
   pendingDayAfterItems, dayAfterCorrection, DAY_AFTER_LEVELS,
   normalizedExpiryDate, expiryDayDifference, expiryAlertState,
   markSyncChanges, pendingSyncChanges, applySyncResult, mergeEntity, applyOneIncoming,
-  addHistoryEntry, seasonalRecipeState, compareRecipes, HISTORY_STORAGE_LIMIT, HISTORY_PAGE_SIZE,
+  addHistoryEntry, seasonalRecipeState, priorityIngredientUse, compareRecipes, HISTORY_STORAGE_LIMIT, HISTORY_PAGE_SIZE,
   EXPORT_SECTIONS, readBackup
 } = app_;
 
@@ -207,6 +207,78 @@ check("1月は白菜の重ね鍋を季節料理として評価する",
     new Date("2026-01-07T12:00:00+09:00")
   ).explicit,
   true);
+
+// ---- 使いたい食材を優先する並び ----------------------------------------
+const inventoryBeforePrioritySort = state.inventory;
+const priorityBeforePrioritySort = state.priority;
+const priorityReadyRecipe = {
+  id: "priority-ready",
+  name: "卵だけの料理",
+  minutes: 10,
+  required: [{ id: "eggs", name: "卵", quantity: 1, unit: "個" }],
+  optional: []
+};
+const priorityMissingRecipe = {
+  id: "priority-missing",
+  name: "卵と牛乳の料理",
+  minutes: 10,
+  required: [
+    { id: "eggs", name: "卵", quantity: 1, unit: "個" },
+    { id: "milk", name: "牛乳", quantity: 1, unit: "個" }
+  ],
+  optional: []
+};
+// 実行月が変わっても旬加点が付くよう、四季から1品ずつ使う。
+const seasonalNeeds = ["tofu", "cabbage", "cucumber", "mushroom"].map((id) => {
+  const rule = ruleFor(id);
+  return { id, name: rule.name, quantity: 1, unit: rule.unit };
+});
+const seasonalReadyRecipe = {
+  id: "seasonal-ready",
+  name: "旬で材料が揃った料理",
+  minutes: 10,
+  required: seasonalNeeds,
+  optional: []
+};
+const plainReadyRecipe = {
+  id: "plain-ready",
+  name: "材料が揃った料理",
+  minutes: 10,
+  required: [{ id: "eggs", name: "卵", quantity: 1, unit: "個" }],
+  optional: []
+};
+const seasonalMissingRecipe = {
+  id: "seasonal-missing",
+  name: "旬で材料が不足した料理",
+  minutes: 10,
+  required: [
+    ...seasonalNeeds,
+    { id: "milk", name: "牛乳", quantity: 1, unit: "個" }
+  ],
+  optional: []
+};
+
+state.priority = "no-shop";
+state.inventory = [
+  stock("eggs", 1, { priority: true }),
+  ...seasonalNeeds.map(({ id }) => stock(id, 1))
+];
+check("使いたい食材を使う料理は不足があっても、材料が揃った旬の料理より前",
+  [seasonalReadyRecipe, priorityMissingRecipe].sort(compareRecipes).map((recipe) => recipe.id),
+  ["priority-missing", "seasonal-ready"]);
+
+state.inventory = [stock("eggs", 1), ...seasonalNeeds.map(({ id }) => stock(id, 1))];
+check("使いたい食材が無いときは不足の少なさと旬で並ぶ",
+  [seasonalMissingRecipe, plainReadyRecipe, seasonalReadyRecipe]
+    .sort(compareRecipes).map((recipe) => recipe.id),
+  ["seasonal-ready", "plain-ready", "seasonal-missing"]);
+
+state.inventory = [stock("eggs", 1, { priority: true })];
+check("両方が使いたい食材を使うときは不足の少ない料理が前",
+  [priorityMissingRecipe, priorityReadyRecipe].sort(compareRecipes).map((recipe) => recipe.id),
+  ["priority-ready", "priority-missing"]);
+state.inventory = inventoryBeforePrioritySort;
+state.priority = priorityBeforePrioritySort;
 
 // ---- 確信度そのもの ------------------------------------------------------
 check("項目が無い在庫は確認済みとして扱う", quantityConfidence({ quantity: 1 }), QUANTITY_CONFIRMED);

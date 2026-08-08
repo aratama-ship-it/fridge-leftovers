@@ -4104,7 +4104,7 @@ const STORAGE_SHELF_LIMITS = {
   冷蔵: { min: 1, max: 5 },
   冷凍: { min: 1, max: 3 }
 };
-const STORAGE_SHELF_CAPACITIES = { 冷蔵: 5, 冷凍: 5, 常温: 4 };
+const STORAGE_SHELF_CAPACITIES = { 冷蔵: 6, 冷凍: 6, 常温: 6 };
 
 const state = {
   inventory: [],
@@ -6788,8 +6788,7 @@ function renderSeasonalGuide() {
   `;
 }
 
-function recipeScore(recipe) {
-  const shortagePenalty = shortageFor(recipe, RECIPE_LIST_SERVINGS).length * 100;
+function priorityIngredientUse(recipe) {
   // 「先に使う」を指定した食材が部位・商品のときは、総称の要求にも効かせる
   const priorityIds = new Set();
   activeInventory().filter((item) => item.priority).forEach((item) => {
@@ -6797,14 +6796,24 @@ function recipeScore(recipe) {
     const generic = SUBSTITUTE_GENERICS.get(item.id);
     if (generic) priorityIds.add(generic);
   });
-  const priorityUse = [...recipe.required, ...recipe.optional].filter((ingredient) => priorityIds.has(ingredient.id)).length;
-  const priorityBoost = priorityUse * 40;
+  return [...recipe.required, ...recipe.optional]
+    .filter((ingredient) => priorityIds.has(ingredient.id)).length;
+}
+
+function recipeScore(recipe) {
+  const shortagePenalty = shortageFor(recipe, RECIPE_LIST_SERVINGS).length * 100;
+  const priorityBoost = priorityIngredientUse(recipe) * 40;
   const seasonBoost = seasonalRecipeState(recipe).boost;
   if (state.priority === "quick") return priorityBoost + seasonBoost + 30 - recipe.minutes - shortagePenalty;
   return priorityBoost + seasonBoost + 50 - shortagePenalty - recipe.minutes / 10;
 }
 
 function compareRecipes(a, b) {
+  // 旬は使いたい食材が無いときの手がかり。利用者が選んだ意思を先にする。
+  const aPriorityUse = priorityIngredientUse(a);
+  const bPriorityUse = priorityIngredientUse(b);
+  if ((aPriorityUse === 0) !== (bPriorityUse === 0)) return aPriorityUse > 0 ? -1 : 1;
+
   if (state.priority === "quick") {
     const shortageDifference = shortageFor(a, RECIPE_LIST_SERVINGS).length
       - shortageFor(b, RECIPE_LIST_SERVINGS).length;
