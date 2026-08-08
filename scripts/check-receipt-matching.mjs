@@ -64,7 +64,7 @@ const CASES = [
   ["粉チーズ", "powdered-cheese"], ["チーズ", "cheese"],
   ["カニカマ", "kanikama"], ["ずわいがに", "crab"], ["かに", "crab"],
   ["玄米", "brown-rice"], ["もち米", "mochi-rice"], ["無洗米", "rice-raw"], ["コシヒカリ", "rice-raw"],
-  ["米粉", null], ["米油", null], ["米酢", null],
+  ["米粉", null], ["米油", null], ["米酢", "vinegar"],
   ["ナン", "naan"], ["ナンプラー", null],
   ["ホットケーキミックス", "pancake-mix"], ["お好み焼き粉", "okonomiyaki-flour"],
   ["強力粉", "bread-flour"], ["白玉粉", "shiratamako"], ["小麦粉", "flour"], ["片栗粉", "potato-starch"],
@@ -105,7 +105,17 @@ const CASES = [
   ["牛すじ", "beef-tendon"], ["牛タン", "beef-tongue"], ["牛こま", "beef"],
   ["鶏皮", "chicken-skin"], ["鶏むね肉", "chicken"],
   ["冷凍ポテト", "frozen-potato"], ["じゃがいも", "potato"],
-  ["うに", "uni"], ["ライ麦パン", "rye-bread"], ["ワンタンの皮", "wonton-wrapper"], ["餃子の皮", "gyoza-wrapper"]
+  ["うに", "uni"], ["ライ麦パン", "rye-bread"], ["ワンタンの皮", "wonton-wrapper"], ["餃子の皮", "gyoza-wrapper"],
+  // シート31〜32
+  ["しょう油", "soy-sauce"], ["ごま油", "sesame-oil"], ["オリーブ油", "olive-oil"], ["サラダオイル", "salad-oil"],
+  ["マヨネーズ", "mayonnaise"], ["トマトケチャップ", "ketchup"], ["中濃ソース", "sauce"], ["ポン酢", "ponzu"],
+  ["ゆずぽん", "ponzu"], ["めんつゆ", "mentsuyu"], ["そばつゆ", "mentsuyu"], ["そうめんつゆ", "mentsuyu"],
+  ["だしの素", "dashi-powder"], ["コンソメキューブ", "consomme"], ["カレールウ", "curry-roux"],
+  ["粗塩", "salt"], ["上白糖", "sugar"], ["穀物酢", "vinegar"], ["りんご酢", "vinegar"], ["本みりん", "mirin"],
+  ["料理酒", "cooking-sake"], ["黒こしょう", "pepper"], ["蜂蜜", "honey"], ["いちごジャム", "jam"],
+  ["カットトマト缶", "canned-tomato-cut"], ["パイナップル缶", "canned-pineapple"], ["ドライマンゴー", "dried-mango"], ["大豆ミート", "soy-meat"],
+  ["ホールトマト", "canned-tomato"], ["パイナップル", "pineapple"], ["マンゴー", "mango"], ["乾燥大豆", "dried-soybeans"],
+  ["出汁パック", "dashi-pack"], ["ミートソース", "meat-sauce"], ["ソース焼きそば", "yakisoba-noodles"], ["柚子こしょう", null]
 ];
 
 // 商品ではない行（店名・合計など）を落とせているか。
