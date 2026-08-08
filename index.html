@@ -12,10 +12,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="冷蔵庫の現在地">
-  <link rel="stylesheet" href="styles.css?v=91b80ca5">
+  <link rel="stylesheet" href="styles.css?v=656d991b">
   <script src="vendor/tesseract/tesseract.min.js?v=7.0.0" defer></script>
   <script src="recipe-expansion.js?v=3e0c5a6c" defer></script>
-  <script src="app.js?v=5f9a8263" defer></script>
+  <script src="app.js?v=858552e4" defer></script>
   <!--
     起動の読み込み画面は、外部CSS（styles.css）が届く前から出したいので、
     ここだけ色を直書きしている（:root の変数に頼らない）。回線が細いときほど
@@ -192,6 +192,11 @@
             </button>
           </div>
         </div>
+
+        <section class="management-expiring" id="management-expiring" aria-labelledby="management-expiring-title" hidden>
+          <h3 id="management-expiring-title">期限が近いもの</h3>
+          <div class="management-expiring-list" id="management-expiring-list"></div>
+        </section>
 
         <div class="storage-tabs" role="group" aria-label="保存場所で絞り込む">
           <button type="button" class="storage-tab is-active" data-location="すべて" aria-pressed="true">すべて</button>

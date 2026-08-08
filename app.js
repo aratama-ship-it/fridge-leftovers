@@ -4245,7 +4245,8 @@ const INVENTORY_LOCATIONS = ["冷蔵", "冷凍", "常温"];
 const DEFAULT_STORAGE_SHELF_COUNTS = { 冷蔵: 3, 冷凍: 1, 常温: 2 };
 const STORAGE_SHELF_LIMITS = {
   冷蔵: { min: 1, max: 5 },
-  冷凍: { min: 1, max: 3 }
+  冷凍: { min: 1, max: 3 },
+  常温: { min: 1, max: 4 }
 };
 const STORAGE_SHELF_CAPACITIES = { 冷蔵: 6, 冷凍: 6, 常温: 6 };
 
@@ -4324,6 +4325,9 @@ const elements = {
   expiryAlertTitle: document.querySelector("#expiry-alert-title"),
   expiryAlertSummary: document.querySelector("#expiry-alert-summary"),
   expiryAlertList: document.querySelector("#expiry-alert-list"),
+  managementExpiring: document.querySelector("#management-expiring"),
+  managementExpiringTitle: document.querySelector("#management-expiring-title"),
+  managementExpiringList: document.querySelector("#management-expiring-list"),
   inventoryList: document.querySelector("#inventory-list"),
   finishedSection: document.querySelector("#finished-section"),
   finishedCount: document.querySelector("#finished-count"),
@@ -6030,6 +6034,35 @@ function activeInventory() {
   return state.inventory.filter((item) => item.active !== false && item.quantity > 0);
 }
 
+function expiringItems(today = localDateIso()) {
+  return activeInventory()
+    .map((item) => ({ item, status: expiryAlertState(item.expiryDate, today) }))
+    .filter(({ status }) => status)
+    .sort((a, b) => a.status.days - b.status.days || a.item.name.localeCompare(b.item.name, "ja"));
+}
+
+function renderExpiringList() {
+  const alerts = expiringItems();
+  elements.managementExpiring.hidden = alerts.length === 0;
+  elements.managementExpiringTitle.textContent = `期限が近いもの ${alerts.length}件`;
+
+  if (!alerts.length) {
+    elements.managementExpiringList.innerHTML = "";
+    return;
+  }
+
+  elements.managementExpiringList.innerHTML = alerts.map(({ item, status }) => `
+    <button class="management-expiring-item is-${status.kind}" type="button" data-fridge-edit="${escapeHtml(item.id)}">
+      ${renderIngredientIllustration(item.id, item.name)}
+      <span class="management-expiring-copy">
+        <strong>${escapeHtml(item.name)}</strong>
+        <small>${escapeHtml(item.location)}・${escapeHtml(formatExpiryDate(item.expiryDate))}</small>
+      </span>
+      <span class="management-expiring-state">${escapeHtml(status.label)}</span>
+    </button>
+  `).join("");
+}
+
 function inventoryMap() {
   const map = new Map();
   activeInventory().forEach((item) => {
@@ -6094,7 +6127,7 @@ function renderInventory() {
   ensureInventoryShelves();
   const active = activeInventory();
   const filtered = active.filter((item) => state.location === "すべて" || item.location === state.location);
-  renderExpiryAlerts(active);
+  renderExpiryAlerts();
   renderFridgeScene(active);
 
   if (!filtered.length) {
@@ -6121,11 +6154,10 @@ function renderInventory() {
   scheduleInventoryScrollLock();
 }
 
-function renderExpiryAlerts(active) {
-  const alerts = active
-    .map((item) => ({ item, status: expiryAlertState(item.expiryDate) }))
-    .filter(({ status }) => status)
-    .sort((a, b) => a.status.days - b.status.days || a.item.name.localeCompare(b.item.name, "ja"));
+// 冷蔵庫画面のお知らせと在庫画面の一覧は、同じ抽出（expiringItems）を使う。
+// 別々に書くと、片方だけ条件を直したときに表示が食い違う
+function renderExpiryAlerts() {
+  const alerts = expiringItems();
 
   elements.expiryAlert.hidden = alerts.length === 0;
   if (!alerts.length) {
@@ -6226,14 +6258,25 @@ function addShelfForStorage(shelves, location) {
   return shelves.findIndex((items) => items.length < STORAGE_SHELF_CAPACITIES[location]);
 }
 
+// 画面に出す呼び名。常温は「常温室」ではなく「パントリー」と呼んでいる
+function storageDisplayName(location) {
+  return location === "常温" ? "パントリー" : `${location}室`;
+}
+
 function renderShelfControl(location) {
   const count = state.shelfCounts[location];
   const limits = STORAGE_SHELF_LIMITS[location];
+  const name = storageDisplayName(location);
+  const locationClass = location === "冷凍"
+    ? "freezer"
+    : location === "常温"
+      ? "pantry"
+      : "chamber";
   return `
-    <div class="shelf-count-control shelf-count-control-${location === "冷凍" ? "freezer" : "chamber"}">
-      <button type="button" data-shelf-location="${location}" data-shelf-change="-1" aria-label="${location}室の棚を1段減らす"${count <= limits.min ? " disabled" : ""}>−</button>
+    <div class="shelf-count-control shelf-count-control-${locationClass}">
+      <button type="button" data-shelf-location="${location}" data-shelf-change="-1" aria-label="${name}の棚を1段減らす"${count <= limits.min ? " disabled" : ""}>−</button>
       <span aria-live="polite">${count}段</span>
-      <button type="button" data-shelf-location="${location}" data-shelf-change="1" aria-label="${location}室の棚を1段増やす"${count >= limits.max ? " disabled" : ""}>＋</button>
+      <button type="button" data-shelf-location="${location}" data-shelf-change="1" aria-label="${name}の棚を1段増やす"${count >= limits.max ? " disabled" : ""}>＋</button>
     </div>
   `;
 }
@@ -6248,7 +6291,10 @@ function renderFridgeScene(active) {
     { length: state.shelfCounts.冷蔵 },
     (_, shelf) => itemsOnShelf(active, "冷蔵", shelf)
   );
-  const pantryShelves = [0, 1].map((shelf) => itemsOnShelf(active, "常温", shelf));
+  const pantryShelves = Array.from(
+    { length: state.shelfCounts.常温 },
+    (_, shelf) => itemsOnShelf(active, "常温", shelf)
+  );
   const visibleFrozenShelves = frozenShelves.map((items) =>
     items.slice(0, STORAGE_SHELF_CAPACITIES.冷凍)
   );
@@ -6284,6 +6330,7 @@ function renderFridgeScene(active) {
             ${renderFridgeShelf(items, "常温", shelf, shelf === pantryAddShelf)}
           </div>
         `).join("")}
+        ${renderShelfControl("常温")}
       </div>
       ${hiddenPantryCount ? `<span class="fridge-overflow">ほか ${hiddenPantryCount}品</span>` : ""}
     </div>`
@@ -8837,6 +8884,7 @@ function showToast(message, withUndo = false) {
 
 function renderAll() {
   renderInventory();
+  renderExpiringList();
   renderRecipes();
   renderShopping();
   renderCookingHistory();
@@ -8850,6 +8898,8 @@ function changeShelfCount(location, delta) {
   const next = current + delta;
   if (next < limits.min || next > limits.max) return false;
 
+  // 最下段に食材があるまま減らすと、その食材が黙って別の段へ移る。
+  // どこに何があるかを把握するためのアプリなので、先に本人に動かしてもらう
   if (delta < 0) {
     const lastShelf = current - 1;
     const hasItems = state.inventory.some((item) =>
@@ -8859,7 +8909,7 @@ function changeShelfCount(location, delta) {
       && item.quantity > 0
     );
     if (hasItems) {
-      showToast("最下段の食材を移動してから棚を減らしてください");
+      showToast(`${storageDisplayName(location)}の最下段の食材を移動してから棚を減らしてください`);
       return false;
     }
   }
@@ -8867,7 +8917,7 @@ function changeShelfCount(location, delta) {
   state.shelfCounts[location] = next;
   persistShelfCounts();
   renderInventory();
-  showToast(`${location}室を${next}段にしました`);
+  showToast(`${storageDisplayName(location)}を${next}段にしました`);
   return true;
 }
 
@@ -10270,6 +10320,13 @@ elements.inventoryList.addEventListener("click", (event) => {
   }
   if (button.dataset.action === "consume") consumeItem(item);
   if (button.dataset.action === "delete") deleteItem(item);
+});
+
+elements.managementExpiringList.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-fridge-edit]");
+  if (!button) return;
+  const item = state.inventory.find((candidate) => candidate.id === button.dataset.fridgeEdit);
+  if (item) openIngredientDialog(item);
 });
 
 elements.finishedList.addEventListener("click", (event) => {

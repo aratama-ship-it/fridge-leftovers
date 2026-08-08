@@ -604,6 +604,11 @@ h3 {
   background: rgb(235 248 252 / 58%);
 }
 
+.shelf-count-control-pantry {
+  border-color: #b3946f;
+  background: rgb(255 255 255 / 48%);
+}
+
 .shelf-count-control button {
   display: grid;
   place-items: center;
@@ -624,6 +629,11 @@ h3 {
   color: #315866;
 }
 
+.shelf-count-control-pantry button {
+  border-color: #7a5c40;
+  color: #6d5133;
+}
+
 .shelf-count-control button:last-child {
   justify-self: end;
 }
@@ -638,6 +648,10 @@ h3 {
   font-weight: 800;
   letter-spacing: 0.08em;
   text-align: center;
+}
+
+.shelf-count-control-pantry span {
+  color: #6d5133;
 }
 
 .fridge-foods {
@@ -1076,6 +1090,117 @@ body.is-fridge-dragging .food-consume-station {
 .management-actions .button {
   min-width: 132px;
   padding-inline: 10px;
+}
+
+.management-expiring {
+  margin-bottom: 16px;
+  padding: 12px;
+  border: 1px solid rgb(174 120 55 / 25%);
+  border-radius: 6px;
+  background: #fff8e7;
+}
+
+.management-expiring[hidden] {
+  display: none;
+}
+
+.management-expiring h3 {
+  margin: 0 0 9px;
+  font-size: 0.96rem;
+  line-height: 1.45;
+}
+
+.management-expiring-list {
+  display: grid;
+  gap: 6px;
+}
+
+.management-expiring-item {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  min-height: 54px;
+  padding: 6px 8px;
+  border: 1px solid rgb(174 120 55 / 25%);
+  border-radius: 5px;
+  background: rgb(255 255 255 / 72%);
+  color: var(--ink);
+  text-align: left;
+}
+
+.management-expiring-item:hover,
+.management-expiring-item:focus-visible {
+  border-color: #aa6c25;
+}
+
+.management-expiring-item.is-soon {
+  border-color: rgb(174 120 55 / 25%);
+  background: rgb(255 255 255 / 72%);
+}
+
+.management-expiring-item.is-today {
+  border-color: #c88b2e;
+  background: #fff8e7;
+}
+
+.management-expiring-item.is-expired {
+  border-color: rgb(168 73 45 / 34%);
+  background: #fff3ef;
+}
+
+.management-expiring-item .ingredient-illustration,
+.management-expiring-item .ingredient-initial {
+  width: 42px;
+  height: 42px;
+}
+
+.management-expiring-copy {
+  min-width: 0;
+}
+
+.management-expiring-copy strong,
+.management-expiring-copy small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.management-expiring-copy strong {
+  font-size: 0.84rem;
+}
+
+.management-expiring-copy small {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 0.68rem;
+}
+
+.management-expiring-state {
+  padding: 3px 7px;
+  border-radius: 12px;
+  background: #f0d6a2;
+  color: #704814;
+  font-size: 0.7rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.management-expiring-item.is-soon .management-expiring-state {
+  background: #f0d6a2;
+  color: #704814;
+}
+
+.management-expiring-item.is-today .management-expiring-state {
+  background: #c88b2e;
+  color: white;
+}
+
+.management-expiring-item.is-expired .management-expiring-state {
+  background: var(--warm);
+  color: white;
 }
 
 .receipt-scan-button {

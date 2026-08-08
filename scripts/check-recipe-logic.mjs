@@ -55,7 +55,7 @@ const CONSTANTS = [
   "SYNC_STORAGE_KEY", "SHARE_STORAGE_KEY", "EXPORT_FORMAT", "EXPORT_APP", "EXPORT_SECTIONS"
 ];
 const FUNCTIONS = [
-  "normalizedExpiryDate", "localDateIso", "expiryDayDifference", "expiryAlertState",
+  "normalizedExpiryDate", "localDateIso", "expiryDayDifference", "expiryAlertState", "expiringItems",
   "normalizedSubstitute", "conversionRatio", "stockForRequirement",
   "availableForRequirement", "requiredAmount", "shortageFor", "unconfirmedFor",
   "cookBlockers", "confirmUnknownAmounts", "optionalReady",
@@ -71,7 +71,7 @@ const harness = `
 const todayIso = () => "2026-01-01";
 const state = { inventory: [], servings: 1, cookingHistory: [], shopping: [], shelfCounts: {}, syncMeta: {}, device: { id: "test-device", name: "テスト端末" }, settings: { dayAfterSkippedOn: "" } };
 const inventoryMap = () => new Map(state.inventory.filter((item) => item.active !== false).map((item) => [item.id, item]));
-const activeInventory = () => state.inventory.filter((item) => item.active !== false);
+const activeInventory = () => state.inventory.filter((item) => item.active !== false && item.quantity > 0);
 ${CONSTANTS.map(takeConst).join("\n")}
 ${FUNCTIONS.map(takeFunction).join("\n")}
 return {
@@ -81,7 +81,7 @@ return {
   availableForRequirement, shortageFor, unconfirmedFor, cookBlockers,
   confirmUnknownAmounts, optionalReady, requiredAmount,
   pendingDayAfterItems, dayAfterCorrection, DAY_AFTER_LEVELS,
-  normalizedExpiryDate, expiryDayDifference, expiryAlertState,
+  normalizedExpiryDate, expiryDayDifference, expiryAlertState, expiringItems,
   markSyncChanges, pendingSyncChanges, applySyncResult, mergeEntity, applyOneIncoming,
   addHistoryEntry, seasonalRecipeState, priorityIngredientUse, compareRecipes, HISTORY_STORAGE_LIMIT, HISTORY_PAGE_SIZE,
   EXPORT_SECTIONS, readBackup
@@ -95,7 +95,7 @@ const {
   quantityConfidence, lessCertain, stockForRequirement,
   shortageFor, unconfirmedFor, cookBlockers, confirmUnknownAmounts,
   pendingDayAfterItems, dayAfterCorrection, DAY_AFTER_LEVELS,
-  normalizedExpiryDate, expiryDayDifference, expiryAlertState,
+  normalizedExpiryDate, expiryDayDifference, expiryAlertState, expiringItems,
   markSyncChanges, pendingSyncChanges, applySyncResult, mergeEntity, applyOneIncoming,
   addHistoryEntry, seasonalRecipeState, priorityIngredientUse, compareRecipes, HISTORY_STORAGE_LIMIT, HISTORY_PAGE_SIZE,
   EXPORT_SECTIONS, readBackup
@@ -175,6 +175,33 @@ check("当日は今日までと知らせる", expiryAlertState("2026-08-07", "20
 check("3日以内は残り日数を知らせる", expiryAlertState("2026-08-10", "2026-08-07"), { days: 3, kind: "soon", label: "あと3日" });
 check("4日以上先はアラートに出さない", expiryAlertState("2026-08-11", "2026-08-07"), null);
 check("未設定はアラートに出さない", expiryAlertState("", "2026-08-07"), null);
+check("期限が3日以内・当日・超過の在庫だけを集める", (() => {
+  state.inventory = [
+    stock("eggs", 1, { expiryDate: "2026-08-10" }),
+    stock("tofu", 1, { expiryDate: "2026-08-07" }),
+    stock("mushroom", 1, { expiryDate: "2026-08-06" }),
+    stock("onion", 1, { expiryDate: "2026-08-11" }),
+    stock("carrot", 1, { expiryDate: "" })
+  ];
+  return expiringItems("2026-08-07").map(({ item }) => item.id);
+})(), ["mushroom", "tofu", "eggs"]);
+check("期限が近い在庫は日数の少ない順に並ぶ", (() => {
+  state.inventory = [
+    stock("eggs", 1, { name: "卵", expiryDate: "2026-08-09" }),
+    stock("tofu", 1, { name: "豆腐", expiryDate: "2026-08-05" }),
+    stock("mushroom", 1, { name: "きのこ", expiryDate: "2026-08-07" }),
+    stock("onion", 1, { name: "い", expiryDate: "2026-08-08" }),
+    stock("carrot", 1, { name: "あ", expiryDate: "2026-08-08" })
+  ];
+  return expiringItems("2026-08-07").map(({ item }) => item.id);
+})(), ["tofu", "mushroom", "carrot", "onion", "eggs"]);
+check("使い切った在庫は期限が近い一覧に入れない", (() => {
+  state.inventory = [
+    stock("eggs", 1, { expiryDate: "2026-08-08" }),
+    stock("tofu", 0, { active: false, expiryDate: "2026-08-06" })
+  ];
+  return expiringItems("2026-08-07").map(({ item }) => item.id);
+})(), ["eggs"]);
 
 // ---- 履歴の保存上限 ------------------------------------------------------
 state.cookingHistory = [];
