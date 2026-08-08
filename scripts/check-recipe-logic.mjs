@@ -47,7 +47,7 @@ const CONSTANTS = [
   "DAY_AFTER_LEVELS", "DAY_AFTER_LIMIT", "SYNC_KINDS", "STORAGE_SHELF_CAPACITIES",
   "HISTORY_STORAGE_LIMIT", "HISTORY_PAGE_SIZE", "SEASONAL_INGREDIENTS", "SEASONAL_RECIPE_MONTHS",
   "CONFIDENCE_ORDER", "quantityConfidence", "quantityUnknown", "lessCertain",
-  "RECIPES", "RECEIPT_RULES", "INITIAL_UNIT_BY_ID", "INGREDIENT_SUBSTITUTES", "UNIT_CONVERSIONS",
+  "RECIPES", "RECEIPT_RULES", "INITIAL_UNIT_BY_ID", "ALIASES", "NAME_TO_ID", "INGREDIENT_SUBSTITUTES", "UNIT_CONVERSIONS",
   "SUBSTITUTE_GENERICS", "RECIPE_LIST_SERVINGS", "RECIPE_ILLUSTRATIONS",
   "RECIPE_ILLUSTRATION_FALLBACKS",
   "STORAGE_KEY", "SHOPPING_STORAGE_KEY", "COOKING_HISTORY_STORAGE_KEY",
@@ -84,7 +84,7 @@ return {
   normalizedExpiryDate, expiryDayDifference, expiryAlertState, expiringItems,
   markSyncChanges, pendingSyncChanges, applySyncResult, mergeEntity, applyOneIncoming,
   addHistoryEntry, seasonalRecipeState, priorityIngredientUse, compareRecipes, HISTORY_STORAGE_LIMIT, HISTORY_PAGE_SIZE,
-  EXPORT_SECTIONS, readBackup
+  EXPORT_SECTIONS, readBackup, NAME_TO_ID, ALIASES
 };
 `;
 
@@ -98,7 +98,7 @@ const {
   normalizedExpiryDate, expiryDayDifference, expiryAlertState, expiringItems,
   markSyncChanges, pendingSyncChanges, applySyncResult, mergeEntity, applyOneIncoming,
   addHistoryEntry, seasonalRecipeState, priorityIngredientUse, compareRecipes, HISTORY_STORAGE_LIMIT, HISTORY_PAGE_SIZE,
-  EXPORT_SECTIONS, readBackup
+  EXPORT_SECTIONS, readBackup, NAME_TO_ID, ALIASES
 } = app_;
 
 const ruleFor = (id) => RECEIPT_RULES.find((rule) => rule.id === id);
@@ -165,6 +165,15 @@ check("正しいバックアップは全セクションを読み出す", (() => 
   }));
   return backup.found.map(({ section }) => section.key);
 })(), EXPORT_SECTIONS.map(({ key }) => key));
+
+// ---- 文字入力の名前からidを引く ----------------------------------------
+// カタログにある食材の正式名を打ったのに custom- の新規食材が作られると、
+// 絵が出ずレシピにも結び付かない（2026-08-09に実際に発生）
+check("カタログの正式名はすべて名前から引ける",
+  RECEIPT_RULES.filter((rule) => NAME_TO_ID.get(rule.name) !== rule.id).map((rule) => rule.name), []);
+check("手で足した別名は上書きされない",
+  [...ALIASES].filter(([name, id]) => NAME_TO_ID.get(name) !== id).map(([name]) => name), []);
+check("サニーレタスは正式なidへ解決する", NAME_TO_ID.get("サニーレタス"), "sunny-lettuce");
 
 // ---- 賞味期限 ------------------------------------------------------------
 check("正しい賞味期限の日付を保存できる", normalizedExpiryDate("2026-08-10"), "2026-08-10");

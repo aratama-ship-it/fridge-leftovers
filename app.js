@@ -4240,6 +4240,18 @@ const ILLUSTRATED_INGREDIENT_CATEGORIES = [
     ]
   }
 ];
+// 文字入力された名前から食材idを引く表。
+//
+// ★ALIASES は手で足した別名（「たまご」→ eggs など）だけを持っていて、
+// カタログの正式名そのものは入っていなかった。そのため「サニーレタス」のように
+// 一覧にある食材の名前を打っても引けず、custom- の新しい食材が作られていた。
+// 絵が出ないだけでなく、レシピの材料としても認識されない。
+// カタログの正式名を土台にして、手で足した別名を上から重ねる（別名のほうが優先）。
+const NAME_TO_ID = new Map([
+  ...RECEIPT_RULES.map((rule) => [rule.name, rule.id]),
+  ...ALIASES
+]);
+
 const INVENTORY_UNITS = ["個", "g", "ml", "本", "株", "袋", "パック", "膳", "切れ", "缶", "枚"];
 const INVENTORY_LOCATIONS = ["冷蔵", "冷凍", "常温"];
 const DEFAULT_STORAGE_SHELF_COUNTS = { 冷蔵: 3, 冷凍: 1, 常温: 2 };
@@ -5613,15 +5625,16 @@ function escapeHtml(value) {
 }
 
 function makeId(name) {
-  const alias = ALIASES.get(name.trim());
-  if (alias) return alias;
+  const known = NAME_TO_ID.get(name.trim());
+  if (known) return known;
   if (globalThis.crypto?.randomUUID) return `custom-${crypto.randomUUID()}`;
   return `custom-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
+// 既に custom- で登録されてしまった食材も、名前がカタログと一致すれば絵を出す
 function canonicalIngredientId(id, name) {
   if (INGREDIENT_ILLUSTRATIONS[id]) return id;
-  return ALIASES.get(String(name).trim()) || id;
+  return NAME_TO_ID.get(String(name).trim()) || id;
 }
 
 function normalizeIngredientNameForMatch(value) {
