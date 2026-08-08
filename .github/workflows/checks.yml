@@ -46,3 +46,7 @@ jobs:
       # アトラスの背景がちゃんと抜けているか（緑背景の混入の検出）
       - name: アトラスの背景抜け
         run: node scripts/check-atlas-alpha.mjs all
+
+      # Service Worker のキャッシュ2層化（更新でイラストを捨てないこと）
+      - name: Service Worker のチェック
+        run: node scripts/check-sw.mjs
