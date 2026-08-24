@@ -4568,31 +4568,48 @@ const elements = {
   prioritySelect: document.querySelector("#priority-select")
 };
 
-function cloneDefaults() {
-  return DEFAULT_INVENTORY.map((item) => ({ ...item }));
-}
-
 function markStorageUnavailable() {
   state.storageEnabled = false;
   showToast("データを保存できません");
 }
 
 function loadInventory() {
+  let saved = null;
   try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (!saved) {
-      // 初回はサンプルを入れない。他人の5品が入っていると、最初の料理提案が
-      // 実際の冷蔵庫と無関係になる。代わりに初回登録へ案内する
-      state.inventory = [];
-      state.needsOnboarding = true;
-      return;
-    }
-    const parsed = JSON.parse(saved);
-    state.inventory = Array.isArray(parsed) ? parsed : cloneDefaults();
+    saved = localStorage.getItem(STORAGE_KEY);
   } catch {
-    state.inventory = cloneDefaults();
+    // localStorage自体が使えない。サンプルは入れない（提案が実際の冷蔵庫と無関係になる）
+    state.inventory = [];
     markStorageUnavailable();
+    return;
   }
+  if (!saved) {
+    // 初回はサンプルを入れない。他人の5品が入っていると、最初の料理提案が
+    // 実際の冷蔵庫と無関係になる。代わりに初回登録へ案内する
+    state.inventory = [];
+    state.needsOnboarding = true;
+    return;
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(saved);
+  } catch {
+    parsed = undefined;
+  }
+  if (Array.isArray(parsed)) {
+    state.inventory = parsed;
+    return;
+  }
+  // 壊れデータをサンプル5品で置き換えない。原本を退避してから空で始め、本人に知らせる。
+  // 退避キーは上書き保存（読めた最後の壊れデータが1件残ればよい）
+  try {
+    localStorage.setItem(`${STORAGE_KEY}.corrupt-backup`, saved);
+  } catch {
+    // 退避に失敗しても起動は続ける
+  }
+  state.inventory = [];
+  state.needsOnboarding = true;
+  showToast("保存されていた在庫データを読み込めず、空の状態から始めました");
 }
 
 // 保存済みデータに残っているサンプルの5品。印が付いていない古いデータでも
