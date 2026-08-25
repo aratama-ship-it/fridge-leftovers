@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "fridge-leftovers-static",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["/tmp/serve-fridge.mjs"],
+      "port": 8467
+    }
+  ]
+}
