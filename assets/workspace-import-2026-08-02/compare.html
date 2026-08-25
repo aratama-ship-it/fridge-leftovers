@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>食材画像候補の比較 — 現行23番シート vs 2026-08-02取り込み分</title>
+<style>
+  :root {
+    --bg: #1c1f24;
+    --card: #262a31;
+    --line: #3a4049;
+    --text: #e8e6e1;
+    --muted: #9aa0a8;
+    --accent: #e8a13c;
+  }
+  body {
+    margin: 0;
+    padding: 24px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Hiragino Sans", "Yu Gothic", sans-serif;
+  }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .note { color: var(--muted); font-size: 13px; margin-bottom: 20px; line-height: 1.7; }
+  .row {
+    display: grid;
+    grid-template-columns: 140px repeat(3, 1fr);
+    gap: 12px;
+    align-items: start;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 14px;
+    margin-bottom: 14px;
+  }
+  .item-name { font-weight: 600; font-size: 15px; padding-top: 8px; }
+  .item-name .en { display: block; color: var(--muted); font-weight: 400; font-size: 11px; margin-top: 4px; }
+  .cell { text-align: center; }
+  .cell .label { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+  .cell.current .label { color: var(--accent); }
+  .cell img {
+    width: 100%;
+    max-width: 340px;
+    border-radius: 6px;
+    /* 透過の有無が見えるよう市松模様を敷く */
+    background:
+      repeating-conic-gradient(#4a4f57 0% 25%, #33373e 0% 50%) 0 0 / 24px 24px;
+  }
+  .meta { font-size: 11px; color: var(--muted); margin-top: 4px; font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+<h1>食材画像候補の比較（12品目 × 3系統）</h1>
+<p class="note">
+  左＝<strong style="color:var(--accent)">現行</strong>（assets/atlas-src/23、アトラス生成に使用中）／
+  中＝候補（workspace-import-2026-08-02/atlas-src/23、現行と同名だが内容が異なる）／
+  右＝候補keyed（同23-keyed、現行に同名なし）。
+  市松模様は透過部分。寸法は各品目で3系統とも同一。SHA-256は全て相違。
+</p>
+<div id="rows"></div>
+<script>
+const ITEMS = [
+  ["anko", "あんこ"],
+  ["beni-shoga", "紅しょうが"],
+  ["canned-peach", "桃缶"],
+  ["frozen-potato", "冷凍ポテト"],
+  ["frozen-seafood-mix", "冷凍シーフードミックス"],
+  ["fukujinzuke", "福神漬け"],
+  ["menma", "メンマ"],
+  ["nori-tsukudani", "のり佃煮"],
+  ["nozawana", "野沢菜"],
+  ["peanut-butter", "ピーナッツバター"],
+  ["rakkyo", "らっきょう"],
+  ["zasai", "ザーサイ"]
+];
+const META = {
+  "anko": ["1254x1254", "2.3MB / 07c31a35", "1.9MB / 097839f9", "1.7MB / 5ed8b026"],
+  "beni-shoga": ["1448x1086", "1.7MB / 1949098c", "1.5MB / 34ba5281", "1.3MB / 76330663"],
+  "canned-peach": ["1448x1086", "2.4MB / 85ef97fb", "1.8MB / b872affb", "1.6MB / ea75c20d"],
+  "frozen-potato": ["1448x1086", "1.9MB / d919cfda", "1.7MB / 2fd4855e", "1.5MB / 03b4698e"],
+  "frozen-seafood-mix": ["1448x1086", "2.5MB / b3e0b02f", "2.0MB / 82b5af37", "1.8MB / e74df7ba"],
+  "fukujinzuke": ["1448x1086", "1.8MB / 4cc42ab4", "1.7MB / 2fcd9e16", "1.5MB / 3c25246b"],
+  "menma": ["1448x1086", "2.0MB / b37fa20e", "1.8MB / 710a6bcb", "1.5MB / 98847107"],
+  "nori-tsukudani": ["1254x1254", "1.9MB / bf8f5840", "1.7MB / cfe1c3a7", "1.5MB / 18c22ee0"],
+  "nozawana": ["1448x1086", "2.3MB / 00ba0b7a", "1.8MB / 4bd9a15d", "1.6MB / 09dc7a23"],
+  "peanut-butter": ["1448x1086", "1.7MB / e0d118f3", "1.5MB / e61720bf", "1.3MB / 15305079"],
+  "rakkyo": ["1254x1254", "1.5MB / 636b34c2", "1.4MB / 7e312c72", "1.2MB / e16c103b"],
+  "zasai": ["1254x1254", "1.9MB / 1af06419", "1.7MB / fe53b285", "1.5MB / b297c1ca"]
+};
+const COLS = [
+  ["現行（採用中）", (id) => `../atlas-src/23/${id}.png`, "current"],
+  ["候補 23", (id) => `atlas-src/23/${id}.png`, ""],
+  ["候補 23-keyed", (id) => `atlas-src/23-keyed/${id}.png`, ""]
+];
+document.querySelector("#rows").innerHTML = ITEMS.map(([id, jp]) => {
+  const meta = META[id];
+  const cells = COLS.map(([label, src, cls], i) =>
+    `<div class="cell ${cls}">
+       <div class="label">${label}</div>
+       <img src="${src(id)}" alt="${jp} ${label}" loading="lazy">
+       <div class="meta">${meta[i + 1]}</div>
+     </div>`).join("");
+  return `<div class="row">
+    <div class="item-name">${jp}<span class="en">${id} ・ ${meta[0]}</span></div>
+    ${cells}
+  </div>`;
+}).join("");
+</script>
+</body>
+</html>
