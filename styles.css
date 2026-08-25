@@ -1304,56 +1304,56 @@ body.is-fridge-dragging .food-consume-station {
 }
 
 .ingredient-illustration {
-  background-image: url("assets/ingredient-atlas.png?v=20260727-2");
+  background-image: url("assets/ingredient-atlas.png?v=88d31a73");
   background-repeat: no-repeat;
   background-position: var(--atlas-x) var(--atlas-y);
   background-size: 440% 330%;
 }
 
 .ingredient-illustration-everyday {
-  background-image: url("assets/ingredient-atlas-everyday.png?v=20260727-2");
+  background-image: url("assets/ingredient-atlas-everyday.png?v=bc7f66c4");
 }
 
 .ingredient-illustration-recipe {
-  background-image: url("assets/ingredient-atlas-recipe.png?v=20260801-1");
+  background-image: url("assets/ingredient-atlas-recipe.png?v=a17fe1b1");
 }
 
 .ingredient-illustration-expanded {
-  background-image: url("assets/ingredient-atlas-expanded.png?v=20260727-2");
+  background-image: url("assets/ingredient-atlas-expanded.png?v=e2436af4");
 }
 
 /* 5枚目以降の受け口。画像を assets/ へ置き、app.js の INGREDIENT_ILLUSTRATIONS へ
    `id: [列, 行, "s05"]` の形で登録すると有効になる。
    新しいシートは 1254 × 940 px で作る（1254×1254 だと縦へ約33%潰れる）。
    寸法と品目は assets/ATLAS_SPEC.md と assets/ATLAS_GENERATION_BRIEF.md を参照。 */
-.ingredient-illustration-s05 { background-image: url("assets/ingredient-atlas-05.png?v=20260727-2"); }
-.ingredient-illustration-s06 { background-image: url("assets/ingredient-atlas-06.png?v=20260727-2"); }
-.ingredient-illustration-s07 { background-image: url("assets/ingredient-atlas-07.png?v=20260727-2"); }
-.ingredient-illustration-s08 { background-image: url("assets/ingredient-atlas-08.png?v=20260727-2"); }
-.ingredient-illustration-s09 { background-image: url("assets/ingredient-atlas-09.png?v=20260727-2"); }
-.ingredient-illustration-s10 { background-image: url("assets/ingredient-atlas-10.png?v=20260727-2"); }
-.ingredient-illustration-s11 { background-image: url("assets/ingredient-atlas-11.png?v=20260727-2"); }
-.ingredient-illustration-s12 { background-image: url("assets/ingredient-atlas-12.png?v=20260727-2"); }
-.ingredient-illustration-s13 { background-image: url("assets/ingredient-atlas-13.png?v=20260727-2"); }
-.ingredient-illustration-s14 { background-image: url("assets/ingredient-atlas-14.png?v=20260727-2"); }
-.ingredient-illustration-s15 { background-image: url("assets/ingredient-atlas-15.png?v=20260727-2"); }
-.ingredient-illustration-s16 { background-image: url("assets/ingredient-atlas-16.png?v=20260727-2"); }
-.ingredient-illustration-s17 { background-image: url("assets/ingredient-atlas-17.png?v=20260727-2"); }
-.ingredient-illustration-s18 { background-image: url("assets/ingredient-atlas-18.png?v=20260727-2"); }
-.ingredient-illustration-s19 { background-image: url("assets/ingredient-atlas-19.png?v=20260727-2"); }
-.ingredient-illustration-s20 { background-image: url("assets/ingredient-atlas-20.png?v=20260727-2"); }
-.ingredient-illustration-s21 { background-image: url("assets/ingredient-atlas-21.png?v=20260727-2"); }
-.ingredient-illustration-s22 { background-image: url("assets/ingredient-atlas-22.png?v=20260727-2"); }
-.ingredient-illustration-s23 { background-image: url("assets/ingredient-atlas-23.png?v=20260825-1"); }
-.ingredient-illustration-s24 { background-image: url("assets/ingredient-atlas-24.png?v=20260727-2"); }
-.ingredient-illustration-s25 { background-image: url("assets/ingredient-atlas-25.png?v=20260727-2"); }
-.ingredient-illustration-s26 { background-image: url("assets/ingredient-atlas-26.png?v=20260727-2"); }
-.ingredient-illustration-s27 { background-image: url("assets/ingredient-atlas-27.png?v=20260727-2"); }
-.ingredient-illustration-s28 { background-image: url("assets/ingredient-atlas-28.png?v=20260727-2"); }
-.ingredient-illustration-s29 { background-image: url("assets/ingredient-atlas-29.png?v=20260727-2"); }
-.ingredient-illustration-s30 { background-image: url("assets/ingredient-atlas-30.png?v=20260727-2"); }
-.ingredient-illustration-s31 { background-image: url("assets/ingredient-atlas-31.png?v=20260727-2"); }
-.ingredient-illustration-s32 { background-image: url("assets/ingredient-atlas-32.png?v=20260727-2"); }
+.ingredient-illustration-s05 { background-image: url("assets/ingredient-atlas-05.png?v=a6fe7fea"); }
+.ingredient-illustration-s06 { background-image: url("assets/ingredient-atlas-06.png?v=a73079d6"); }
+.ingredient-illustration-s07 { background-image: url("assets/ingredient-atlas-07.png?v=00d75631"); }
+.ingredient-illustration-s08 { background-image: url("assets/ingredient-atlas-08.png?v=2585f34f"); }
+.ingredient-illustration-s09 { background-image: url("assets/ingredient-atlas-09.png?v=6170bb9c"); }
+.ingredient-illustration-s10 { background-image: url("assets/ingredient-atlas-10.png?v=057e90ba"); }
+.ingredient-illustration-s11 { background-image: url("assets/ingredient-atlas-11.png?v=133139e9"); }
+.ingredient-illustration-s12 { background-image: url("assets/ingredient-atlas-12.png?v=ac0185e3"); }
+.ingredient-illustration-s13 { background-image: url("assets/ingredient-atlas-13.png?v=cb446469"); }
+.ingredient-illustration-s14 { background-image: url("assets/ingredient-atlas-14.png?v=b922cb1c"); }
+.ingredient-illustration-s15 { background-image: url("assets/ingredient-atlas-15.png?v=638b1fd8"); }
+.ingredient-illustration-s16 { background-image: url("assets/ingredient-atlas-16.png?v=bf674109"); }
+.ingredient-illustration-s17 { background-image: url("assets/ingredient-atlas-17.png?v=6ab1bef0"); }
+.ingredient-illustration-s18 { background-image: url("assets/ingredient-atlas-18.png?v=ec5579f3"); }
+.ingredient-illustration-s19 { background-image: url("assets/ingredient-atlas-19.png?v=04dfd262"); }
+.ingredient-illustration-s20 { background-image: url("assets/ingredient-atlas-20.png?v=17abb3c5"); }
+.ingredient-illustration-s21 { background-image: url("assets/ingredient-atlas-21.png?v=e14e7145"); }
+.ingredient-illustration-s22 { background-image: url("assets/ingredient-atlas-22.png?v=5f2078f8"); }
+.ingredient-illustration-s23 { background-image: url("assets/ingredient-atlas-23.png?v=2be948ef"); }
+.ingredient-illustration-s24 { background-image: url("assets/ingredient-atlas-24.png?v=583fccf8"); }
+.ingredient-illustration-s25 { background-image: url("assets/ingredient-atlas-25.png?v=9d884d1b"); }
+.ingredient-illustration-s26 { background-image: url("assets/ingredient-atlas-26.png?v=067e0e8f"); }
+.ingredient-illustration-s27 { background-image: url("assets/ingredient-atlas-27.png?v=937b8558"); }
+.ingredient-illustration-s28 { background-image: url("assets/ingredient-atlas-28.png?v=3dc466e1"); }
+.ingredient-illustration-s29 { background-image: url("assets/ingredient-atlas-29.png?v=2531aa11"); }
+.ingredient-illustration-s30 { background-image: url("assets/ingredient-atlas-30.png?v=079282db"); }
+.ingredient-illustration-s31 { background-image: url("assets/ingredient-atlas-31.png?v=a085f551"); }
+.ingredient-illustration-s32 { background-image: url("assets/ingredient-atlas-32.png?v=31734dfa"); }
 
 .ingredient-initial {
   display: grid;
@@ -5445,13 +5445,13 @@ input[type="date"] {
   height: 108px;
 }
 
-.recipe-illustration-r01 { background-image: url("assets/recipe-atlas-01.png?v=20260731-2"); }
-.recipe-illustration-r02 { background-image: url("assets/recipe-atlas-02.png?v=20260731-2"); }
-.recipe-illustration-r03 { background-image: url("assets/recipe-atlas-03.png?v=20260731-2"); }
-.recipe-illustration-r04 { background-image: url("assets/recipe-atlas-04.png?v=20260801-1"); }
-.recipe-illustration-r05 { background-image: url("assets/recipe-atlas-05.png?v=20260801-1"); }
-.recipe-illustration-r06 { background-image: url("assets/recipe-atlas-06.png?v=20260801-1"); }
-.recipe-illustration-r07 { background-image: url("assets/recipe-atlas-07.png?v=20260801-1"); }
+.recipe-illustration-r01 { background-image: url("assets/recipe-atlas-01.png?v=49aa34ae"); }
+.recipe-illustration-r02 { background-image: url("assets/recipe-atlas-02.png?v=34e415a7"); }
+.recipe-illustration-r03 { background-image: url("assets/recipe-atlas-03.png?v=f5cb757d"); }
+.recipe-illustration-r04 { background-image: url("assets/recipe-atlas-04.png?v=92789d12"); }
+.recipe-illustration-r05 { background-image: url("assets/recipe-atlas-05.png?v=b0ff315f"); }
+.recipe-illustration-r06 { background-image: url("assets/recipe-atlas-06.png?v=3cbfca29"); }
+.recipe-illustration-r07 { background-image: url("assets/recipe-atlas-07.png?v=e0c0cd58"); }
 
 /* ---- iPad mini / タブレット ------------------------------------------------
    スマホのUIをそのまま中央へ置くと左右が空くだけになるため、700px以上では

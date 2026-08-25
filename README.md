@@ -71,7 +71,7 @@
 
 アイコンは `node scripts/build-icons.mjs` が `assets/icons/` へ書き出します。素材は `assets/icon-src/` の2つ（冷蔵庫の絵だけを描いた透過PNGと、地の色）で、絵はアプリ内の食材イラストと同じ水彩です。**Androidは背景と前景を重ねて端末側が切り抜く**決まりなので、素材を分けたまま持ち、切り抜きのない用途（iOSのホーム画面・favicon）では絵を1.3倍で置いています。見え方は `assets/icon-preview.html` をブラウザで開くと、iOSの角丸とAndroidの丸マスクをかけた状態と実寸で確認できます。
 
-更新の行き渡り方は `scripts/cache-version.mjs` が面倒を見ます。`index.html` の `?v=` に加えて、`sw.js` の版と先読みリストも内容ハッシュから書き込むので、**`app.js` や `styles.css` を変えたら `node scripts/cache-version.mjs` を実行し、`index.html` と `sw.js` を一緒にコミットします**（CIが `--check` で検出します）。
+更新の行き渡り方は `scripts/cache-version.mjs` が面倒を見ます。`index.html` の `?v=` と `styles.css` から参照する画像の `?v=` に加えて、`sw.js` の版と先読みリストも内容ハッシュから書き込むので、**`app.js`、`styles.css`、またはアトラスPNGを変えたら `node scripts/cache-version.mjs` を実行し、`index.html`・`styles.css`・`sw.js` を一緒にコミットします**（CIが `--check` で検出します）。
 
 ## 開発環境メモ
 
