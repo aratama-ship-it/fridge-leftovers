@@ -43,6 +43,10 @@ jobs:
       - name: キャッシュ回避クエリの整合
         run: node scripts/cache-version.mjs --check
 
+      # app.jsが参照するイラストのシート名と、styles.cssのアトラスCSSクラスが噛み合っているか
+      - name: アトラス参照の整合
+        run: node scripts/check-atlas-references.mjs
+
       # ホーム画面のアイコンが、今の版下から書き出したものと一致しているか
       - name: アイコンの整合
         run: node scripts/build-icons.mjs --check
