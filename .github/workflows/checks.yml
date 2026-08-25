@@ -19,6 +19,10 @@ jobs:
       - name: 初期単位チェック
         run: node scripts/check-initial-units.mjs
 
+      # 壊れた保存値をサンプル在庫で上書きせず、安全に空から始められるか
+      - name: 在庫読み込みのフォールバック
+        run: node scripts/check-inventory-load.mjs
+
       # 主役リストが今のレシピと食い違っていないか
       - name: 主役リストの整合
         run: node scripts/pick-lead-ingredients.mjs --check
