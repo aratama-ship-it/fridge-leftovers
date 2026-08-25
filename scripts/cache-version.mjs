@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 // index.html のキャッシュ回避クエリ（?v=）を、参照先ファイルの内容ハッシュへ揃える。
+// styles.css から参照する画像も同じ対象にする。画像だけ差し替えたときに
+// 日付版を手で上げ忘れると、Service Worker が古い画像を配り続けるため、
+// styles.css でも日付を手で上げる運用を廃止した。
 //
-//   node scripts/cache-version.mjs          index.html を書き換える
+//   node scripts/cache-version.mjs          index.html・styles.css を書き換える
 //   node scripts/cache-version.mjs --check   ずれていれば終了コード1で知らせる
 //
 // 手で番号を上げる運用は、上げ忘れると更新が既存ユーザーへ届かないため廃止した。
@@ -17,28 +20,56 @@ import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const indexPath = resolve(root, "index.html");
+const stylesPath = resolve(root, "styles.css");
 const reference = /(href|src)="([^"?#]+)\?v=([^"]*)"/g;
+const styleReference = /url\("([^"?#]+)(?:\?v=([^"#]*))?"\)/g;
 
 const checkOnly = process.argv.includes("--check");
 const original = readFileSync(indexPath, "utf8");
-
-const contentHash = (relativePath) =>
-  createHash("sha256")
-    .update(readFileSync(resolve(root, relativePath)))
-    .digest("hex")
-    .slice(0, 8);
+const originalStyles = readFileSync(stylesPath, "utf8");
 
 const stale = [];
+const styleStale = [];
 const missing = [];
+const pending = new Map();
 
-const updated = original.replace(reference, (match, attribute, path, version) => {
-  if (path.startsWith("vendor/") || /^[a-z][a-z0-9+.-]*:/i.test(path)) return match;
+const contentHash = (relativePath) => {
+  const targetPath = resolve(root, relativePath);
+  const content = pending.get(targetPath) ?? readFileSync(targetPath);
+  return createHash("sha256").update(content).digest("hex").slice(0, 8);
+};
+
+const isExcludedReference = (path) =>
+  path.startsWith("#") ||
+  path.startsWith("vendor/") ||
+  /^[a-z][a-z0-9+.-]*:/i.test(path);
+
+const updatedStyles = originalStyles.replace(styleReference, (match, path, version) => {
+  if (path.startsWith("/") || isExcludedReference(path)) return match;
 
   let hash;
   try {
     hash = contentHash(path);
   } catch {
-    missing.push(path);
+    missing.push({ source: "styles.css", path });
+    return match;
+  }
+
+  const currentVersion = version ?? "";
+  if (hash !== currentVersion) styleStale.push({ path, version: currentVersion, hash });
+  return `url("${path}?v=${hash}")`;
+});
+
+pending.set(stylesPath, Buffer.from(updatedStyles));
+
+const updated = original.replace(reference, (match, attribute, path, version) => {
+  if (isExcludedReference(path)) return match;
+
+  let hash;
+  try {
+    hash = contentHash(path);
+  } catch {
+    missing.push({ source: "index.html", path });
     return match;
   }
 
@@ -47,12 +78,13 @@ const updated = original.replace(reference, (match, attribute, path, version) =>
 });
 
 if (missing.length) {
-  console.error("index.html が参照するファイルが見つかりません:");
-  for (const path of missing) console.error(`  ${path}`);
+  console.error("index.html または styles.css が参照するファイルが見つかりません:");
+  for (const item of missing) console.error(`  ${item.source}: ${item.path}`);
   process.exit(1);
 }
 
 const describe = (item) => `  ${item.path}  ?v=${item.version} → ?v=${item.hash}`;
+const staleReferences = [...stale, ...styleStale];
 
 // Service Worker も同じ仕組みで揃える。中身が1バイトでも変わればブラウザは
 // 新しいものとして入れ替えるので、版と先読みリストを内容から作っておけば、
@@ -77,11 +109,11 @@ function referencedPaths(indexContent) {
 // sw.js 自身の中身も版に混ぜる。混ぜないと、取り出し方だけ直したときに
 // 版が据え置きになり、古い内容のキャッシュが使われ続ける。
 // VERSION の行は自分自身なので伏せてから数える（でないと決まらない）。
-function nextWorkerVersion(indexContent, workerContent) {
+function nextWorkerVersion(indexContent, stylesContent, workerContent) {
   return createHash("sha256")
     .update(indexContent)
     .update(readFileSync(resolve(root, "app.js")))
-    .update(readFileSync(resolve(root, "styles.css")))
+    .update(stylesContent)
     .update(workerContent.replace(workerVersion, "$1@@@@@@@@$3"))
     .digest("hex")
     .slice(0, 8);
@@ -102,14 +134,14 @@ const wantedList = referencedPaths(updated);
 const withList = worker.replace(workerList, `$1${wantedList}$3`);
 // 版は先読みリストを入れたあとの中身から作る（リストだけ変わって版が
 // 据え置きになると、古いリストのまま配られてしまう）
-const wantedWorkerVersion = nextWorkerVersion(updated, withList);
+const wantedWorkerVersion = nextWorkerVersion(updated, updatedStyles, withList);
 const wantedWorker = withList.replace(workerVersion, `$1${wantedWorkerVersion}$3`);
 const workerStale = wantedWorker !== worker;
 
 if (checkOnly) {
-  if (stale.length) {
+  if (staleReferences.length) {
     console.error("キャッシュ回避クエリが内容と合っていません:");
-    for (const item of stale) console.error(describe(item));
+    for (const item of staleReferences) console.error(describe(item));
   }
   if (workerStale) {
     console.error("sw.js が内容と合っていません（版または先読みリスト）:");
@@ -120,18 +152,19 @@ if (checkOnly) {
       console.error("  先読みリストが index.html の参照とずれています");
     }
   }
-  if (stale.length || workerStale) {
-    console.error("\n`node scripts/cache-version.mjs` を実行してから、index.html と sw.js を一緒にコミットしてください。");
+  if (staleReferences.length || workerStale) {
+    console.error("\n`node scripts/cache-version.mjs` を実行してから、index.html・styles.css・sw.js を一緒にコミットしてください。");
     process.exit(1);
   }
-  console.log("キャッシュ回避クエリ: OK（index.html・sw.js とも内容ハッシュと一致）");
+  console.log("キャッシュ回避クエリ: OK（index.html・styles.css・sw.js とも内容ハッシュと一致）");
   process.exit(0);
 }
 
-if (stale.length) {
-  writeFileSync(indexPath, updated);
+if (staleReferences.length) {
+  if (stale.length) writeFileSync(indexPath, updated);
+  if (styleStale.length) writeFileSync(stylesPath, updatedStyles);
   console.log("キャッシュ回避クエリを更新しました:");
-  for (const item of stale) console.log(describe(item));
+  for (const item of staleReferences) console.log(describe(item));
 } else {
   console.log("キャッシュ回避クエリ: 変更なし（すでに一致）");
 }
