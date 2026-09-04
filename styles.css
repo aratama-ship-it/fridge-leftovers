@@ -591,11 +591,13 @@ h3 {
   border: 2px solid #8d9d94;
 }
 
+/* 冷凍室は下。角丸は下側を大きくし、上の冷蔵室との間に余白を置く */
 .fridge-freezer {
   min-height: 0;
+  margin-top: 7px;
   padding: 26px 10px 8px;
   border-color: #7899a6;
-  border-radius: 10px 10px 4px 4px;
+  border-radius: 4px 4px 10px 10px;
   background:
     linear-gradient(180deg, rgb(255 255 255 / 58%), rgb(175 214 229 / 80%)),
     #c7e2ed;
@@ -605,10 +607,11 @@ h3 {
   color: #315866;
 }
 
+/* 冷蔵室は上。パントリーもこの見た目を使う（1室だけなので上下とも丸い） */
 .fridge-chamber {
   min-height: 0;
-  margin-top: 7px;
   padding: 27px 10px 7px;
+  border-radius: 10px 10px 4px 4px;
   background:
     linear-gradient(180deg, rgb(255 255 255 / 48%), rgb(189 207 196 / 72%)),
     #cfdcd3;

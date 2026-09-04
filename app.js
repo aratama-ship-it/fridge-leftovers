@@ -6447,15 +6447,7 @@ function renderFridgeScene(active) {
     </div>`
     : `
     <div class="fridge-appliance">
-      <div class="fridge-freezer">
-        <span class="fridge-compartment-label">冷凍室</span>
-        ${visibleFrozenShelves.map((items, shelf) => `
-          <div class="freezer-shelf" data-drop-location="冷凍" data-drop-shelf="${shelf}">
-            ${renderFridgeShelf(items, "冷凍", shelf, shelf === frozenAddShelf)}
-          </div>
-        `).join("")}
-        ${renderShelfControl("冷凍")}
-      </div>
+      <!-- 冷蔵室が上、冷凍室が下。国内の家庭用冷蔵庫の一般的な配置に合わせている（本人の指定） -->
       <div class="fridge-chamber">
         <span class="fridge-light" aria-hidden="true"></span>
         <span class="fridge-compartment-label">冷蔵室</span>
@@ -6465,6 +6457,15 @@ function renderFridgeScene(active) {
           </div>
         `).join("")}
         ${renderShelfControl("冷蔵")}
+      </div>
+      <div class="fridge-freezer">
+        <span class="fridge-compartment-label">冷凍室</span>
+        ${visibleFrozenShelves.map((items, shelf) => `
+          <div class="freezer-shelf" data-drop-location="冷凍" data-drop-shelf="${shelf}">
+            ${renderFridgeShelf(items, "冷凍", shelf, shelf === frozenAddShelf)}
+          </div>
+        `).join("")}
+        ${renderShelfControl("冷凍")}
       </div>
       ${hiddenFridgeCount ? `<span class="fridge-overflow">ほか ${hiddenFridgeCount}品</span>` : ""}
     </div>`;
