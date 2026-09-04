@@ -50,7 +50,7 @@ const CONSTANTS = [
   "RECIPES", "RECEIPT_RULES", "INITIAL_UNIT_BY_ID", "ALIASES", "NAME_TO_ID", "INGREDIENT_SUBSTITUTES", "UNIT_CONVERSIONS",
   "ILLUSTRATED_INGREDIENT_CATEGORIES", "FRESHNESS_GROUP_DAYS", "FRESHNESS_DAYS_BY_ID", "FRESHNESS_GROUP_BY_ID",
   "SUBSTITUTE_GENERICS", "RECIPE_LIST_SERVINGS", "RECIPE_ILLUSTRATIONS",
-  "RECIPE_ILLUSTRATION_FALLBACKS",
+  "RECIPE_ILLUSTRATION_FALLBACKS", "REQUIREMENT_LINE_LABELS",
   "STORAGE_KEY", "SHOPPING_STORAGE_KEY", "COOKING_HISTORY_STORAGE_KEY",
   "SHELF_COUNTS_STORAGE_KEY", "RECENT_INGREDIENTS_STORAGE_KEY", "SETTINGS_STORAGE_KEY",
   "SYNC_STORAGE_KEY", "SHARE_STORAGE_KEY", "EXPORT_FORMAT", "EXPORT_APP", "EXPORT_SECTIONS"
@@ -58,7 +58,7 @@ const CONSTANTS = [
 const FUNCTIONS = [
   "normalizedExpiryDate", "localDateIso", "purchasedOn", "expiryDayDifference", "expiryAlertState", "freshnessDays", "expiringItems",
   "normalizedSubstitute", "conversionRatio", "stockForRequirement",
-  "availableForRequirement", "requiredAmount", "shortageFor", "unconfirmedFor",
+  "requirementLineState", "availableForRequirement", "requiredAmount", "shortageFor", "unconfirmedFor",
   "cookBlockers", "confirmUnknownAmounts", "optionalReady",
   "inventoryLevel", "pendingDayAfterItems", "dayAfterCorrection",
   "historyEntryType", "historyEntryTime", "addHistoryEntry", "seasonalRecipeState", "priorityIngredientUse", "recipeScore", "compareRecipes",
@@ -76,9 +76,9 @@ const activeInventory = () => state.inventory.filter((item) => item.active !== f
 ${CONSTANTS.map(takeConst).join("\n")}
 ${FUNCTIONS.map(takeFunction).join("\n")}
 return {
-  state, RECIPES, RECEIPT_RULES, RECIPE_ILLUSTRATIONS, RECIPE_ILLUSTRATION_FALLBACKS, INGREDIENT_SUBSTITUTES, UNIT_CONVERSIONS,
+  state, RECIPES, RECEIPT_RULES, RECIPE_ILLUSTRATIONS, RECIPE_ILLUSTRATION_FALLBACKS, REQUIREMENT_LINE_LABELS, INGREDIENT_SUBSTITUTES, UNIT_CONVERSIONS,
   QUANTITY_CONFIRMED, QUANTITY_ESTIMATED, QUANTITY_UNKNOWN,
-  quantityConfidence, lessCertain, conversionRatio, stockForRequirement,
+  quantityConfidence, lessCertain, conversionRatio, stockForRequirement, requirementLineState,
   availableForRequirement, shortageFor, unconfirmedFor, cookBlockers,
   confirmUnknownAmounts, optionalReady, requiredAmount,
   pendingDayAfterItems, dayAfterCorrection, DAY_AFTER_LEVELS,
@@ -91,9 +91,9 @@ return {
 
 const app_ = new Function(harness)();
 const {
-  state, RECIPES, RECEIPT_RULES, RECIPE_ILLUSTRATIONS, RECIPE_ILLUSTRATION_FALLBACKS,
+  state, RECIPES, RECEIPT_RULES, RECIPE_ILLUSTRATIONS, RECIPE_ILLUSTRATION_FALLBACKS, REQUIREMENT_LINE_LABELS,
   QUANTITY_CONFIRMED, QUANTITY_ESTIMATED, QUANTITY_UNKNOWN,
-  quantityConfidence, lessCertain, stockForRequirement,
+  quantityConfidence, lessCertain, stockForRequirement, requirementLineState,
   shortageFor, unconfirmedFor, cookBlockers, confirmUnknownAmounts,
   pendingDayAfterItems, dayAfterCorrection, DAY_AFTER_LEVELS,
   normalizedExpiryDate, purchasedOn, expiryDayDifference, expiryAlertState, freshnessDays, expiringItems,
@@ -380,6 +380,46 @@ check("持っていなければ不足に出る", (() => {
   state.inventory = others.map((item) => stock(item.id, item.quantity * 10, { unit: item.unit }));
   return shortageFor(eggRecipe, 1).map((item) => item.id);
 })(), ["eggs"]);
+
+check("材料行は在庫が無ければありません", (() => {
+  state.inventory = [];
+  return requirementLineState(eggRecipe.required.find((item) => item.id === "eggs"), 1);
+})(), "missing");
+check("材料行は確認済みで必要量に届けばあります", (() => {
+  state.inventory = [stock("eggs", eggNeed, { quantityConfidence: QUANTITY_CONFIRMED })];
+  return requirementLineState(eggRecipe.required.find((item) => item.id === "eggs"), 1);
+})(), "enough");
+check("材料行は確認済みで必要量に届かなければ足りません", (() => {
+  state.inventory = [stock("eggs", eggNeed - 0.5, { quantityConfidence: QUANTITY_CONFIRMED })];
+  return requirementLineState(eggRecipe.required.find((item) => item.id === "eggs"), 1);
+})(), "short");
+check("材料行は未確認で数値が足りなくても量は未確認", (() => {
+  state.inventory = [stock("eggs", eggNeed - 0.5, { quantityConfidence: QUANTITY_UNKNOWN })];
+  return requirementLineState(eggRecipe.required.find((item) => item.id === "eggs"), 1);
+})(), "unknown");
+check("材料行は未確認で数値が足りても量は未確認", (() => {
+  state.inventory = [stock("eggs", eggNeed, { quantityConfidence: QUANTITY_UNKNOWN })];
+  return requirementLineState(eggRecipe.required.find((item) => item.id === "eggs"), 1);
+})(), "unknown");
+
+check("初期数量が未確認なら全240レシピの見出しと材料行が矛盾しない", (() => {
+  const contradictions = [];
+  for (const recipe of RECIPES) {
+    state.inventory = recipe.required.map((requirement) => {
+      const rule = ruleFor(requirement.id);
+      return stock(requirement.id, rule?.quantity ?? 1, {
+        unit: rule?.unit || requirement.unit,
+        quantityConfidence: QUANTITY_UNKNOWN
+      });
+    });
+    const shortages = shortageFor(recipe);
+    const lineStates = recipe.required.map((requirement) => requirementLineState(requirement));
+    if (shortages.length || lineStates.some((lineState) => lineState === "short" || lineState === "missing")) {
+      contradictions.push(recipe.id);
+    }
+  }
+  return [RECIPES.length, contradictions];
+})(), [240, []]);
 
 // ★核心。量が未確認なら、数値が足りなくても候補から落とさない
 check("量が未確認なら不足に数えない",

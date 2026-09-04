@@ -6489,6 +6489,7 @@ function renderFridgeScene(active) {
 }
 
 function renderInventoryRow(item) {
+  const unknownAmount = quantityUnknown(item);
   const confirmation = confirmationLabel(item);
   const expiry = expiryAlertState(item.expiryDate);
   const expiryText = normalizedExpiryDate(item.expiryDate)
@@ -6501,7 +6502,7 @@ function renderInventoryRow(item) {
         <button class="item-name-button" type="button" data-action="edit" data-id="${escapeHtml(item.id)}">
           <span class="item-name">${escapeHtml(item.name)}</span>
           <span class="item-meta${confirmation.stale ? " is-stale" : ""}">
-            ${escapeHtml(item.location)}・${confirmation.text}${item.priority ? '<strong>・先に使う</strong>' : ""}
+            ${escapeHtml(item.location)}・${unknownAmount ? "量は未確認" : confirmation.text}${item.priority ? '<strong>・先に使う</strong>' : ""}
           </span>
           <span class="item-expiry${expiry ? ` is-${expiry.kind}` : ""}">${escapeHtml(expiryText)}</span>
           ${renderChangeAttribution("item", item.id)}
@@ -6510,7 +6511,7 @@ function renderInventoryRow(item) {
 
       <div class="quantity-control" aria-label="${escapeHtml(item.name)}の残量">
         <button class="quantity-button" type="button" data-action="decrease" data-id="${escapeHtml(item.id)}" aria-label="${escapeHtml(item.name)}を減らす">−</button>
-        <output class="quantity-output">${formatQuantity(item.quantity, item.unit)}</output>
+        <output class="quantity-output${unknownAmount ? " is-unknown" : ""}"${unknownAmount ? ' title="この量はまだ確認していません"' : ""}>${formatQuantity(item.quantity, item.unit)}</output>
         <button class="quantity-button" type="button" data-action="increase" data-id="${escapeHtml(item.id)}" aria-label="${escapeHtml(item.name)}を増やす">＋</button>
       </div>
 
@@ -6623,6 +6624,23 @@ function unconfirmedFor(recipe) {
     const stock = stockForRequirement(requirement);
     return Boolean(stock) && quantityUnknown(stock.item);
   });
+}
+
+// 材料1行の表示。数値だけで決めると、量が未確認の食材に対して
+// カード見出しの「材料あり」と行の「足りません」が同時に出る（実際に起きていた）。
+// 見出しとボタンの「量を見て作る」に語彙を合わせ、確信度を先に見る。
+const REQUIREMENT_LINE_LABELS = {
+  enough: { text: "あります", className: "is-ready" },
+  unknown: { text: "量は未確認", className: "is-unknown" },
+  short: { text: "足りません", className: "is-short" },
+  missing: { text: "ありません", className: "is-short" }
+};
+
+function requirementLineState(requirement, servings = state.servings) {
+  const stock = stockForRequirement(requirement);
+  if (!stock) return "missing";
+  if (quantityUnknown(stock.item)) return "unknown";
+  return stock.available >= requiredAmount(requirement, servings) ? "enough" : "short";
 }
 
 // 作るのを止めているもの。answers は作る前の量確認への回答で、
@@ -7167,14 +7185,14 @@ function renderRecipe(recipe, index) {
   const requiredLines = recipe.required.map((requirement) => {
     const stock = stockForRequirement(requirement);
     const item = stock?.item || null;
-    const enough = (stock?.available ?? 0) >= requiredAmount(requirement, RECIPE_LIST_SERVINGS);
+    const line = REQUIREMENT_LINE_LABELS[requirementLineState(requirement, RECIPE_LIST_SERVINGS)];
     return `
       <li class="ingredient-line">
         <span class="ingredient-with-icon">
           ${renderIngredientIllustration(item?.id || requirement.id, item?.name || requirement.name, true)}
           <span>${requirementDisplayName(requirement, item)} ${formatQuantity(requiredAmount(requirement, RECIPE_LIST_SERVINGS), requirement.unit)}</span>
         </span>
-        <span class="ingredient-state${enough ? " is-ready" : ""}">${enough ? "あります" : "足りません"}</span>
+        <span class="ingredient-state ${line.className}">${line.text}</span>
       </li>
     `;
   }).join("");
