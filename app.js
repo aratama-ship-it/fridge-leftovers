@@ -4387,6 +4387,8 @@ const elements = {
   expiryAlertTitle: document.querySelector("#expiry-alert-title"),
   expiryAlertSummary: document.querySelector("#expiry-alert-summary"),
   expiryAlertList: document.querySelector("#expiry-alert-list"),
+  goInventoryList: document.querySelector("#go-inventory-list"),
+  goFridgeScene: document.querySelector("#go-fridge-scene"),
   managementExpiring: document.querySelector("#management-expiring"),
   managementExpiringTitle: document.querySelector("#management-expiring-title"),
   managementExpiringList: document.querySelector("#management-expiring-list"),
@@ -6207,19 +6209,17 @@ function ensureInventoryShelves() {
     const missing = items.filter((item) => !assigned.includes(item));
     if (!missing.length) continue;
 
-    if (!assigned.length) {
-      missing.forEach((item, index) => {
-        item.shelf = Math.min(shelfCount - 1, Math.floor((index * shelfCount) / missing.length));
-        changed = true;
-      });
-      continue;
-    }
-
+    // 上の棚から詰める。以前は棚数で割って均等に散らしていたので、
+    // 3品を3段の冷蔵室へ入れると1段に1品ずつ浮いた状態になり、
+    // 「冷蔵庫が埋まっていく」感じが出なかった（方針書の核）。
     const shelfSizes = Array.from({ length: shelfCount }, (_, shelf) =>
       assigned.filter((item) => item.shelf === shelf).length
     );
+    const capacity = STORAGE_SHELF_CAPACITIES[location];
     missing.forEach((item) => {
-      const shelf = shelfSizes.indexOf(Math.min(...shelfSizes));
+      const room = shelfSizes.findIndex((size) => size < capacity);
+      // どの棚も満杯なら、いちばん少ない棚へ足す（あふれ分は「ほか◯品」で見せる）
+      const shelf = room >= 0 ? room : shelfSizes.indexOf(Math.min(...shelfSizes));
       item.shelf = shelf;
       shelfSizes[shelf] += 1;
       changed = true;
@@ -6447,15 +6447,7 @@ function renderFridgeScene(active) {
     </div>`
     : `
     <div class="fridge-appliance">
-      <div class="fridge-freezer">
-        <span class="fridge-compartment-label">冷凍室</span>
-        ${visibleFrozenShelves.map((items, shelf) => `
-          <div class="freezer-shelf" data-drop-location="冷凍" data-drop-shelf="${shelf}">
-            ${renderFridgeShelf(items, "冷凍", shelf, shelf === frozenAddShelf)}
-          </div>
-        `).join("")}
-        ${renderShelfControl("冷凍")}
-      </div>
+      <!-- 冷蔵室が上、冷凍室が下。国内の家庭用冷蔵庫の一般的な配置に合わせている（本人の指定） -->
       <div class="fridge-chamber">
         <span class="fridge-light" aria-hidden="true"></span>
         <span class="fridge-compartment-label">冷蔵室</span>
@@ -6465,6 +6457,15 @@ function renderFridgeScene(active) {
           </div>
         `).join("")}
         ${renderShelfControl("冷蔵")}
+      </div>
+      <div class="fridge-freezer">
+        <span class="fridge-compartment-label">冷凍室</span>
+        ${visibleFrozenShelves.map((items, shelf) => `
+          <div class="freezer-shelf" data-drop-location="冷凍" data-drop-shelf="${shelf}">
+            ${renderFridgeShelf(items, "冷凍", shelf, shelf === frozenAddShelf)}
+          </div>
+        `).join("")}
+        ${renderShelfControl("冷凍")}
       </div>
       ${hiddenFridgeCount ? `<span class="fridge-overflow">ほか ${hiddenFridgeCount}品</span>` : ""}
     </div>`;
@@ -6874,7 +6875,10 @@ function renderShoppingCheckItem(item) {
     <details class="shopping-check-item">
       <summary aria-label="${escapeHtml(item.name)}の詳細を表示">
         ${renderIngredientIllustration(item.ingredientId, item.name)}
-        <span class="visually-hidden">${escapeHtml(item.name)}</span>
+        <span class="shopping-check-copy">
+          <strong>${escapeHtml(item.name)}</strong>
+          <small>${escapeHtml(formatQuantity(item.quantity, item.unit))}</small>
+        </span>
       </summary>
       <div class="shopping-check-detail">
         <div class="shopping-check-detail-copy">
@@ -7638,6 +7642,10 @@ function startOnboarding() {
   showView("onboarding");
 }
 
+// 在庫の一覧は独立した画面ではなく「冷蔵庫」タブの中の別の見せ方。
+// タブは4つのままにして、現在地は冷蔵庫を点ける。
+const NAV_VIEW_ALIAS = { management: "inventory" };
+
 function showView(viewName) {
   // 初回登録の途中は下のタブを隠す。まだ「どの画面」でもないため
   elements.bottomNav.hidden = viewName === "onboarding" || viewName === "refine";
@@ -7650,8 +7658,9 @@ function showView(viewName) {
   elements.suggestionsView.hidden = viewName !== "suggestions";
   elements.shoppingView.hidden = viewName !== "shopping";
   elements.historyView.hidden = viewName !== "history";
+  const navView = NAV_VIEW_ALIAS[viewName] || viewName;
   document.querySelectorAll(".nav-button").forEach((button) => {
-    const active = button.dataset.view === viewName;
+    const active = button.dataset.view === navView;
     button.classList.toggle("is-active", active);
     if (active) {
       button.setAttribute("aria-current", "page");
@@ -10390,6 +10399,10 @@ document.querySelectorAll(".storage-tab").forEach((button) => {
 document.querySelectorAll(".nav-button").forEach((button) => {
   button.addEventListener("click", () => showView(button.dataset.view));
 });
+
+// 冷蔵庫タブの中で「絵」と「一覧」を行き来する
+elements.goInventoryList.addEventListener("click", () => showView("management"));
+elements.goFridgeScene.addEventListener("click", () => showView("inventory"));
 
 elements.todayIngredientTrigger.addEventListener("click", openTodayIngredientDialog);
 elements.closeTodayIngredientDialog.addEventListener("click", closeTodayIngredientDialog);
