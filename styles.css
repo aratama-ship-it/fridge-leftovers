@@ -1117,7 +1117,7 @@ body.is-fridge-dragging .food-consume-station {
 
 .management-expiring-item {
   display: grid;
-  grid-template-columns: 42px minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 9px;
   min-width: 0;
@@ -1131,7 +1131,7 @@ body.is-fridge-dragging .food-consume-station {
 }
 
 .management-expiring-item:hover,
-.management-expiring-item:focus-visible {
+.management-expiring-item:focus-within {
   border-color: #aa6c25;
 }
 
@@ -1147,6 +1147,40 @@ body.is-fridge-dragging .food-consume-station {
 
 .management-expiring-item.is-expired {
   border-color: rgb(168 73 45 / 34%);
+  background: #fff3ef;
+}
+
+/* 行の本体（3-c と同じ理由で器から切り出したもの） */
+.management-expiring-main {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+.management-expiring-discard {
+  flex: none;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid rgb(168 73 45 / 34%);
+  border-radius: 4px;
+  background: #fff;
+  color: var(--warm);
+  font-size: 0.82rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.management-expiring-discard:hover,
+.management-expiring-discard:focus-visible {
+  border-color: var(--warm);
   background: #fff3ef;
 }
 
@@ -4921,7 +4955,7 @@ input[type="date"] {
 
 .expiry-alert-item {
   display: grid;
-  grid-template-columns: 38px minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px;
   min-height: 50px;
@@ -4934,7 +4968,7 @@ input[type="date"] {
 }
 
 .expiry-alert-item:hover,
-.expiry-alert-item:focus-visible {
+.expiry-alert-item:focus-within {
   border-color: #aa6c25;
   outline: 2px solid rgb(193 122 42 / 24%);
   outline-offset: 1px;
@@ -4942,6 +4976,43 @@ input[type="date"] {
 
 .expiry-alert-item.is-expired {
   border-color: rgb(168 73 45 / 34%);
+  background: #fff3ef;
+}
+
+/* 行の本体。もとは行そのものがボタンだったが、中に「捨てる」を置くため
+   器を div にして、タップで編集を開くところだけをボタンに残した。 */
+.expiry-alert-main {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+/* 使いきれなかったものを、編集ダイアログを開かずにその場で捨てる。
+   確認は出さない。廃棄として履歴に残り、トーストの「戻す」で取り消せるため。 */
+.expiry-alert-discard {
+  flex: none;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid rgb(168 73 45 / 34%);
+  border-radius: 4px;
+  background: #fff;
+  color: var(--warm);
+  font-size: 0.82rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.expiry-alert-discard:hover,
+.expiry-alert-discard:focus-visible {
+  border-color: var(--warm);
   background: #fff3ef;
 }
 

@@ -58,3 +58,6 @@ jobs:
       # Service Worker のキャッシュ2層化（更新でイラストを捨てないこと）
       - name: Service Worker のチェック
         run: node scripts/check-sw.mjs
+
+      - name: 使いきりの操作チェック
+        run: node scripts/check-expiry-actions.mjs
