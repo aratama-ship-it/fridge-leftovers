@@ -13,10 +13,10 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="冷蔵庫の現在地">
-  <link rel="stylesheet" href="styles.css?v=4a69309b">
+  <link rel="stylesheet" href="styles.css?v=8b47fb6b">
   <script src="vendor/tesseract/tesseract.min.js?v=7.0.0" defer></script>
   <script src="recipe-expansion.js?v=3e0c5a6c" defer></script>
-  <script src="app.js?v=81869cb1" defer></script>
+  <script src="app.js?v=47f25c47" defer></script>
   <!--
     起動の読み込み画面は、外部CSS（styles.css）が届く前から出したいので、
     ここだけ色を直書きしている（:root の変数に頼らない）。回線が細いときほど
@@ -261,7 +261,6 @@
             <h2 id="shopping-title">スーパーで買うもの</h2>
             <p class="overview-copy" id="shopping-overview" aria-live="polite"></p>
           </div>
-          <span class="shopping-pencil" aria-hidden="true">／</span>
         </div>
 
         <section class="shopping-note" aria-labelledby="shopping-list-title">
@@ -361,7 +360,6 @@
             <h2 id="history-title">履歴</h2>
             <p class="overview-copy">調理・使い切り・廃棄・在庫の修正を、直近50件から表示します。</p>
           </div>
-          <span class="history-mark" aria-hidden="true">↶</span>
         </div>
 
         <div class="cooking-history-list" id="cooking-history-list" aria-live="polite"></div>
@@ -370,25 +368,28 @@
       </section>
     </main>
 
+    <!-- アイコンは文字記号（▥ ▤ ⌁ ✓ ↶）をやめてインラインSVGにした。端末のフォントで
+         形が変わるうえ、▥ と ▤ は並べると見分けられなかった。線は currentColor なので
+         現在地の色（.is-active）にそのまま追従する。 -->
     <nav class="bottom-nav" aria-label="主な画面">
       <button type="button" class="nav-button is-active" data-view="inventory" aria-current="page">
-        <span aria-hidden="true">▥</span>
+        <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 2.9h14a2 2 0 0 1 2 2v14.2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4.9a2 2 0 0 1 2-2Z"/><path d="M3 9.6h18"/><path d="M6.4 5.9v2.1"/><path d="M6.4 12.4v2.8"/></svg>
         冷蔵庫
       </button>
       <button type="button" class="nav-button" data-view="management">
-        <span aria-hidden="true">▤</span>
+        <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 6.4h.01"/><path d="M8.4 6.4H20"/><path d="M4 12h.01"/><path d="M8.4 12H20"/><path d="M4 17.6h.01"/><path d="M8.4 17.6H20"/></svg>
         在庫
       </button>
       <button type="button" class="nav-button" data-view="suggestions">
-        <span aria-hidden="true">⌁</span>
+        <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 10.7h12v5.5a3.3 3.3 0 0 1-3.3 3.3H9.3A3.3 3.3 0 0 1 6 16.2Z"/><path d="M4.4 10.7h15.2"/><path d="M6 13h-2.6"/><path d="M18 13h2.6"/><path d="M9.6 8c.8-1.1.8-2.3 0-3.4"/><path d="M14.4 8c.8-1.1.8-2.3 0-3.4"/></svg>
         レシピ
       </button>
       <button type="button" class="nav-button" data-view="shopping">
-        <span class="nav-icon-with-count" aria-hidden="true">✓<small id="shopping-nav-count" hidden></small></span>
+        <span class="nav-icon-with-count" aria-hidden="true"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8.4 9.4V7.9a3.6 3.6 0 0 1 7.2 0v1.5"/><path d="M3.4 9.4h17.2l-1.4 8.7a2.6 2.6 0 0 1-2.6 2.2H7.4a2.6 2.6 0 0 1-2.6-2.2Z"/><path d="M9.9 13.1v3.6"/><path d="M14.1 13.1v3.6"/></svg><small id="shopping-nav-count" hidden></small></span>
         買い物
       </button>
       <button type="button" class="nav-button" data-view="history">
-        <span aria-hidden="true">↶</span>
+        <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3.7 12a8.3 8.3 0 1 0 2.6-6"/><path d="M3.5 4.8V9h4.2"/><path d="M12 7.7V12l3.1 1.9"/></svg>
         履歴
       </button>
     </nav>
