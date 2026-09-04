@@ -12,6 +12,24 @@
   --warm: #a8492d;
   --warm-soft: #f1dfd8;
   --shadow: rgb(34 39 34 / 14%);
+
+  /* ---- 文字の大きさ（design/TOKEN_SHEET.md §2 が正）------------------------
+     基準16px・比率およそ1.2の6段＋micro。値を変えるときはコードより先にシートを直す。
+     scripts/check-type-scale.mjs が「シートに無い font-size」をCIで止める。 */
+  --fs-micro: 0.6875rem;   /* 11px 読まなくても操作できる微小ラベルだけ（シート §2の例外表） */
+  --fs-caption: 0.75rem;   /* 12px 注記・eyebrow・状態タグ ← 読ませる文字の下限 */
+  --fs-sub: 0.875rem;      /* 14px 補助情報・ナビラベル・行操作 */
+  --fs-body: 1rem;         /* 16px 本文・主情報・フォーム部品（iOSの自動拡大を避ける下限） */
+  --fs-lead: 1.125rem;     /* 18px カード見出し・節見出し */
+  --fs-title: 1.375rem;    /* 22px 画面見出し・注目レシピ名 */
+  --fs-display: 1.625rem;  /* 26px タブレットの画面見出し */
+
+  /* ---- 記号・アイコンの大きさ（シート §3）------------------------------------
+     読む文字とは別の軸。タップ領域は別途44px以上を保つ。 */
+  --icon-sm: 18px;
+  --icon-md: 22px;
+  --icon-lg: 26px;
+  --icon-xl: 32px;
 }
 
 * {
@@ -92,7 +110,7 @@ body.is-inventory-fit .app-shell {
 .app-version {
   margin: 0;
   color: var(--muted);
-  font-size: 0.58rem;
+  font-size: var(--fs-micro);
   font-variant-numeric: tabular-nums;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -128,7 +146,7 @@ body.is-inventory-fit .app-shell {
   border-radius: 3px;
   background: #f5faf6;
   color: var(--leaf);
-  font-size: 0.72rem;
+  font-size: var(--fs-caption);
   font-weight: 700;
   line-height: 1;
 }
@@ -148,7 +166,7 @@ body.is-inventory-fit .app-shell {
 }
 
 .header-sync-icon {
-  font-size: 1rem;
+  font-size: var(--icon-sm);
 }
 
 .header-sync-button.is-syncing .header-sync-icon {
@@ -172,7 +190,7 @@ body.is-inventory-fit .app-shell {
 .eyebrow {
   margin: 0 0 5px;
   color: var(--leaf);
-  font-size: 0.72rem;
+  font-size: var(--fs-caption);
   font-weight: 700;
   letter-spacing: 0.15em;
   text-transform: uppercase;
@@ -199,34 +217,38 @@ h3 {
   font-family: "Hiragino Mincho ProN", "Yu Mincho", ui-serif, serif;
 }
 
+/* 唯一の h1 は .visually-hidden の読み上げ用タイトルで画面に出ない。
+   可変の clamp を持つ意味がないので、スケール上の値にそろえておく。 */
 h1 {
   margin-bottom: 0;
-  font-size: clamp(1.45rem, 7vw, 2rem);
+  font-size: var(--fs-display);
   line-height: 1.15;
 }
 
 h2 {
   margin-bottom: 5px;
-  font-size: 1.35rem;
+  font-size: var(--fs-title);
 }
 
 h3 {
   margin-bottom: 4px;
-  font-size: 1.08rem;
+  font-size: var(--fs-lead);
 }
 
 /* ホーム右上の設定ボタン。食材追加は在庫画面と各棚の「＋」に入口があるので、
    ここは設定に譲っている。 */
+/* シート §3「タップ領域は44×44px以上」。design-lint U1 が38×38で落ちていた。
+   見た目の枠は38pxのまま、押せる範囲だけを44pxへ広げる。 */
 .header-settings-button {
   flex: none;
-  width: 38px;
-  min-height: 38px;
+  width: 44px;
+  min-height: 44px;
   padding: 0;
   border: 1px solid rgb(66 76 68 / 18%);
   border-radius: 3px;
   background: #fff;
   color: var(--leaf);
-  font-size: 1.15rem;
+  font-size: var(--icon-md);
   line-height: 1;
 }
 
@@ -263,7 +285,7 @@ h3 {
 
 .settings-row-copy strong {
   display: block;
-  font-size: 0.92rem;
+  font-size: var(--fs-body);
 }
 
 .settings-row-copy {
@@ -297,7 +319,7 @@ h3 {
   border-radius: 50%;
   background: transparent;
   color: var(--leaf-dark);
-  font-size: 0.78rem;
+  font-size: var(--fs-sub);
   font-weight: 900;
   line-height: 1;
 }
@@ -325,7 +347,7 @@ h3 {
 .settings-row-copy small {
   display: block;
   margin-top: 3px;
-  font-size: 0.76rem;
+  font-size: var(--fs-sub);
   color: #6d7a6f;
 }
 
@@ -379,7 +401,7 @@ h3 {
 
 .settings-note {
   margin: 12px 0 0;
-  font-size: 0.76rem;
+  font-size: var(--fs-sub);
   line-height: 1.6;
   color: #6d7a6f;
 }
@@ -389,7 +411,7 @@ h3 {
   padding: 8px 10px;
   border-left: 3px solid var(--leaf);
   background: var(--leaf-soft);
-  font-size: 0.72rem;
+  font-size: var(--fs-caption);
   line-height: 1.5;
 }
 
@@ -417,7 +439,7 @@ h3 {
 .overview-copy {
   margin: 0;
   color: var(--muted);
-  font-size: 0.86rem;
+  font-size: var(--fs-sub);
 }
 
 .button,
@@ -489,7 +511,7 @@ h3 {
 
 .fridge-visual-heading h3 {
   margin: 0;
-  font-size: 1.12rem;
+  font-size: var(--fs-lead);
 }
 
 .fridge-appliance {
@@ -552,7 +574,7 @@ h3 {
   top: 7px;
   left: 10px;
   color: #405348;
-  font-size: 0.65rem;
+  font-size: var(--fs-caption);
   font-weight: 800;
   letter-spacing: 0.08em;
 }
@@ -619,7 +641,7 @@ h3 {
   border-radius: 6px;
   background: rgb(255 255 255 / 72%);
   color: #35483e;
-  font-size: 1.45rem;
+  font-size: var(--icon-lg);
   font-weight: 700;
   line-height: 1;
 }
@@ -644,7 +666,7 @@ h3 {
 
 .shelf-count-control span {
   color: #405348;
-  font-size: 0.68rem;
+  font-size: var(--fs-caption);
   font-weight: 800;
   letter-spacing: 0.08em;
   text-align: center;
@@ -769,7 +791,7 @@ h3 {
   background: #c88b2e;
   color: white;
   font-family: sans-serif;
-  font-size: 0.62rem;
+  font-size: var(--fs-micro);
   font-weight: 900;
   line-height: 1;
   box-shadow: 0 1px 3px rgb(50 36 20 / 25%);
@@ -812,7 +834,7 @@ h3 {
   background: rgb(247 250 245 / 86%);
   box-shadow: inset 0 -2px 0 rgb(90 112 98 / 8%);
   font-family: sans-serif;
-  font-size: 1.15rem;
+  font-size: var(--icon-sm);
   font-weight: 500;
   line-height: 1;
   transition: transform 120ms ease, background-color 120ms ease;
@@ -949,12 +971,12 @@ body.is-fridge-dragging .food-consume-station,
 
 .food-consume-copy strong {
   color: #634a34;
-  font-size: 0.95rem;
+  font-size: var(--fs-body);
 }
 
 .food-consume-copy small {
   color: #806c57;
-  font-size: 0.66rem;
+  font-size: var(--fs-caption);
 }
 
 .food-child-character {
@@ -983,7 +1005,7 @@ body.is-fridge-dragging .food-consume-station,
   border-radius: 50%;
   background: #fffaf0;
   color: #b14e39;
-  font-size: 0.64rem;
+  font-size: var(--fs-micro);
   font-weight: 900;
   opacity: 0;
   pointer-events: none;
@@ -1040,10 +1062,16 @@ body.is-fridge-dragging .food-consume-station {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .food-consume-station,
-  .food-child-character img,
-  .food-child-bubble {
-    transition: none;
+  /* もともと食材ドラッグまわりだけを止めていたが、ボタンやカードの
+     120msのトランジションが残っていた（design-lint M1 が20件で落ちる）。
+     動きを減らす設定にした人には、画面全体で動きを出さない。 */
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
   }
 
   .fridge-food.is-being-eaten,
@@ -1058,7 +1086,7 @@ body.is-fridge-dragging .food-consume-station {
   min-height: 70px;
   margin: 0;
   color: #829087;
-  font-size: 0.68rem;
+  font-size: var(--fs-caption);
 }
 
 .fridge-overflow {
@@ -1069,7 +1097,7 @@ body.is-fridge-dragging .food-consume-station {
   border: 1px solid #8d9d94;
   background: #f7f8f2;
   color: #52675b;
-  font-size: 0.62rem;
+  font-size: var(--fs-caption);
   font-weight: 800;
 }
 
@@ -1106,7 +1134,7 @@ body.is-fridge-dragging .food-consume-station {
 
 .management-expiring h3 {
   margin: 0 0 9px;
-  font-size: 0.96rem;
+  font-size: var(--fs-lead);
   line-height: 1.45;
 }
 
@@ -1173,7 +1201,7 @@ body.is-fridge-dragging .food-consume-station {
   border-radius: 4px;
   background: #fff;
   color: var(--warm);
-  font-size: 0.82rem;
+  font-size: var(--fs-sub);
   font-weight: 700;
   white-space: nowrap;
 }
@@ -1203,13 +1231,13 @@ body.is-fridge-dragging .food-consume-station {
 }
 
 .management-expiring-copy strong {
-  font-size: 0.84rem;
+  font-size: var(--fs-sub);
 }
 
 .management-expiring-copy small {
   margin-top: 3px;
   color: var(--muted);
-  font-size: 0.68rem;
+  font-size: var(--fs-caption);
 }
 
 .management-expiring-state {
@@ -1217,7 +1245,7 @@ body.is-fridge-dragging .food-consume-station {
   border-radius: 12px;
   background: #f0d6a2;
   color: #704814;
-  font-size: 0.7rem;
+  font-size: var(--fs-caption);
   font-weight: 900;
   white-space: nowrap;
 }
@@ -1247,7 +1275,7 @@ body.is-fridge-dragging .food-consume-station {
 }
 
 .receipt-scan-button span {
-  font-size: 1.05rem;
+  font-size: var(--fs-lead);
 }
 
 .storage-tabs {
@@ -1397,7 +1425,7 @@ body.is-fridge-dragging .food-consume-station {
   background: var(--paper-raised);
   color: var(--leaf);
   font-family: serif;
-  font-size: 1.18rem;
+  font-size: var(--icon-sm);
   font-weight: 800;
 }
 
@@ -1421,7 +1449,7 @@ body.is-fridge-dragging .food-consume-station {
 .item-name {
   display: block;
   overflow: hidden;
-  font-size: 0.92rem;
+  font-size: var(--fs-body);
   font-weight: 800;
   line-height: 1.25;
   text-overflow: ellipsis;
@@ -1433,7 +1461,7 @@ body.is-fridge-dragging .food-consume-station {
   overflow: hidden;
   margin-top: 1px;
   color: var(--muted);
-  font-size: 0.65rem;
+  font-size: var(--fs-caption);
   line-height: 1.35;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1452,7 +1480,7 @@ body.is-fridge-dragging .food-consume-station {
   display: block;
   margin-top: 2px;
   color: #78827c;
-  font-size: 0.62rem;
+  font-size: var(--fs-caption);
   font-weight: 650;
   line-height: 1.35;
 }
@@ -1472,7 +1500,7 @@ body.is-fridge-dragging .food-consume-station {
   overflow: hidden;
   margin-top: 2px;
   color: #718078;
-  font-size: 0.62rem;
+  font-size: var(--fs-caption);
   font-weight: 600;
   line-height: 1.35;
   text-overflow: ellipsis;
@@ -1495,7 +1523,7 @@ body.is-fridge-dragging .food-consume-station {
   border: 1px solid var(--line-strong);
   background: var(--paper-raised);
   color: var(--ink);
-  font-size: 1.2rem;
+  font-size: var(--icon-md);
   font-weight: 800;
 }
 
@@ -1505,7 +1533,7 @@ body.is-fridge-dragging .food-consume-station {
   min-height: 44px;
   padding-inline: 4px;
   border-block: 1px solid var(--line);
-  font-size: 0.82rem;
+  font-size: var(--fs-sub);
   font-variant-numeric: tabular-nums;
   font-weight: 800;
 }
@@ -1532,7 +1560,7 @@ body.is-fridge-dragging .food-consume-station {
   border-bottom: 2px solid var(--line);
   background: transparent;
   color: var(--muted);
-  font-size: 0.68rem;
+  font-size: var(--fs-sub);
   font-weight: 700;
 }
 
@@ -1567,7 +1595,7 @@ body.is-fridge-dragging .food-consume-station {
 
 .finished-count {
   color: var(--muted);
-  font-size: 0.8rem;
+  font-size: var(--fs-sub);
 }
 
 .finished-row {
@@ -1589,7 +1617,7 @@ body.is-fridge-dragging .food-consume-station {
 .privacy-note {
   margin: 18px 0 0;
   color: var(--muted);
-  font-size: 0.75rem;
+  font-size: var(--fs-sub);
   line-height: 1.6;
 }
 
@@ -1628,14 +1656,14 @@ body.is-fridge-dragging .food-consume-station {
 }
 
 .today-ingredient-copy strong {
-  font-size: 0.96rem;
+  font-size: var(--fs-body);
   line-height: 1.25;
 }
 
 .today-ingredient-copy em {
   overflow: hidden;
   color: #52675b;
-  font-size: 0.68rem;
+  font-size: var(--fs-caption);
   font-style: normal;
   font-weight: 700;
   line-height: 1.35;
@@ -1699,7 +1727,7 @@ body.is-fridge-dragging .food-consume-station {
   background: var(--leaf);
   color: white;
   font-family: sans-serif;
-  font-size: 1rem;
+  font-size: var(--icon-sm);
   font-weight: 900;
   line-height: 1;
 }
@@ -1708,7 +1736,7 @@ body.is-fridge-dragging .food-consume-station {
   display: grid;
   gap: 6px;
   color: var(--muted);
-  font-size: 0.72rem;
+  font-size: var(--fs-caption);
   font-weight: 800;
 }
 
@@ -1733,7 +1761,7 @@ input[type="date"] {
   border-radius: 3px;
   background: var(--paper-raised);
   color: var(--ink);
-  font-size: 16px;
+  font-size: var(--fs-body);
 }
 
 .recipe-list {
@@ -1750,11 +1778,14 @@ input[type="date"] {
   background: #fff9e8;
 }
 
+/* 文字を12px以上へ上げたぶん1行へ収まらなくなった。縮めずに、
+   注記（旬は地域や品種で〜）を次の行へ落として逃がす。 */
 .seasonal-guide-heading {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
   justify-content: space-between;
-  gap: 10px;
+  gap: 4px 10px;
 }
 
 .seasonal-guide-heading > div {
@@ -1764,23 +1795,26 @@ input[type="date"] {
 }
 
 .seasonal-guide-heading span {
+  flex: none;
   color: var(--warm);
-  font-size: 0.7rem;
+  font-size: var(--fs-caption);
   font-weight: 900;
+  white-space: nowrap;
 }
 
 .seasonal-guide-heading strong {
-  font-size: 0.88rem;
+  font-size: var(--fs-body);
 }
 
 .seasonal-guide-heading small {
+  flex: 1 0 100%;
   color: var(--muted);
-  font-size: 0.62rem;
+  font-size: var(--fs-caption);
 }
 
 .seasonal-food-list {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 4px;
   margin-top: 8px;
   padding-bottom: 2px;
@@ -1795,7 +1829,7 @@ input[type="date"] {
   border: 1px solid transparent;
   border-radius: 5px;
   color: var(--leaf-dark);
-  font-size: 0.62rem;
+  font-size: var(--fs-caption);
   font-weight: 800;
   line-height: 1.25;
   text-align: center;
@@ -1814,7 +1848,7 @@ input[type="date"] {
 
 .seasonal-food em {
   color: var(--leaf);
-  font-size: 0.56rem;
+  font-size: var(--fs-caption);
   font-style: normal;
 }
 
@@ -1826,7 +1860,7 @@ input[type="date"] {
   border-radius: 999px;
   background: #fff9e8;
   color: #7a5e20;
-  font-size: 0.62rem;
+  font-size: var(--fs-caption);
   font-weight: 800;
 }
 
@@ -1861,13 +1895,13 @@ input[type="date"] {
 }
 
 .recipe-more span {
-  font-size: 0.85rem;
+  font-size: var(--fs-sub);
   font-weight: 900;
 }
 
 .recipe-more small {
   color: var(--muted);
-  font-size: 0.62rem;
+  font-size: var(--fs-caption);
 }
 
 .recipe {
@@ -1887,7 +1921,7 @@ input[type="date"] {
 }
 
 .recipe.is-featured h3 {
-  font-size: 1.32rem;
+  font-size: var(--fs-title);
 }
 
 .recipe.is-alternative {
@@ -1895,7 +1929,7 @@ input[type="date"] {
 }
 
 .recipe.is-alternative h3 {
-  font-size: 1.02rem;
+  font-size: var(--fs-lead);
 }
 
 .recipe-heading-row {
@@ -2004,7 +2038,7 @@ input[type="date"] {
 .recipe-rank {
   margin: 0 0 3px;
   color: var(--leaf);
-  font-size: 0.75rem;
+  font-size: var(--fs-sub);
   font-weight: 800;
   letter-spacing: 0.08em;
 }
@@ -2012,7 +2046,7 @@ input[type="date"] {
 .recipe-meta {
   margin: 0;
   color: var(--muted);
-  font-size: 0.78rem;
+  font-size: var(--fs-sub);
 }
 
 /* 手順は3つに絞っているので、詳しく知りたい人を検索へ送る。
@@ -2020,7 +2054,7 @@ input[type="date"] {
 .recipe-steps-note {
   margin: 6px 0 0;
   color: var(--muted);
-  font-size: 0.72rem;
+  font-size: var(--fs-caption);
   line-height: 1.55;
 }
 
@@ -2031,7 +2065,7 @@ input[type="date"] {
   margin: 5px 0 0;
   color: #5c685f;
   font-family: sans-serif;
-  font-size: 0.62rem;
+  font-size: var(--fs-caption);
   font-variant-numeric: tabular-nums;
   font-weight: 800;
 }
@@ -2053,7 +2087,7 @@ input[type="date"] {
   align-items: center;
   gap: 5px;
   color: var(--leaf-dark);
-  font-size: 0.78rem;
+  font-size: var(--fs-sub);
   font-weight: 800;
 }
 
@@ -2090,7 +2124,7 @@ input[type="date"] {
   padding: 11px 2px;
   cursor: pointer;
   color: var(--leaf-dark);
-  font-size: 0.82rem;
+  font-size: var(--fs-sub);
   font-weight: 800;
   list-style: none;
 }
@@ -2103,7 +2137,7 @@ input[type="date"] {
   width: 18px;
   color: var(--leaf);
   content: "＋";
-  font-size: 1rem;
+  font-size: var(--icon-sm);
 }
 
 .quick-recipe[open] summary::before {
@@ -2116,7 +2150,7 @@ input[type="date"] {
 
 .quick-recipe summary small {
   color: var(--muted);
-  font-size: 0.68rem;
+  font-size: var(--fs-caption);
   font-weight: 600;
 }
 
@@ -2126,7 +2160,7 @@ input[type="date"] {
   margin: 0;
   padding: 4px 4px 14px 30px;
   color: var(--ink);
-  font-size: 0.8rem;
+  font-size: var(--fs-sub);
   line-height: 1.55;
 }
 
@@ -2137,7 +2171,7 @@ input[type="date"] {
 
 .ingredient-group h4 {
   margin: 0 0 7px;
-  font-size: 0.82rem;
+  font-size: var(--fs-sub);
 }
 
 .ingredient-group ul {
@@ -2153,15 +2187,15 @@ input[type="date"] {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  font-size: 0.86rem;
+  font-size: var(--fs-body);
 }
 
 /* 総称の材料を別の部位・商品で埋めたときの注記（例「鶏もも肉で代用」） */
 .ingredient-substitute {
   display: block;
-  font-size: 0.74em;
+  font-size: var(--fs-caption);
   line-height: 1.3;
-  color: #6d7a6f;
+  color: var(--muted);
 }
 
 .ingredient-with-icon {
@@ -2175,7 +2209,7 @@ input[type="date"] {
 .ingredient-state {
   flex: none;
   color: var(--muted);
-  font-size: 0.76rem;
+  font-size: var(--fs-sub);
 }
 
 .ingredient-state.is-ready {
@@ -2259,7 +2293,7 @@ input[type="date"] {
   border-bottom: 3px solid var(--warm);
   color: var(--warm);
   font-family: serif;
-  font-size: 1.7rem;
+  font-size: var(--icon-lg);
   line-height: 1;
   text-align: center;
 }
@@ -2294,7 +2328,7 @@ input[type="date"] {
   color: var(--leaf);
   content: "⌄";
   font-family: sans-serif;
-  font-size: 1.15rem;
+  font-size: var(--icon-sm);
   font-weight: 900;
   transform: translateY(-54%);
 }
@@ -2313,12 +2347,12 @@ input[type="date"] {
 }
 
 .shopping-accordion-summary strong {
-  font-size: 1rem;
+  font-size: var(--fs-body);
 }
 
 .shopping-accordion-summary small {
   color: var(--muted);
-  font-size: 0.63rem;
+  font-size: var(--fs-caption);
   font-weight: 800;
 }
 
@@ -2354,14 +2388,14 @@ input[type="date"] {
 
 .shopping-picker-heading h3 {
   margin-top: 2px;
-  font-size: 1.02rem;
+  font-size: var(--fs-lead);
 }
 
 .shopping-picker-heading > small,
 .shopping-item-layer-heading > small {
   padding-bottom: 2px;
   color: var(--muted);
-  font-size: 0.61rem;
+  font-size: var(--fs-caption);
   font-weight: 800;
 }
 
@@ -2444,7 +2478,7 @@ input[type="date"] {
 
 .shopping-category-button strong {
   max-width: 100%;
-  font-size: 0.61rem;
+  font-size: var(--fs-caption);
   line-height: 1.2;
   text-align: center;
 }
@@ -2465,7 +2499,7 @@ input[type="date"] {
   padding: 0 4px;
   background: transparent;
   color: var(--leaf);
-  font-size: 0.68rem;
+  font-size: var(--fs-caption);
   font-weight: 800;
 }
 
@@ -2475,7 +2509,7 @@ input[type="date"] {
 }
 
 .shopping-item-layer-heading strong {
-  font-size: 0.9rem;
+  font-size: var(--fs-body);
 }
 
 .shopping-food-grid {
@@ -2488,7 +2522,7 @@ input[type="date"] {
 
 .shopping-food-group-title {
   margin: 0 0 5px;
-  font-size: 0.72rem;
+  font-size: var(--fs-caption);
   font-weight: 600;
   letter-spacing: 0.04em;
   color: #5d6b5f;
@@ -2531,13 +2565,13 @@ input[type="date"] {
 }
 
 .shopping-food-button strong {
-  font-size: 0.59rem;
+  font-size: var(--fs-micro);
   line-height: 1.2;
 }
 
 .shopping-food-button small {
   color: var(--muted);
-  font-size: 0.51rem;
+  font-size: var(--fs-micro);
   font-weight: 800;
 }
 
@@ -2561,7 +2595,7 @@ input[type="date"] {
   color: #fff;
   content: "✓";
   font-family: sans-serif;
-  font-size: 0.62rem;
+  font-size: var(--fs-micro);
   font-weight: 900;
 }
 
@@ -2574,7 +2608,7 @@ input[type="date"] {
   min-height: 42px;
   padding: 11px 4px;
   color: var(--leaf);
-  font-size: 0.7rem;
+  font-size: var(--fs-caption);
   font-weight: 800;
   list-style-position: inside;
 }
@@ -2607,7 +2641,7 @@ input[type="date"] {
   display: grid;
   gap: 5px;
   color: var(--muted);
-  font-size: 0.7rem;
+  font-size: var(--fs-caption);
   font-weight: 800;
 }
 
@@ -2620,7 +2654,7 @@ input[type="date"] {
   border-radius: 2px;
   background: rgb(255 255 255 / 82%);
   color: var(--ink);
-  font-size: 16px;
+  font-size: var(--fs-body);
 }
 
 .quantity-editor {
@@ -2638,7 +2672,7 @@ input[type="date"] {
   background: #eef2eb;
   color: var(--leaf-dark);
   font-family: sans-serif;
-  font-size: 1.15rem;
+  font-size: var(--icon-sm);
   font-weight: 900;
 }
 
@@ -2682,19 +2716,19 @@ input[type="date"] {
 
 .shopping-section-heading h3 {
   margin-bottom: 0;
-  font-size: 1.12rem;
+  font-size: var(--fs-lead);
 }
 
 .shopping-section-heading > span {
   padding-bottom: 2px;
   color: var(--muted);
-  font-size: 0.68rem;
+  font-size: var(--fs-caption);
 }
 
 .shopping-intro {
   margin: 7px 0 11px;
   color: var(--muted);
-  font-size: 0.76rem;
+  font-size: var(--fs-sub);
   line-height: 1.55;
 }
 
@@ -2721,7 +2755,7 @@ input[type="date"] {
 }
 
 .shopping-recommendation h4 {
-  font-size: 0.88rem;
+  font-size: var(--fs-body);
 }
 
 .shopping-recommendation h4 span {
@@ -2732,7 +2766,7 @@ input[type="date"] {
 .shopping-recommendation p {
   margin-top: 3px;
   color: var(--muted);
-  font-size: 0.68rem;
+  font-size: var(--fs-caption);
   line-height: 1.4;
 }
 
@@ -2743,7 +2777,7 @@ input[type="date"] {
   border-radius: 3px;
   background: transparent;
   color: var(--leaf);
-  font-size: 0.72rem;
+  font-size: var(--fs-caption);
   font-weight: 800;
 }
 
@@ -2782,7 +2816,7 @@ input[type="date"] {
 .shopping-check-hint {
   margin: 4px 0 10px;
   color: var(--muted);
-  font-size: 0.67rem;
+  font-size: var(--fs-caption);
   line-height: 1.4;
 }
 
@@ -2861,14 +2895,14 @@ input[type="date"] {
 
 .shopping-check-detail-copy > strong {
   overflow: hidden;
-  font-size: 0.9rem;
+  font-size: var(--fs-body);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .shopping-check-detail-copy > span:not(.change-attribution) {
   color: var(--muted);
-  font-size: 0.76rem;
+  font-size: var(--fs-sub);
   font-weight: 700;
 }
 
@@ -2880,7 +2914,7 @@ input[type="date"] {
 .shopping-check-detail-copy > small {
   overflow: hidden;
   color: var(--muted);
-  font-size: 0.65rem;
+  font-size: var(--fs-caption);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -2899,7 +2933,7 @@ input[type="date"] {
   min-height: 44px;
   color: var(--leaf-dark);
   cursor: pointer;
-  font-size: 0.72rem;
+  font-size: var(--fs-caption);
   font-weight: 800;
 }
 
@@ -2921,7 +2955,7 @@ input[type="date"] {
   padding: 4px;
   background: transparent;
   color: var(--warm);
-  font-size: 0.68rem;
+  font-size: var(--fs-caption);
   font-weight: 800;
   text-decoration: underline;
 }
@@ -2936,7 +2970,7 @@ input[type="date"] {
   padding: 11px 2px;
   color: var(--muted);
   cursor: pointer;
-  font-size: 0.7rem;
+  font-size: var(--fs-caption);
   font-weight: 800;
   list-style-position: inside;
 }
@@ -3006,7 +3040,7 @@ input[type="date"] {
 }
 
 .shopping-item-copy strong {
-  font-size: 0.9rem;
+  font-size: var(--fs-body);
 }
 
 .shopping-item-copy strong span {
@@ -3018,7 +3052,7 @@ input[type="date"] {
   margin-top: 3px;
   overflow: hidden;
   color: var(--muted);
-  font-size: 0.66rem;
+  font-size: var(--fs-caption);
   line-height: 1.35;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -3041,7 +3075,7 @@ input[type="date"] {
   border: 0;
   background: transparent;
   color: var(--leaf);
-  font-size: 0.68rem;
+  font-size: var(--fs-caption);
   font-weight: 800;
   text-decoration: underline;
 }
@@ -3055,7 +3089,7 @@ input[type="date"] {
   margin: 0;
   padding: 24px 8px;
   color: var(--muted);
-  font-size: 0.76rem;
+  font-size: var(--fs-sub);
   line-height: 1.6;
   text-align: center;
 }
@@ -3077,7 +3111,7 @@ input[type="date"] {
   flex: none;
   color: var(--warm);
   font-family: ui-serif, serif;
-  font-size: 2rem;
+  font-size: var(--icon-xl);
   line-height: 1;
 }
 
@@ -3094,7 +3128,7 @@ input[type="date"] {
   padding: 7px 2px;
   border-bottom: 2px solid var(--leaf);
   color: var(--leaf-dark);
-  font-size: 0.8rem;
+  font-size: var(--fs-sub);
   letter-spacing: 0.04em;
 }
 
@@ -3113,13 +3147,13 @@ input[type="date"] {
 
 .history-entry-heading h3 {
   margin: 2px 0 0;
-  font-size: 0.96rem;
+  font-size: var(--fs-body);
 }
 
 .history-time {
   margin: 0;
   color: var(--muted);
-  font-size: 0.72rem;
+  font-size: var(--fs-caption);
   font-weight: 700;
 }
 
@@ -3129,7 +3163,7 @@ input[type="date"] {
   border: 1px solid var(--line-strong);
   background: var(--paper-raised);
   color: var(--leaf-dark);
-  font-size: 0.64rem;
+  font-size: var(--fs-caption);
   font-weight: 800;
 }
 
@@ -3152,7 +3186,7 @@ input[type="date"] {
   align-items: center;
   gap: 5px;
   color: var(--leaf-dark);
-  font-size: 0.76rem;
+  font-size: var(--fs-sub);
 }
 
 .history-entry.is-undone .history-changes li {
@@ -3197,7 +3231,7 @@ input[type="date"] {
 .history-summary {
   margin: 8px 0 10px;
   color: var(--leaf-dark);
-  font-size: 0.78rem;
+  font-size: var(--fs-sub);
   line-height: 1.55;
 }
 
@@ -3235,12 +3269,12 @@ input[type="date"] {
 
 .history-empty > span {
   color: var(--leaf);
-  font-size: 2rem;
+  font-size: var(--icon-xl);
 }
 
 .history-empty p {
   margin: 0;
-  font-size: 0.8rem;
+  font-size: var(--fs-sub);
   line-height: 1.7;
 }
 
@@ -3262,7 +3296,7 @@ input[type="date"] {
 .history-more-button small,
 .history-count-note {
   color: var(--muted);
-  font-size: 0.68rem;
+  font-size: var(--fs-caption);
   font-weight: 600;
 }
 
@@ -3299,12 +3333,12 @@ input[type="date"] {
   padding: 8px 6px 7px;
   background: transparent;
   color: var(--muted);
-  font-size: 0.7rem;
+  font-size: var(--fs-sub);
   font-weight: 800;
 }
 
 .nav-button span {
-  font-size: 1.25rem;
+  font-size: var(--icon-md);
   line-height: 1;
 }
 
@@ -3325,7 +3359,7 @@ input[type="date"] {
   background: var(--warm);
   color: #fff;
   font-family: sans-serif;
-  font-size: 0.58rem;
+  font-size: var(--fs-micro);
   line-height: 1;
 }
 
@@ -3364,7 +3398,7 @@ input[type="date"] {
 .today-ingredient-dialog-intro {
   margin: -3px 0 0;
   color: var(--muted);
-  font-size: 0.72rem;
+  font-size: var(--fs-caption);
   line-height: 1.5;
 }
 
@@ -3405,7 +3439,7 @@ input[type="date"] {
 .priority-fridge-compartment h3 {
   margin: 0 0 4px;
   color: #3f5c4d;
-  font-size: 0.65rem;
+  font-size: var(--fs-caption);
   letter-spacing: 0.08em;
 }
 
@@ -3459,7 +3493,7 @@ input[type="date"] {
 .priority-food-option > span:last-child {
   max-width: 100%;
   overflow: hidden;
-  font-size: 0.57rem;
+  font-size: var(--fs-caption);
   font-weight: 800;
   line-height: 1.2;
   text-overflow: ellipsis;
@@ -3485,7 +3519,7 @@ input[type="date"] {
   color: white;
   content: "✓";
   font-family: sans-serif;
-  font-size: 0.65rem;
+  font-size: var(--fs-micro);
   font-weight: 900;
 }
 
@@ -3494,7 +3528,7 @@ input[type="date"] {
   align-self: center;
   justify-self: center;
   color: rgb(70 86 76 / 62%);
-  font-size: 0.62rem;
+  font-size: var(--fs-caption);
   font-weight: 700;
 }
 
@@ -3505,7 +3539,7 @@ input[type="date"] {
   border-radius: 5px;
   background: transparent;
   color: var(--muted);
-  font-size: 0.76rem;
+  font-size: var(--fs-sub);
   font-weight: 800;
 }
 
@@ -3542,7 +3576,7 @@ input[type="date"] {
   display: grid;
   gap: 7px;
   color: var(--muted);
-  font-size: 0.82rem;
+  font-size: var(--fs-sub);
   font-weight: 700;
 }
 
@@ -3598,12 +3632,12 @@ input[type="date"] {
 }
 
 .ingredient-shortcut-copy strong {
-  font-size: 0.82rem;
+  font-size: var(--fs-sub);
 }
 
 .ingredient-shortcut-copy small {
   color: var(--muted);
-  font-size: 0.65rem;
+  font-size: var(--fs-caption);
 }
 
 .ingredient-receipt-icon {
@@ -3629,14 +3663,14 @@ input[type="date"] {
   border-radius: 50%;
   background: #fffdf6;
   color: #6c5e3c;
-  font-size: 0.9rem;
+  font-size: var(--icon-sm);
   font-weight: 900;
 }
 
 .ingredient-shortcut-arrow {
   color: #557766;
   font-family: sans-serif;
-  font-size: 1.35rem;
+  font-size: var(--icon-md);
   line-height: 1;
 }
 
@@ -3668,12 +3702,12 @@ input[type="date"] {
 
 .ingredient-picker-lead strong {
   color: var(--ink);
-  font-size: 1rem;
+  font-size: var(--fs-body);
 }
 
 .ingredient-picker-lead small {
   color: var(--muted);
-  font-size: 0.67rem;
+  font-size: var(--fs-caption);
 }
 
 .ingredient-category-grid {
@@ -3737,13 +3771,13 @@ input[type="date"] {
 }
 
 .ingredient-category-copy strong {
-  font-size: 0.82rem;
+  font-size: var(--fs-sub);
 }
 
 .ingredient-category-copy small {
   overflow: hidden;
   color: var(--muted);
-  font-size: 0.58rem;
+  font-size: var(--fs-caption);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -3754,7 +3788,7 @@ input[type="date"] {
   bottom: 13px;
   color: #637267;
   font-family: sans-serif;
-  font-size: 1.2rem;
+  font-size: var(--icon-sm);
   line-height: 1;
 }
 
@@ -3768,7 +3802,7 @@ input[type="date"] {
   border-radius: 0;
   background: transparent;
   color: #596b60;
-  font-size: 0.73rem;
+  font-size: var(--fs-caption);
   font-weight: 800;
 }
 
@@ -3789,7 +3823,7 @@ input[type="date"] {
 
 .ingredient-item-group-title {
   margin: 0 0 6px;
-  font-size: 0.76rem;
+  font-size: var(--fs-sub);
   font-weight: 600;
   letter-spacing: 0.04em;
   color: #5d6b5f;
@@ -3824,7 +3858,7 @@ input[type="date"] {
 .ingredient-item-card strong {
   max-width: 100%;
   overflow: hidden;
-  font-size: 0.67rem;
+  font-size: var(--fs-caption);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -3865,13 +3899,13 @@ input[type="date"] {
 
 .selected-ingredient-preview small {
   color: var(--muted);
-  font-size: 0.65rem;
+  font-size: var(--fs-caption);
   font-weight: 800;
 }
 
 .selected-ingredient-preview strong {
   color: var(--ink);
-  font-size: 1.12rem;
+  font-size: var(--fs-lead);
 }
 
 .name-suggestion {
@@ -3885,7 +3919,7 @@ input[type="date"] {
 
 .name-suggestion p {
   margin: 0;
-  font-size: 0.78rem;
+  font-size: var(--fs-sub);
   line-height: 1.55;
 }
 
@@ -3902,7 +3936,7 @@ input[type="date"] {
 
 .name-suggestion .button {
   min-height: 40px;
-  font-size: 0.75rem;
+  font-size: var(--fs-sub);
 }
 
 .cook-confirm-dialog {
@@ -3914,7 +3948,7 @@ input[type="date"] {
 .cook-confirm-recipe {
   margin: -5px 0 0;
   color: var(--ink);
-  font-size: 1.05rem;
+  font-size: var(--fs-lead);
   font-weight: 900;
   text-align: center;
 }
@@ -3928,7 +3962,7 @@ input[type="date"] {
 .cook-serving-fieldset legend {
   margin-bottom: 9px;
   color: var(--muted);
-  font-size: 0.76rem;
+  font-size: var(--fs-sub);
   font-weight: 800;
 }
 
@@ -3952,13 +3986,13 @@ input[type="date"] {
 
 .cook-serving-button strong {
   font-family: sans-serif;
-  font-size: 1.35rem;
+  font-size: var(--fs-title);
   line-height: 1;
 }
 
 .cook-serving-button span {
   color: var(--muted);
-  font-size: 0.65rem;
+  font-size: var(--fs-caption);
   font-weight: 800;
 }
 
@@ -3993,13 +4027,13 @@ input[type="date"] {
 }
 
 .cook-confirm-ingredients-head h3 {
-  font-size: 0.88rem;
+  font-size: var(--fs-body);
 }
 
 .cook-confirm-ingredients-head > small {
   color: var(--leaf-dark);
   font-family: sans-serif;
-  font-size: 0.61rem;
+  font-size: var(--fs-caption);
   font-weight: 800;
   font-variant-numeric: tabular-nums;
 }
@@ -4007,7 +4041,7 @@ input[type="date"] {
 .cook-confirm-ingredients h4 {
   margin-top: 3px;
   color: var(--muted);
-  font-size: 0.66rem;
+  font-size: var(--fs-caption);
 }
 
 .cook-confirm-ingredients h4 small {
@@ -4032,7 +4066,7 @@ input[type="date"] {
 
 .cook-extra-heading small {
   color: var(--muted);
-  font-size: 0.62rem;
+  font-size: var(--fs-caption);
 }
 
 .cook-extra-add {
@@ -4046,7 +4080,7 @@ input[type="date"] {
   display: grid;
   gap: 3px;
   color: var(--muted);
-  font-size: 0.62rem;
+  font-size: var(--fs-caption);
   font-weight: 800;
 }
 
@@ -4055,7 +4089,7 @@ input[type="date"] {
   width: 100%;
   min-height: 42px;
   margin: 0;
-  font-size: 0.76rem;
+  font-size: var(--fs-body);
 }
 
 .cook-extra-add .button {
@@ -4077,7 +4111,7 @@ input[type="date"] {
   top: 50%;
   right: 8px;
   color: var(--muted);
-  font-size: 0.66rem;
+  font-size: var(--fs-caption);
   transform: translateY(-50%);
 }
 
@@ -4105,7 +4139,7 @@ input[type="date"] {
 .history-edit-row > span:first-child {
   min-width: 0;
   color: var(--ink);
-  font-size: 0.72rem;
+  font-size: var(--fs-caption);
   font-weight: 800;
 }
 
@@ -4123,7 +4157,7 @@ input[type="date"] {
   border-radius: 3px;
   background: transparent;
   color: var(--warm);
-  font-size: 1rem;
+  font-size: var(--icon-sm);
 }
 
 .history-edit-dialog {
@@ -4134,7 +4168,7 @@ input[type="date"] {
 
 .history-edit-recipe {
   margin: -4px 0 3px;
-  font-size: 1.05rem;
+  font-size: var(--fs-lead);
   font-weight: 900;
   text-align: center;
 }
@@ -4148,7 +4182,7 @@ input[type="date"] {
 
 .history-edit-add h3 {
   margin: 0;
-  font-size: 0.86rem;
+  font-size: var(--fs-body);
 }
 
 @media (max-width: 380px) {
@@ -4210,20 +4244,20 @@ input[type="date"] {
 
 .cook-ingredient-main strong {
   color: var(--ink);
-  font-size: 0.72rem;
+  font-size: var(--fs-caption);
 }
 
 .cook-ingredient-main small {
   margin-top: 1px;
   color: var(--muted);
-  font-size: 0.6rem;
+  font-size: var(--fs-caption);
   line-height: 1.3;
 }
 
 .cook-ingredient-state,
 .cook-optional-state {
   color: var(--muted);
-  font-size: 0.6rem;
+  font-size: var(--fs-caption);
   font-weight: 800;
 }
 
@@ -4327,7 +4361,7 @@ input[type="date"] {
   border-left: 4px solid var(--leaf);
   background: rgb(47 100 75 / 8%);
   color: var(--muted);
-  font-size: 0.78rem;
+  font-size: var(--fs-sub);
   line-height: 1.55;
 }
 
@@ -4353,7 +4387,7 @@ input[type="date"] {
   width: 44px;
   background: transparent;
   color: var(--ink);
-  font-size: 1.6rem;
+  font-size: var(--icon-lg);
 }
 
 .form-grid {
@@ -4373,14 +4407,14 @@ input[type="date"] {
   border-radius: 10px;
   background: var(--leaf-soft);
   color: var(--leaf-dark);
-  font-size: 0.62rem;
+  font-size: var(--fs-caption);
   font-style: normal;
   line-height: 1.2;
 }
 
 .ingredient-expiry-field small {
   color: var(--muted);
-  font-size: 0.68rem;
+  font-size: var(--fs-caption);
   font-weight: 400;
   line-height: 1.5;
 }
@@ -4433,7 +4467,7 @@ input[type="date"] {
   border-left: 4px solid var(--leaf);
   background: var(--leaf-soft);
   color: var(--leaf-dark);
-  font-size: 0.75rem;
+  font-size: var(--fs-sub);
   line-height: 1.55;
 }
 
@@ -4469,7 +4503,7 @@ input[type="date"] {
 .receipt-model-note {
   margin: 6px 0 0;
   color: var(--muted);
-  font-size: 0.68rem;
+  font-size: var(--fs-caption);
   line-height: 1.45;
 }
 
@@ -4500,7 +4534,7 @@ input[type="date"] {
 .receipt-results-heading p {
   margin-top: 3px;
   color: var(--muted);
-  font-size: 0.75rem;
+  font-size: var(--fs-sub);
 }
 
 .text-button {
@@ -4508,7 +4542,7 @@ input[type="date"] {
   padding: 0;
   background: transparent;
   color: var(--leaf);
-  font-size: 0.75rem;
+  font-size: var(--fs-sub);
   font-weight: 800;
   text-decoration: underline;
 }
@@ -4516,7 +4550,7 @@ input[type="date"] {
 .receipt-review-note {
   margin: 0;
   color: var(--warm);
-  font-size: 0.72rem;
+  font-size: var(--fs-caption);
   font-weight: 700;
 }
 
@@ -4557,14 +4591,14 @@ input[type="date"] {
 
 .receipt-candidate-fields label {
   gap: 4px;
-  font-size: 0.67rem;
+  font-size: var(--fs-caption);
 }
 
 .receipt-candidate-fields input,
 .receipt-candidate-fields select {
   min-height: 40px;
   padding: 7px 8px;
-  font-size: 16px;
+  font-size: var(--fs-body);
 }
 
 .receipt-candidate-meta {
@@ -4577,7 +4611,7 @@ input[type="date"] {
   display: block;
   overflow: hidden;
   color: var(--muted);
-  font-size: 0.67rem;
+  font-size: var(--fs-caption);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -4595,7 +4629,7 @@ input[type="date"] {
   padding: 10px 0;
   cursor: pointer;
   color: var(--muted);
-  font-size: 0.75rem;
+  font-size: var(--fs-sub);
   font-weight: 700;
 }
 
@@ -4604,7 +4638,7 @@ input[type="date"] {
   margin: 0 0 10px;
   overflow: auto;
   color: var(--muted);
-  font-size: 0.68rem;
+  font-size: var(--fs-caption);
   line-height: 1.55;
   white-space: pre-wrap;
 }
@@ -4618,7 +4652,7 @@ input[type="date"] {
 .receipt-error p {
   margin-top: 6px;
   color: var(--muted);
-  font-size: 0.78rem;
+  font-size: var(--fs-sub);
   line-height: 1.55;
 }
 
@@ -4670,6 +4704,11 @@ input[type="date"] {
     padding-inline: 22px;
   }
 
+  /* 幅が取れるところでは旬の食材を1行（6列）へ戻す */
+  .seasonal-food-list {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
   .storage-tabs {
     margin-inline: -22px;
     padding-inline: 22px;
@@ -4688,7 +4727,7 @@ input[type="date"] {
   .management-actions .button {
     min-width: 122px;
     padding-inline: 7px;
-    font-size: 0.82rem;
+    font-size: var(--fs-sub);
   }
 
   .receipt-candidate-meta {
@@ -4705,7 +4744,7 @@ input[type="date"] {
   }
 
   .shopping-add-button {
-    font-size: 0.78rem;
+    font-size: var(--fs-sub);
   }
 
   .shopping-item {
@@ -4721,7 +4760,7 @@ input[type="date"] {
 
   .nav-button {
     padding-inline: 2px;
-    font-size: 0.62rem;
+    font-size: var(--fs-sub);
   }
 
   .recipe.is-featured {
@@ -4756,14 +4795,14 @@ input[type="date"] {
 
 .onboarding-head h2 {
   margin: 2px 0 0;
-  font-size: 1.32rem;
+  font-size: var(--fs-title);
   line-height: 1.35;
 }
 
 .onboarding-lead {
   margin: 8px 0 0;
   color: var(--muted);
-  font-size: 0.82rem;
+  font-size: var(--fs-sub);
   line-height: 1.7;
 }
 
@@ -4774,7 +4813,7 @@ input[type="date"] {
 .onboarding-group h3 {
   margin: 0 0 8px;
   color: var(--leaf);
-  font-size: 0.76rem;
+  font-size: var(--fs-sub);
   letter-spacing: 0.08em;
 }
 
@@ -4795,7 +4834,7 @@ input[type="date"] {
   border-radius: 4px;
   background: var(--paper-raised);
   color: var(--ink);
-  font-size: 0.72rem;
+  font-size: var(--fs-caption);
   font-weight: 700;
   line-height: 1.3;
   text-align: center;
@@ -4837,24 +4876,24 @@ input[type="date"] {
 
 .onboarding-candidate strong {
   display: block;
-  font-size: 0.86rem;
+  font-size: var(--fs-body);
 }
 
 .onboarding-candidate.is-top strong {
-  font-size: 1rem;
+  font-size: var(--fs-body);
 }
 
 .onboarding-candidate small {
   display: block;
   margin-top: 2px;
   color: var(--muted);
-  font-size: 0.72rem;
+  font-size: var(--fs-caption);
 }
 
 .onboarding-empty {
   margin: 0;
   color: var(--muted);
-  font-size: 0.8rem;
+  font-size: var(--fs-sub);
   line-height: 1.7;
 }
 
@@ -4884,20 +4923,20 @@ input[type="date"] {
 
 .sample-notice h3 {
   margin: 2px 0 7px;
-  font-size: 0.94rem;
+  font-size: var(--fs-lead);
   line-height: 1.45;
 }
 
 .sample-notice p {
   margin: 0;
-  font-size: 0.8rem;
+  font-size: var(--fs-sub);
   line-height: 1.65;
 }
 
 .sample-notice-note {
   margin-top: 7px !important;
   color: #7d5a4b;
-  font-size: 0.74rem !important;
+  font-size: var(--fs-caption) !important;
 }
 
 .sample-notice-actions {
@@ -4933,7 +4972,7 @@ input[type="date"] {
 
 .expiry-alert-heading h3 {
   margin: 2px 0 0;
-  font-size: 0.96rem;
+  font-size: var(--fs-lead);
   line-height: 1.45;
 }
 
@@ -4943,7 +4982,7 @@ input[type="date"] {
   border-radius: 12px;
   background: #f0d6a2;
   color: #704814;
-  font-size: 0.72rem;
+  font-size: var(--fs-caption);
   font-weight: 900;
 }
 
@@ -5005,7 +5044,7 @@ input[type="date"] {
   border-radius: 4px;
   background: #fff;
   color: var(--warm);
-  font-size: 0.82rem;
+  font-size: var(--fs-sub);
   font-weight: 700;
   white-space: nowrap;
 }
@@ -5035,18 +5074,18 @@ input[type="date"] {
 }
 
 .expiry-alert-copy strong {
-  font-size: 0.82rem;
+  font-size: var(--fs-sub);
 }
 
 .expiry-alert-copy small {
   margin-top: 2px;
   color: var(--muted);
-  font-size: 0.65rem;
+  font-size: var(--fs-caption);
 }
 
 .expiry-alert-state {
   color: #996819;
-  font-size: 0.72rem;
+  font-size: var(--fs-caption);
   font-weight: 900;
 }
 
@@ -5057,7 +5096,7 @@ input[type="date"] {
 .expiry-alert-note {
   margin: 8px 0 0;
   color: #775c33;
-  font-size: 0.68rem;
+  font-size: var(--fs-caption);
 }
 
 /* ---- 翌日の在庫確認 ------------------------------------------------------ */
@@ -5077,13 +5116,13 @@ input[type="date"] {
 
 .day-after-check h3 {
   margin: 2px 0 6px;
-  font-size: 0.96rem;
+  font-size: var(--fs-lead);
 }
 
 .day-after-lead {
   margin: 0;
   color: #3d5748;
-  font-size: 0.78rem;
+  font-size: var(--fs-sub);
   line-height: 1.65;
 }
 
@@ -5120,14 +5159,14 @@ input[type="date"] {
 
 .day-after-item strong {
   display: block;
-  font-size: 0.82rem;
+  font-size: var(--fs-sub);
 }
 
 .day-after-item small {
   display: block;
   margin-top: 1px;
   color: #55705f;
-  font-size: 0.68rem;
+  font-size: var(--fs-caption);
 }
 
 /* 3つを等幅で並べる。どれかを選ぶまで既定はない */
@@ -5143,7 +5182,7 @@ input[type="date"] {
   border-radius: 3px;
   background: #fff;
   color: var(--leaf-dark);
-  font-size: 0.78rem;
+  font-size: var(--fs-sub);
   font-weight: 800;
 }
 
@@ -5168,13 +5207,13 @@ input[type="date"] {
 
 .refine-head h2 {
   margin: 2px 0 0;
-  font-size: 1.28rem;
+  font-size: var(--fs-title);
 }
 
 .refine-lead {
   margin: 8px 0 18px;
   color: var(--muted);
-  font-size: 0.8rem;
+  font-size: var(--fs-sub);
   line-height: 1.7;
 }
 
@@ -5185,7 +5224,7 @@ input[type="date"] {
 .refine-group h3 {
   margin: 0 0 8px;
   color: var(--leaf);
-  font-size: 0.74rem;
+  font-size: var(--fs-caption);
   letter-spacing: 0.08em;
 }
 
@@ -5243,7 +5282,7 @@ input[type="date"] {
 
 .import-preview p {
   margin: 0;
-  font-size: 0.78rem;
+  font-size: var(--fs-sub);
   line-height: 1.65;
 }
 
@@ -5284,7 +5323,7 @@ input[type="date"] {
 
 .share-join summary {
   color: var(--leaf);
-  font-size: 0.78rem;
+  font-size: var(--fs-sub);
   font-weight: 800;
   cursor: pointer;
 }
@@ -5297,7 +5336,7 @@ input[type="date"] {
 .share-link-label {
   margin: 10px 0 4px;
   color: var(--muted);
-  font-size: 0.74rem;
+  font-size: var(--fs-caption);
   font-weight: 700;
 }
 
@@ -5309,7 +5348,7 @@ input[type="date"] {
   border-radius: 3px;
   background: #fff;
   color: var(--ink);
-  font-size: 0.78rem;
+  font-size: var(--fs-sub);
 }
 
 .share-actions {
@@ -5347,7 +5386,7 @@ input[type="date"] {
 .share-join-intro {
   margin: 12px 0 0;
   color: var(--ink);
-  font-size: 0.86rem;
+  font-size: var(--fs-body);
   line-height: 1.7;
 }
 
@@ -5366,7 +5405,7 @@ input[type="date"] {
   border-radius: 999px;
   background: #fff;
   color: var(--muted);
-  font-size: 0.72rem;
+  font-size: var(--fs-caption);
   font-weight: 700;
 }
 
@@ -5397,13 +5436,13 @@ input[type="date"] {
 }
 
 .share-join-option strong {
-  font-size: 0.9rem;
+  font-size: var(--fs-body);
 }
 
 .share-join-option small {
   margin-top: 4px;
   color: var(--muted);
-  font-size: 0.74rem;
+  font-size: var(--fs-caption);
   line-height: 1.55;
 }
 
@@ -5448,7 +5487,7 @@ input[type="date"] {
   border-radius: 5px;
   background: var(--paper-raised);
   color: var(--muted);
-  font-size: 0.82rem;
+  font-size: var(--fs-sub);
   font-weight: 800;
 }
 
@@ -5465,7 +5504,7 @@ input[type="date"] {
 
 .fridge-unit-tabs small {
   margin-left: 5px;
-  font-size: 0.68rem;
+  font-size: var(--fs-caption);
   font-weight: 700;
   opacity: 0.85;
 }
@@ -5565,7 +5604,7 @@ input[type="date"] {
   }
 
   h2 {
-    font-size: 1.55rem;
+    font-size: var(--fs-display);
   }
 
   .storage-tabs {
@@ -5755,11 +5794,11 @@ input[type="date"] {
     align-content: center;
     gap: 7px;
     padding: 10px 7px;
-    font-size: 0.78rem;
+    font-size: var(--fs-sub);
   }
 
   .nav-button span {
-    font-size: 1.5rem;
+    font-size: var(--icon-lg);
   }
 
   .nav-button.is-active {

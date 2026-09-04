@@ -61,3 +61,7 @@ jobs:
 
       - name: 使いきりの操作チェック
         run: node scripts/check-expiry-actions.mjs
+
+      # デザイントークンシート(design/TOKEN_SHEET.md)から文字サイズが外れていないこと
+      - name: 文字スケールチェック
+        run: node scripts/check-type-scale.mjs
