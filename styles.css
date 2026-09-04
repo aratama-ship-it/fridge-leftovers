@@ -721,11 +721,13 @@ h3 {
   color: #6d5133;
 }
 
-/* 4列・左詰め。以前は7列相当で1つ48pxしかなく、棚に点々と並ぶだけだった。
-   6品目までは同じ棚に入り、4つを超えたら同じ棚の中で折り返す（棚は縦に伸びる）。 */
+/* 列数は棚の中身で変わる（--shelf-cols を renderFridgeShelf が付ける）。
+   4品までは4列で大きく、5品・6品は5列・6列にして1行へ収める。
+   以前の4列固定だと5品目で折り返して棚が縦に伸び、埋まると厳しかった。 */
 .fridge-foods {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  /* 末尾の auto 列は「＋」の席。＋が無い棚では幅0になる */
+  grid-template-columns: repeat(var(--shelf-cols, 4), minmax(0, 1fr)) auto;
   justify-content: start;
   justify-items: center;
   align-items: end;
@@ -751,6 +753,26 @@ h3 {
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
+}
+
+/* 絵の下の1行の名前。列が増えて枠が54pxまで縮んでも1行に収め、
+   入りきらない分は「…」で省く（6文字以上は FRIDGE_SHORT_NAMES の略称）。 */
+.fridge-food-name {
+  max-width: 100%;
+  margin-top: 2px;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: var(--fs-caption);
+  font-weight: 700;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 5列以上に詰まったときだけ11px。1枠が53px前後になり12pxでは4文字が入らない。
+   本人が「小さい文字で良い」と明示した箇所（シート §2 の例外表に記載）。 */
+.fridge-foods.is-dense .fridge-food-name {
+  font-size: var(--fs-micro);
 }
 
 .fridge-food::after {
@@ -856,14 +878,15 @@ h3 {
   aspect-ratio: 1;
 }
 
+/* 格子の末尾の細い列に入る。食材と同じ幅を取ると列数の計算を狂わせるので、
+   押せる高さ（44px）だけ保って幅は36pxに絞る。 */
 .shelf-add-food {
   position: relative;
   display: grid;
   place-items: center;
   align-self: end;
-  width: 100%;
-  max-width: 56px;
-  min-height: 62px;
+  width: 36px;
+  min-height: 44px;
   padding: 1px 0 0;
   border: 0;
   background: transparent;
@@ -5724,9 +5747,15 @@ input[type="date"] {
    スマホのUIをそのまま中央へ置くと左右が空くだけになるため、700px以上では
    幅を情報量へ戻す。縦向きは下部ナビを残して2列、横向きは左ナビ＋3列にする。 */
 @media (min-width: 700px) {
-  /* タブレットは幅が余る。食材の格子を広げて棚の空きを減らす */
+  /* タブレットは幅が余る。筐体を広げ（既定390px）、格子も広げる。
+     列数はスマホと同じく中身で決める */
+  .fridge-unit-tabs,
+  .fridge-appliance,
+  .food-consume-station {
+    width: min(100%, 640px);
+  }
+
   .fridge-foods {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
     max-width: 560px;
   }
 
