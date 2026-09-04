@@ -12,6 +12,13 @@
 - 番号を手で上げる運用は廃止した。上げ忘れると更新が既存ユーザーへ届かないため
 - `vendor/` 配下は同梱ライブラリのバージョン表記なので、このスクリプトの対象外
 
+## 配信用WebP
+
+- `node scripts/build-webp.mjs --check` が成功すること（PNGを差し替えてWebPを作り直し忘れていないか）
+- アトラスのPNGを差し替えたら `node scripts/build-webp.mjs` → `node scripts/cache-version.mjs` の順に実行し、
+  生成物を一緒にコミットする
+- 食材と料理のイラストが、冷蔵庫・レシピ・買い物・食材追加の各画面で欠けずに出ること
+
 ## 食材の初期単位
 
 - `node scripts/check-initial-units.mjs` が成功すること

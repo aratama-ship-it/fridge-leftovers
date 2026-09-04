@@ -6491,7 +6491,7 @@ function renderFridgeScene(active) {
       </div>
       <div class="food-child-character" aria-hidden="true">
         <span class="food-child-bubble">ぱくっ</span>
-        <img src="assets/food-child-drop-target.png?v=20260724-1" alt="">
+        <img src="assets/food-child-drop-target.webp?v=20260904-1" alt="">
       </div>
     </section>
   `;
