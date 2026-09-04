@@ -6874,7 +6874,10 @@ function renderShoppingCheckItem(item) {
     <details class="shopping-check-item">
       <summary aria-label="${escapeHtml(item.name)}の詳細を表示">
         ${renderIngredientIllustration(item.ingredientId, item.name)}
-        <span class="visually-hidden">${escapeHtml(item.name)}</span>
+        <span class="shopping-check-copy">
+          <strong>${escapeHtml(item.name)}</strong>
+          <small>${escapeHtml(formatQuantity(item.quantity, item.unit))}</small>
+        </span>
       </summary>
       <div class="shopping-check-detail">
         <div class="shopping-check-detail-copy">

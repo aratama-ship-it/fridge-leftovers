@@ -13,10 +13,10 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="冷蔵庫の現在地">
-  <link rel="stylesheet" href="styles.css?v=ec58aba3">
+  <link rel="stylesheet" href="styles.css?v=2328b9f2">
   <script src="vendor/tesseract/tesseract.min.js?v=7.0.0" defer></script>
   <script src="recipe-expansion.js?v=3e0c5a6c" defer></script>
-  <script src="app.js?v=535bc3f7" defer></script>
+  <script src="app.js?v=9d584cef" defer></script>
   <!--
     起動の読み込み画面は、外部CSS（styles.css）が届く前から出したいので、
     ここだけ色を直書きしている（:root の変数に頼らない）。回線が細いときほど
@@ -280,7 +280,7 @@
             </div>
             <button class="text-button" type="button" id="clear-bought" hidden>購入済みを消す</button>
           </div>
-          <p class="shopping-check-hint">食材のアイコンをタップすると、数量や操作を確認できます。</p>
+          <p class="shopping-check-hint">カードをタップすると、購入済みにする・削除ができます。</p>
           <div class="shopping-list" id="shopping-list" aria-live="polite"></div>
         </section>
 
@@ -547,26 +547,6 @@
         <button class="icon-button" type="button" id="close-dialog" aria-label="閉じる">×</button>
       </div>
 
-      <div class="ingredient-add-shortcuts" id="ingredient-add-shortcuts">
-        <button class="ingredient-add-shortcut ingredient-receipt-shortcut" type="button" id="ingredient-receipt-shortcut">
-          <span class="ingredient-receipt-icon" aria-hidden="true"></span>
-          <span class="ingredient-shortcut-copy">
-            <strong>レシートからまとめて追加</strong>
-            <small>写真を撮る・画像を選ぶ</small>
-          </span>
-          <span class="ingredient-shortcut-arrow" aria-hidden="true">›</span>
-        </button>
-
-        <button class="ingredient-add-shortcut ingredient-refine-shortcut" type="button" id="open-refine">
-          <span class="ingredient-refine-icon" aria-hidden="true">✓</span>
-          <span class="ingredient-shortcut-copy">
-            <strong>一覧から一度に追加する</strong>
-            <small id="refine-entry-note"></small>
-          </span>
-          <span class="ingredient-shortcut-arrow" aria-hidden="true">›</span>
-        </button>
-      </div>
-
       <input type="hidden" id="ingredient-id">
 
       <section class="ingredient-picker" id="ingredient-picker" aria-label="イラストから食材を選ぶ">
@@ -579,6 +559,28 @@
           <button class="ingredient-manual-button" type="button" id="ingredient-manual-mode">
             一覧にない食材を文字で追加
           </button>
+
+          <!-- まとめて追加は主導線ではないので、種類のカードより下へ置く。
+               上に置くと「1. 種類を選ぶ」が折り返し線の下へ落ちていた。 -->
+          <div class="ingredient-add-shortcuts" id="ingredient-add-shortcuts">
+            <button class="ingredient-add-shortcut ingredient-receipt-shortcut" type="button" id="ingredient-receipt-shortcut">
+              <span class="ingredient-receipt-icon" aria-hidden="true"></span>
+              <span class="ingredient-shortcut-copy">
+                <strong>レシートからまとめて追加</strong>
+                <small>写真を撮る・画像を選ぶ</small>
+              </span>
+              <span class="ingredient-shortcut-arrow" aria-hidden="true">›</span>
+            </button>
+
+            <button class="ingredient-add-shortcut ingredient-refine-shortcut" type="button" id="open-refine">
+              <span class="ingredient-refine-icon" aria-hidden="true">✓</span>
+              <span class="ingredient-shortcut-copy">
+                <strong>一覧から一度に追加する</strong>
+                <small id="refine-entry-note"></small>
+              </span>
+              <span class="ingredient-shortcut-arrow" aria-hidden="true">›</span>
+            </button>
+          </div>
         </div>
 
         <div class="ingredient-picker-layer" id="ingredient-item-layer" hidden>
