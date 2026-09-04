@@ -6498,9 +6498,11 @@ function renderInventoryRow(item) {
   const unknownAmount = quantityUnknown(item);
   const confirmation = confirmationLabel(item);
   const expiry = expiryAlertState(item.expiryDate);
+  // 賞味期限は任意登録で、未設定のままがふつう。全行に「未設定」と出しても
+  // 読む情報は増えないので、入っているときだけ見せる（設定は行をタップ）。
   const expiryText = normalizedExpiryDate(item.expiryDate)
     ? `賞味期限 ${formatExpiryDate(item.expiryDate)}${expiry ? `・${expiry.label}` : ""}`
-    : "賞味期限 未設定";
+    : "";
   return `
     <article class="inventory-row${item.priority ? " is-priority" : ""}">
       <div class="item-identity">
@@ -6510,7 +6512,7 @@ function renderInventoryRow(item) {
           <span class="item-meta${confirmation.stale ? " is-stale" : ""}">
             ${escapeHtml(item.location)}・${unknownAmount ? "量は未確認" : confirmation.text}${item.priority ? '<strong>・先に使う</strong>' : ""}
           </span>
-          <span class="item-expiry${expiry ? ` is-${expiry.kind}` : ""}">${escapeHtml(expiryText)}</span>
+          ${expiryText ? `<span class="item-expiry${expiry ? ` is-${expiry.kind}` : ""}">${escapeHtml(expiryText)}</span>` : ""}
           ${renderChangeAttribution("item", item.id)}
         </button>
       </div>
@@ -7304,6 +7306,9 @@ function formatChangedTime(value) {
 }
 
 function changeAttributionText(kind, id) {
+  // 「誰がいつ変えたか」は相手がいるときだけ意味を持つ。共有していない端末では
+  // 全行に自分の端末名が並ぶだけで、読む情報が増えないまま行が縦に伸びる。
+  if (!state.share.fridgeId) return "";
   const meta = state.syncMeta[`${kind}:${id}`];
   const when = formatChangedTime(meta?.changedAt);
   if (!when) return "";
@@ -7418,7 +7423,7 @@ function renderCookingHistory() {
   if (!state.cookingHistory.length) {
     elements.cookingHistoryList.innerHTML = `
       <div class="history-empty">
-        <span aria-hidden="true">♨</span>
+        <svg class="empty-mark" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 10.7h12v5.5a3.3 3.3 0 0 1-3.3 3.3H9.3A3.3 3.3 0 0 1 6 16.2Z"/><path d="M4.4 10.7h15.2"/><path d="M6 13h-2.6"/><path d="M18 13h2.6"/><path d="M9.6 8c.8-1.1.8-2.3 0-3.4"/><path d="M14.4 8c.8-1.1.8-2.3 0-3.4"/></svg>
         <p><strong>まだ履歴はありません</strong><br>調理・使い切り・廃棄・在庫の修正がここに記録されます。</p>
       </div>
     `;
