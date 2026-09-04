@@ -58,7 +58,8 @@ for (const o of formOffenders) {
 const ALLOWED_MICRO = [
   ".app-version", ".nav-icon-with-count small", ".food-expiry-badge", ".food-child-bubble",
   ".shopping-food-button.is-added::after", ".priority-food-option.is-selected::after",
-  ".shopping-food-button strong", ".shopping-food-button small"
+  ".shopping-food-button strong", ".shopping-food-button small",
+  ".fridge-foods.is-dense .fridge-food-name"
 ];
 for (const leaf of new Set(microUsers)) {
   if (!ALLOWED_MICRO.includes(leaf)) {

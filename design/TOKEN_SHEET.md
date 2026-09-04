@@ -83,6 +83,7 @@
 | `.shopping-food-button.is-added::after` / `.priority-food-option.is-selected::after` | ✓ | 選択済みの印 |
 | `.shopping-food-button strong` | 売り場グリッドの品名 | 3〜4列の格子。12pxにすると名前が省略される（→ B-3のグリッド見直しで解消する） |
 | `.shopping-food-button small` | 売り場グリッドの数量 | 同上 |
+| `.fridge-foods.is-dense .fridge-food-name` | 冷蔵庫の絵の下の名前（5列以上に詰まったとき） | 1枠53px前後で12pxでは4文字が入らない。本人が「小さい文字で良い」と明示（2026-09-04）。4列のときは12px |
 
 ### フォーム部品の下限（iOS対策・変更不可）
 

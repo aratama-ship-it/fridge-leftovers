@@ -6327,6 +6327,40 @@ function renderRecipeIllustration(recipeId) {
   return `<span class="recipe-illustration recipe-illustration-${sheet}" style="--atlas-x:${x}%;--atlas-y:${y}%;" aria-hidden="true"></span>`;
 }
 
+// 冷蔵庫の絵で、絵の下に出す1行の名前。棚が埋まると1枠が54pxまで縮み
+// 12pxで4文字しか入らないので、6文字以上の名前だけ略称を持つ（本人の指定）。
+// ここに無いものは正式名をそのまま出し、入りきらない分は「…」で省く。
+// 略称はこの絵の下だけで使い、一覧・レシピ・買い物は正式名のまま。
+const FRIDGE_SHORT_NAMES = {
+  "canned-tomato-cut": "トマト缶", "dried-tomato": "乾トマト", "tomato-puree": "ピューレ",
+  "fish-sausage": "ギョニソ", "coconut-milk": "ココミルク", "dried-radish": "切干大根",
+  "kaiware": "かいわれ", "radish-red": "ラディシュ", "sunny-lettuce": "サニレタス",
+  "sliced-cheese": "スライス", "pizza-cheese": "ピザチーズ", "cream-cheese": "クリチー",
+  "mozzarella": "モッツァ", "camembert": "カマンベ", "blue-cheese": "ブルチー",
+  "cottage-cheese": "カッテージ", "broccoli-sprout": "スプラウト", "broccoli": "ブロッコリ",
+  "fettuccine": "フェットチ", "farfalle": "ファルファ", "capellini": "カペリーニ",
+  "pasta": "パスタ", "butter-roll": "ロールパン", "peanut-butter": "ピーナツ",
+  "saury-can": "さんま缶", "oil-sardine": "サーディン", "clam-can": "あさり缶",
+  "meat-sauce": "ミート缶", "white-sauce": "白ソース", "demiglace": "デミグラス",
+  "mushroom-can": "マッシュ缶", "instant-ramen": "即席麺", "asparagus": "アスパラ",
+  "bacon-block": "厚ベーコン", "cauliflower": "カリフラ", "boiled-bamboo": "たけのこ",
+  "corn": "コーン", "green-beans": "いんげん", "dried-shiitake": "干し椎茸",
+  "mushroom-button": "マッシュ", "canned-pineapple": "パイン缶", "pineapple": "パイン",
+  "blueberry": "ブルーベリ", "french-bread": "バゲット", "olive-oil": "オリーブ油",
+  "mixed-vegetables": "ミックス野菜", "baby-leaf": "ベビリーフ", "young-corn": "ヤングコン",
+  "green-peas": "グリンピ", "dried-mango": "干マンゴー", "grapefruit": "グレフル",
+  "char-siu": "焼豚", "chirimen": "じゃこ", "croissant": "クロワサン",
+  "english-muffin": "マフィン", "tortilla": "トルティヤ", "pancake-mix": "ホケミ",
+  "okonomiyaki-flour": "お好み粉", "oatmeal": "オーツ", "corn-flakes": "フレーク",
+  "mixed-beans": "ミックス豆", "frozen-seafood-mix": "シーフード", "snap-peas": "スナップ",
+  "roast-beef": "ロービーフ", "sour-cream": "サワークリ", "wonton-wrapper": "ワンタン皮",
+  "corn-starch": "スターチ", "cashew": "カシュー"
+};
+
+function fridgeDisplayName(item) {
+  return FRIDGE_SHORT_NAMES[item.id] || item.name;
+}
+
 function renderFridgeFood(item) {
   const state3 = inventoryLevelState(item);
   const expiry = expiryAlertState(item.expiryDate);
@@ -6335,6 +6369,7 @@ function renderFridgeFood(item) {
     <button class="fridge-food${item.priority ? " is-priority" : ""}${expiry ? ` is-expiry-${expiry.kind}` : ""}" type="button" data-fridge-edit="${escapeHtml(item.id)}" data-drag-item="${escapeHtml(item.id)}" aria-label="${escapeHtml(item.name)}、${state3.label}${expiryLabel}。タップで在庫を編集、長押しで棚を移動">
       <span class="food-hp-gauge${state3.className}" aria-hidden="true"><span style="--food-level:${state3.width}%"></span></span>
       ${renderIngredientIllustration(item.id, item.name)}
+      <span class="fridge-food-name" aria-hidden="true">${escapeHtml(fridgeDisplayName(item))}</span>
       ${expiry ? `<span class="food-expiry-badge is-${expiry.kind}" aria-hidden="true">${expiry.kind === "expired" ? "!" : expiry.days}</span>` : ""}
     </button>
   `;
@@ -6355,8 +6390,14 @@ function renderShelfAddButton(location, shelf) {
 }
 
 function renderFridgeShelf(items, location, shelf, showAdd = false) {
+  // 4品までは大きく（4列）、5品・6品は同じ棚の中で列を増やして1行に収める。
+  // 4列固定だと5品目で折り返して棚が縦に伸び、埋まってくると厳しかった（本人の指摘）。
+  // 「＋」は列に数えない。数えると5品で6列になり、食材が45pxまで縮んでいた。
+  // ＋は格子の末尾の細い auto 列に置く（CSS側）。上限は1棚の収容数（6）と同じ。
+  const columns = Math.min(STORAGE_SHELF_CAPACITIES[location], Math.max(4, items.length));
+  const dense = columns >= 5 ? " is-dense" : "";
   return `
-    <div class="fridge-foods">
+    <div class="fridge-foods${dense}" style="--shelf-cols: ${columns}">
       ${items.map(renderFridgeFood).join("")}
       ${showAdd ? renderShelfAddButton(location, shelf) : ""}
     </div>

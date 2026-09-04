@@ -50,7 +50,7 @@ const CONSTANTS = [
   "RECIPES", "RECEIPT_RULES", "INITIAL_UNIT_BY_ID", "ALIASES", "NAME_TO_ID", "INGREDIENT_SUBSTITUTES", "UNIT_CONVERSIONS",
   "ILLUSTRATED_INGREDIENT_CATEGORIES", "FRESHNESS_GROUP_DAYS", "FRESHNESS_DAYS_BY_ID", "FRESHNESS_GROUP_BY_ID",
   "SUBSTITUTE_GENERICS", "RECIPE_LIST_SERVINGS", "RECIPE_ILLUSTRATIONS",
-  "RECIPE_ILLUSTRATION_FALLBACKS", "REQUIREMENT_LINE_LABELS",
+  "RECIPE_ILLUSTRATION_FALLBACKS", "REQUIREMENT_LINE_LABELS", "FRIDGE_SHORT_NAMES",
   "STORAGE_KEY", "SHOPPING_STORAGE_KEY", "COOKING_HISTORY_STORAGE_KEY",
   "SHELF_COUNTS_STORAGE_KEY", "RECENT_INGREDIENTS_STORAGE_KEY", "SETTINGS_STORAGE_KEY",
   "SYNC_STORAGE_KEY", "SHARE_STORAGE_KEY", "EXPORT_FORMAT", "EXPORT_APP", "EXPORT_SECTIONS"
@@ -76,7 +76,7 @@ const activeInventory = () => state.inventory.filter((item) => item.active !== f
 ${CONSTANTS.map(takeConst).join("\n")}
 ${FUNCTIONS.map(takeFunction).join("\n")}
 return {
-  state, RECIPES, RECEIPT_RULES, RECIPE_ILLUSTRATIONS, RECIPE_ILLUSTRATION_FALLBACKS, REQUIREMENT_LINE_LABELS, INGREDIENT_SUBSTITUTES, UNIT_CONVERSIONS,
+  state, RECIPES, RECEIPT_RULES, RECIPE_ILLUSTRATIONS, RECIPE_ILLUSTRATION_FALLBACKS, REQUIREMENT_LINE_LABELS, FRIDGE_SHORT_NAMES, INGREDIENT_SUBSTITUTES, UNIT_CONVERSIONS,
   QUANTITY_CONFIRMED, QUANTITY_ESTIMATED, QUANTITY_UNKNOWN,
   quantityConfidence, lessCertain, conversionRatio, stockForRequirement, requirementLineState,
   availableForRequirement, shortageFor, unconfirmedFor, cookBlockers,
@@ -91,7 +91,7 @@ return {
 
 const app_ = new Function(harness)();
 const {
-  state, RECIPES, RECEIPT_RULES, RECIPE_ILLUSTRATIONS, RECIPE_ILLUSTRATION_FALLBACKS, REQUIREMENT_LINE_LABELS,
+  state, RECIPES, RECEIPT_RULES, RECIPE_ILLUSTRATIONS, RECIPE_ILLUSTRATION_FALLBACKS, REQUIREMENT_LINE_LABELS, FRIDGE_SHORT_NAMES,
   QUANTITY_CONFIRMED, QUANTITY_ESTIMATED, QUANTITY_UNKNOWN,
   quantityConfidence, lessCertain, stockForRequirement, requirementLineState,
   shortageFor, unconfirmedFor, cookBlockers, confirmUnknownAmounts,
@@ -380,6 +380,21 @@ check("持っていなければ不足に出る", (() => {
   state.inventory = others.map((item) => stock(item.id, item.quantity * 10, { unit: item.unit }));
   return shortageFor(eggRecipe, 1).map((item) => item.id);
 })(), ["eggs"]);
+
+// 冷蔵庫の絵の下に出す略称。idの打ち間違いは「絵が正式名で出るだけ」で
+// 目で気づけないので、カタログに無いidを止める。長さも6文字までに縛る
+// （6列のとき1枠54pxで、12pxなら4文字しか入らない。6文字は「…」で省く前提の上限）。
+check("略称のidが全部カタログにあり、6文字以内", (() => {
+  const known = new Set(RECEIPT_RULES.map((rule) => rule.id));
+  const problems = [];
+  for (const [id, short] of Object.entries(FRIDGE_SHORT_NAMES)) {
+    if (!known.has(id)) problems.push(`${id}: カタログに無い`);
+    if ([...short].length > 6) problems.push(`${id}: ${short} は${[...short].length}文字`);
+    const rule = RECEIPT_RULES.find((candidate) => candidate.id === id);
+    if (rule && [...rule.name].length < 6) problems.push(`${id}: ${rule.name} は6文字未満なので略称は要らない`);
+  }
+  return problems;
+})(), []);
 
 check("材料行は在庫が無ければありません", (() => {
   state.inventory = [];
