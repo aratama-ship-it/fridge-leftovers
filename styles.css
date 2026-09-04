@@ -1476,6 +1476,14 @@ body.is-fridge-dragging .food-consume-station {
   font-weight: 800;
 }
 
+/* 量が未確認の在庫は、数字を確定値として見せない。−／＋を押すと
+   本人が実物を見たことになるので、そのとき通常の表示へ戻る。 */
+.quantity-output.is-unknown {
+  color: var(--muted);
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+
 .row-actions {
   grid-column: 1 / -1;
   display: grid;
@@ -2138,6 +2146,17 @@ input[type="date"] {
 
 .ingredient-state.is-ready {
   color: var(--leaf);
+  font-weight: 800;
+}
+
+/* 量が未確認のものは断定しない。カード見出しの「材料あり」と
+   ボタンの「量を見て作る」に合わせた3つ目の状態。 */
+.ingredient-state.is-unknown {
+  color: var(--muted);
+}
+
+.ingredient-state.is-short {
+  color: var(--warm);
   font-weight: 800;
 }
 
@@ -5698,6 +5717,27 @@ input[type="date"] {
   .recipe.is-featured {
     grid-column: auto;
     height: 100%;
+  }
+
+  /* 3列では1カードが約300px。イラスト・料理名・検索ボタンを横一列に置くと
+     料理名に80pxしか残らず、1文字ずつ折り返していた。検索ボタンを次の行へ
+     落とし、おすすめのイラストもほかの候補と同じ76pxにする。 */
+  .recipe-heading-row {
+    flex-wrap: wrap;
+  }
+
+  .recipe-heading-row > div {
+    flex: 1 1 140px;
+  }
+
+  .recipe-heading-row .recipe-search-links {
+    flex: 0 0 100%;
+    justify-content: flex-end;
+  }
+
+  .recipe.is-featured .recipe-illustration {
+    width: 76px;
+    height: 76px;
   }
 
   .recipe.is-featured .ingredient-groups,
