@@ -506,7 +506,52 @@ h3 {
 }
 
 .fridge-visual-heading {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  align-items: center;
+  justify-content: space-between;
   margin-bottom: 3px;
+}
+
+/* 絵と一覧を行き来する入口。タブに見せると 冷蔵庫／パントリー と紛れるので、
+   見出しの右に置く控えめなボタンにする。 */
+.mode-switch {
+  display: inline-flex;
+  flex: none;
+  gap: 6px;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 1px solid rgb(47 100 75 / 26%);
+  border-radius: 4px;
+  background: var(--paper-raised);
+  color: var(--leaf);
+  font-size: var(--fs-sub);
+  font-weight: 700;
+  line-height: 1;
+}
+
+.mode-switch:hover,
+.mode-switch:focus-visible {
+  border-color: var(--leaf);
+  background: var(--leaf-soft);
+}
+
+.mode-switch-icon {
+  width: var(--icon-sm);
+  height: var(--icon-sm);
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* 一覧側の戻り口は見出しの上に置くので、余白の付き方だけ変える */
+.mode-switch.is-back {
+  margin-bottom: 6px;
+  padding-inline: 10px 12px;
 }
 
 .fridge-visual-heading h3 {
@@ -3302,7 +3347,7 @@ input[type="date"] {
   bottom: 0;
   left: 50%;
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   width: min(100%, 540px);
   padding-bottom: env(safe-area-inset-bottom);
   border-top: 1px solid var(--line-strong);
@@ -5775,7 +5820,7 @@ input[type="date"] {
     grid-column: 1;
     grid-row: 2;
     grid-template-columns: 1fr;
-    grid-template-rows: repeat(5, minmax(78px, auto));
+    grid-template-rows: repeat(4, minmax(78px, auto));
     align-self: start;
     width: 112px;
     height: calc(100dvh - max(55px, calc(47px + env(safe-area-inset-top))));

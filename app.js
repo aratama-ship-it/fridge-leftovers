@@ -4387,6 +4387,8 @@ const elements = {
   expiryAlertTitle: document.querySelector("#expiry-alert-title"),
   expiryAlertSummary: document.querySelector("#expiry-alert-summary"),
   expiryAlertList: document.querySelector("#expiry-alert-list"),
+  goInventoryList: document.querySelector("#go-inventory-list"),
+  goFridgeScene: document.querySelector("#go-fridge-scene"),
   managementExpiring: document.querySelector("#management-expiring"),
   managementExpiringTitle: document.querySelector("#management-expiring-title"),
   managementExpiringList: document.querySelector("#management-expiring-list"),
@@ -7638,6 +7640,10 @@ function startOnboarding() {
   showView("onboarding");
 }
 
+// 在庫の一覧は独立した画面ではなく「冷蔵庫」タブの中の別の見せ方。
+// タブは4つのままにして、現在地は冷蔵庫を点ける。
+const NAV_VIEW_ALIAS = { management: "inventory" };
+
 function showView(viewName) {
   // 初回登録の途中は下のタブを隠す。まだ「どの画面」でもないため
   elements.bottomNav.hidden = viewName === "onboarding" || viewName === "refine";
@@ -7650,8 +7656,9 @@ function showView(viewName) {
   elements.suggestionsView.hidden = viewName !== "suggestions";
   elements.shoppingView.hidden = viewName !== "shopping";
   elements.historyView.hidden = viewName !== "history";
+  const navView = NAV_VIEW_ALIAS[viewName] || viewName;
   document.querySelectorAll(".nav-button").forEach((button) => {
-    const active = button.dataset.view === viewName;
+    const active = button.dataset.view === navView;
     button.classList.toggle("is-active", active);
     if (active) {
       button.setAttribute("aria-current", "page");
@@ -10390,6 +10397,10 @@ document.querySelectorAll(".storage-tab").forEach((button) => {
 document.querySelectorAll(".nav-button").forEach((button) => {
   button.addEventListener("click", () => showView(button.dataset.view));
 });
+
+// 冷蔵庫タブの中で「絵」と「一覧」を行き来する
+elements.goInventoryList.addEventListener("click", () => showView("management"));
+elements.goFridgeScene.addEventListener("click", () => showView("inventory"));
 
 elements.todayIngredientTrigger.addEventListener("click", openTodayIngredientDialog);
 elements.closeTodayIngredientDialog.addEventListener("click", closeTodayIngredientDialog);
