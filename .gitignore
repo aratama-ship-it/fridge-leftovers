@@ -12,3 +12,7 @@ private-test-fixtures/
 
 # macOSが勝手に作るもの
 .DS_Store
+
+# ローカル確認用のレビュー成果物とPlaywrightの作業ファイル（公開Pagesへ載せない）
+review/
+.playwright-mcp/
