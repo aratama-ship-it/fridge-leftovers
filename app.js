@@ -4317,6 +4317,7 @@ const state = {
   shopping: [],
   cookingHistory: [],
   historyVisibleCount: HISTORY_PAGE_SIZE,
+  shoppingRecommendClosed: false,
   location: "すべて",
   servings: 1,
   priority: "no-shop",
@@ -4427,6 +4428,7 @@ const elements = {
   shoppingPickerCategoryTitle: document.querySelector("#shopping-picker-category-title"),
   shoppingFoodGrid: document.querySelector("#shopping-food-grid"),
   shoppingRecommendations: document.querySelector("#shopping-recommendations"),
+  shoppingRecommendationsPanel: document.querySelector("#shopping-recommendations-panel"),
   shoppingList: document.querySelector("#shopping-list"),
   shoppingNavCount: document.querySelector("#shopping-nav-count"),
   clearBought: document.querySelector("#clear-bought"),
@@ -6489,7 +6491,7 @@ function renderFridgeScene(active) {
       </div>
       <div class="food-child-character" aria-hidden="true">
         <span class="food-child-bubble">ぱくっ</span>
-        <img src="assets/food-child-drop-target.png?v=20260724-1" alt="">
+        <img src="assets/food-child-drop-target.webp?v=20260904-1" alt="">
       </div>
     </section>
   `;
@@ -6528,7 +6530,6 @@ function renderInventoryRow(item) {
         <button class="row-action" type="button" data-action="confirm" data-id="${escapeHtml(item.id)}">まだある</button>
         <button class="row-action${item.priority ? " is-priority" : ""}" type="button" data-action="priority" data-id="${escapeHtml(item.id)}">${item.priority ? "優先を解除" : "先に使う"}</button>
         <button class="row-action" type="button" data-action="consume" data-id="${escapeHtml(item.id)}">使い切った</button>
-        <button class="row-action is-delete" type="button" data-action="delete" data-id="${escapeHtml(item.id)}">完全削除</button>
       </div>
     </article>
   `;
@@ -6979,6 +6980,13 @@ function renderShopping() {
   elements.shoppingRecommendations.innerHTML = recommendations.length
     ? recommendations.map(renderShoppingRecommendation).join("")
     : '<p class="shopping-empty-recommendation">在庫を増やすと、組み合わせの候補がここに出ます。</p>';
+
+  // 買うものが1つも無いときは、いちばん役に立つ「今あるものに合う」を開いておく。
+  // 3番目の折り畳みのままだと、空の画面で次の一手が見えない。
+  // 本人が閉じたら、その判断をこのセッション中は尊重する。
+  if (!state.shopping.length && !state.shoppingRecommendClosed) {
+    elements.shoppingRecommendationsPanel.open = true;
+  }
 
   const waitingItems = state.shopping.filter((item) => !item.checked);
   const boughtItems = state.shopping.filter((item) => item.checked);
@@ -8644,7 +8652,9 @@ function updateCookConfirmation() {
     `;
   }).join("");
 
-  const optionalRows = recipe.optional.map((option) => {
+  // 「あるとより良い」は、在庫があるものだけを開いて見せる。
+  // 在庫なしの行は選べないのに場所を取り、確認すべき行を押し下げていた。
+  const renderOptionalRow = (option) => {
     const ready = optionalReady(option, servings);
     const key = `${recipe.id}:${option.id}`;
     const checked = ready && state.selectedOptionals[key] !== false;
@@ -8669,12 +8679,24 @@ function updateCookConfirmation() {
         </label>
       </li>
     `;
-  }).join("");
+  };
+
+  const optionalReadyRows = recipe.optional
+    .filter((option) => optionalReady(option, servings))
+    .map(renderOptionalRow)
+    .join("");
+  const missingOptionals = recipe.optional.filter((option) => !optionalReady(option, servings));
+  const optionalMissingRows = missingOptionals.map(renderOptionalRow).join("");
 
   elements.cookConfirmIngredients.innerHTML = `
     <h4>最低限必要</h4>
     <ul>${requiredRows}</ul>
-    ${optionalRows ? `<h4>あるとより良い <small>使うものを選択</small></h4><ul>${optionalRows}</ul>` : ""}
+    ${optionalReadyRows ? `<h4>あるとより良い <small>使うものを選択</small></h4><ul>${optionalReadyRows}</ul>` : ""}
+    ${optionalMissingRows ? `
+      <details class="cook-optional-missing">
+        <summary>いま無い「あるとより良い」 ${missingOptionals.length}品</summary>
+        <ul>${optionalMissingRows}</ul>
+      </details>` : ""}
   `;
   renderCookExtras(recipe, servings);
   const nutritionIngredients = [...selectedIngredients];
@@ -10404,6 +10426,10 @@ document.querySelectorAll(".nav-button").forEach((button) => {
 elements.goInventoryList.addEventListener("click", () => showView("management"));
 elements.goFridgeScene.addEventListener("click", () => showView("inventory"));
 
+elements.shoppingRecommendationsPanel.addEventListener("toggle", () => {
+  if (!elements.shoppingRecommendationsPanel.open) state.shoppingRecommendClosed = true;
+});
+
 elements.todayIngredientTrigger.addEventListener("click", openTodayIngredientDialog);
 elements.closeTodayIngredientDialog.addEventListener("click", closeTodayIngredientDialog);
 elements.todayIngredientDialog.addEventListener("click", (event) => {
@@ -10475,7 +10501,6 @@ elements.inventoryList.addEventListener("click", (event) => {
     });
   }
   if (button.dataset.action === "consume") consumeItem(item);
-  if (button.dataset.action === "delete") deleteItem(item);
 });
 
 elements.managementExpiringList.addEventListener("click", (event) => {

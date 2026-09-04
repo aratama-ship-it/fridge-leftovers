@@ -65,3 +65,7 @@ jobs:
       # デザイントークンシート(design/TOKEN_SHEET.md)から文字サイズが外れていないこと
       - name: 文字スケールチェック
         run: node scripts/check-type-scale.mjs
+
+      # 配信用WebPが、もとのPNGとずれていないこと
+      - name: WebPチェック
+        run: node scripts/build-webp.mjs --check

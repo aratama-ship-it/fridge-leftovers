@@ -13,10 +13,10 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="冷蔵庫の現在地">
-  <link rel="stylesheet" href="styles.css?v=06b515fe">
+  <link rel="stylesheet" href="styles.css?v=16bbc1c1">
   <script src="vendor/tesseract/tesseract.min.js?v=7.0.0" defer></script>
   <script src="recipe-expansion.js?v=3e0c5a6c" defer></script>
-  <script src="app.js?v=1429045e" defer></script>
+  <script src="app.js?v=60cca687" defer></script>
   <!--
     起動の読み込み画面は、外部CSS（styles.css）が届く前から出したいので、
     ここだけ色を直書きしている（:root の変数に頼らない）。回線が細いときほど
@@ -345,7 +345,7 @@
           </form>
         </details>
 
-        <details class="shopping-accordion shopping-recommendations">
+        <details class="shopping-accordion shopping-recommendations" id="shopping-recommendations-panel">
           <summary class="shopping-accordion-summary">
             <span>
               <span class="eyebrow">冷蔵庫との組み合わせ</span>
@@ -663,11 +663,14 @@
         </label>
 
         <div class="dialog-actions">
-          <button class="button button-consume" type="button" id="consume-ingredient" hidden>履歴あり削除（使い切った）</button>
-          <button class="button button-discard" type="button" id="discard-ingredient" hidden>履歴あり削除（廃棄した）</button>
-          <button class="button button-danger" type="button" id="delete-ingredient" hidden>完全削除（履歴に残さない）</button>
+          <!-- 「履歴あり削除（使い切った）」は仕組みの説明だった。ふだん使う2つは
+               起きたことをそのまま言う。履歴に残さない消し方は取り返しがつかない
+               ぶん頻度も低いので、いちばん下の小さなリンクへ下げる。 -->
+          <button class="button button-consume" type="button" id="consume-ingredient" hidden>使い切った</button>
+          <button class="button button-discard" type="button" id="discard-ingredient" hidden>捨てた</button>
           <button class="button button-secondary" type="button" id="cancel-dialog">キャンセル</button>
           <button class="button button-primary" type="submit">保存</button>
+          <button class="dialog-danger-link" type="button" id="delete-ingredient" hidden>履歴に残さず消す</button>
         </div>
       </section>
     </form>
@@ -758,11 +761,13 @@
         </div>
         <div id="cook-confirm-ingredients"></div>
 
-        <section class="cook-extra-section" aria-labelledby="cook-extra-title">
-          <div class="cook-extra-heading">
+        <!-- レシピ外の食材を足すのは毎回ではないので、畳んでおく。
+             確認すべき行（最低限必要）を押し下げないため。 -->
+        <details class="cook-extra-section" aria-labelledby="cook-extra-title">
+          <summary class="cook-extra-heading">
             <h4 id="cook-extra-title">ついでに使う食材</h4>
             <small>レシピ外の食材や、追加で使う分</small>
-          </div>
+          </summary>
           <div class="cook-extra-add">
             <label>
               食材
@@ -778,7 +783,7 @@
             <button class="button button-secondary" type="button" id="cook-extra-add">追加</button>
           </div>
           <ul class="cook-extra-list" id="cook-extra-list"></ul>
-        </section>
+        </details>
       </section>
 
       <p class="cook-confirm-message" id="cook-confirm-message" aria-live="polite"></p>
