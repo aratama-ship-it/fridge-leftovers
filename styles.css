@@ -479,12 +479,6 @@ h3 {
   color: var(--ink);
 }
 
-.button-danger {
-  border-color: var(--warm);
-  background: transparent;
-  color: var(--warm);
-}
-
 .button-consume {
   border-color: var(--leaf);
   background: var(--leaf-soft);
@@ -1602,7 +1596,7 @@ body.is-fridge-dragging .food-consume-station {
 .row-actions {
   grid-column: 1 / -1;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 2px;
   margin: 0;
 }
@@ -1625,10 +1619,6 @@ body.is-fridge-dragging .food-consume-station {
 
 .row-action.is-priority {
   border-bottom-color: var(--warm);
-  color: var(--warm);
-}
-
-.row-action.is-delete {
   color: var(--warm);
 }
 
@@ -4130,14 +4120,65 @@ input[type="date"] {
   border-top: 1px dashed var(--line-strong);
 }
 
+/* summary になったので、開閉できることが分かる見た目にする */
 .cook-extra-heading {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
   justify-content: space-between;
-  gap: 8px;
+  gap: 2px 8px;
+  min-height: 44px;
+  padding-block: 8px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.cook-extra-heading::-webkit-details-marker {
+  display: none;
+}
+
+.cook-extra-heading::after {
+  flex: none;
+  align-self: center;
+  color: var(--leaf);
+  content: "＋";
+  font-size: var(--icon-sm);
+  font-weight: 700;
+  line-height: 1;
+}
+
+.cook-extra-section[open] > .cook-extra-heading::after {
+  content: "−";
+}
+
+.cook-extra-heading:focus-visible {
+  outline: 3px solid rgb(47 100 75 / 35%);
+  outline-offset: 2px;
+}
+
+/* いま無い「あるとより良い」。選べないので既定では畳む */
+.cook-optional-missing > summary {
+  min-height: 44px;
+  padding-block: 10px;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: var(--fs-caption);
+  font-weight: 700;
+}
+
+.cook-optional-missing > summary:focus-visible {
+  outline: 3px solid rgb(47 100 75 / 35%);
+  outline-offset: 2px;
+}
+
+/* 見出しと注記を1行へ押し込むと、どちらも1〜2文字で折り返す。
+   注記は次の行へ落とす。 */
+.cook-extra-heading h4 {
+  flex: none;
 }
 
 .cook-extra-heading small {
+  flex: 1 0 100%;
   color: var(--muted);
   font-size: var(--fs-caption);
 }
@@ -4525,9 +4566,33 @@ input[type="date"] {
 }
 
 .dialog-actions .button-consume:not([hidden]),
-.dialog-actions .button-discard:not([hidden]),
-.dialog-actions .button-danger:not([hidden]) {
+.dialog-actions .button-discard:not([hidden]) {
   grid-column: 1 / -1;
+}
+
+/* 履歴を残さない消し方。取り返しがつかないぶん頻度も低いので、
+   ボタンの見た目をやめて最下段の小さなリンクにする。 */
+.dialog-danger-link {
+  grid-column: 1 / -1;
+  justify-self: center;
+  min-height: 44px;
+  padding: 0 8px;
+  border: 0;
+  background: transparent;
+  color: var(--warm);
+  font-size: var(--fs-caption);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.dialog-danger-link[hidden] {
+  display: none;
+}
+
+.dialog-danger-link:hover,
+.dialog-danger-link:focus-visible {
+  color: #8f3d26;
 }
 
 .receipt-dialog {
