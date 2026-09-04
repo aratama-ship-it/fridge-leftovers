@@ -6209,19 +6209,17 @@ function ensureInventoryShelves() {
     const missing = items.filter((item) => !assigned.includes(item));
     if (!missing.length) continue;
 
-    if (!assigned.length) {
-      missing.forEach((item, index) => {
-        item.shelf = Math.min(shelfCount - 1, Math.floor((index * shelfCount) / missing.length));
-        changed = true;
-      });
-      continue;
-    }
-
+    // 上の棚から詰める。以前は棚数で割って均等に散らしていたので、
+    // 3品を3段の冷蔵室へ入れると1段に1品ずつ浮いた状態になり、
+    // 「冷蔵庫が埋まっていく」感じが出なかった（方針書の核）。
     const shelfSizes = Array.from({ length: shelfCount }, (_, shelf) =>
       assigned.filter((item) => item.shelf === shelf).length
     );
+    const capacity = STORAGE_SHELF_CAPACITIES[location];
     missing.forEach((item) => {
-      const shelf = shelfSizes.indexOf(Math.min(...shelfSizes));
+      const room = shelfSizes.findIndex((size) => size < capacity);
+      // どの棚も満杯なら、いちばん少ない棚へ足す（あふれ分は「ほか◯品」で見せる）
+      const shelf = room >= 0 ? room : shelfSizes.indexOf(Math.min(...shelfSizes));
       item.shelf = shelf;
       shelfSizes[shelf] += 1;
       changed = true;

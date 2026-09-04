@@ -654,50 +654,52 @@ h3 {
   margin-top: 4px;
 }
 
+/* 棚の段数は最初に一度決めるだけの操作。棚と同じ幅の箱で置くと
+   食材と同じ強さで目に入るので、右端の控えめな並びへ下げる。
+   押せる大きさ（44px）は保つ。 */
 .shelf-count-control {
   display: grid;
-  grid-template-columns: 48px 1fr 48px;
+  grid-template-columns: 44px auto 44px;
   align-items: center;
+  justify-content: end;
   min-height: 44px;
-  margin-top: 5px;
-  padding: 3px 5px;
-  border: 1px solid #84978c;
-  border-radius: 7px;
-  background: rgb(247 250 245 / 58%);
+  margin-top: 2px;
+  margin-left: auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
 }
 
-.shelf-count-control-freezer {
-  border-color: #7da4b3;
-  background: rgb(235 248 252 / 58%);
-}
-
-.shelf-count-control-pantry {
-  border-color: #b3946f;
-  background: rgb(255 255 255 / 48%);
-}
-
+/* 段数のボタン。棚の一部ではなく操作なので、丸くして地に溶かす。
+   押せる大きさは44pxのまま保つ。 */
 .shelf-count-control button {
   display: grid;
   place-items: center;
   width: 44px;
-  height: 38px;
+  height: 44px;
   padding: 0;
-  border: 1px solid #65796d;
-  border-radius: 6px;
-  background: rgb(255 255 255 / 72%);
+  border: 1px solid rgb(101 121 109 / 45%);
+  border-radius: 50%;
+  background: rgb(255 255 255 / 55%);
   color: #35483e;
-  font-size: var(--icon-lg);
+  font-size: var(--icon-md);
   font-weight: 700;
   line-height: 1;
 }
 
+.shelf-count-control button:hover,
+.shelf-count-control button:focus-visible {
+  border-color: #65796d;
+  background: rgb(255 255 255 / 88%);
+}
+
 .shelf-count-control-freezer button {
-  border-color: #527887;
+  border-color: rgb(82 120 135 / 45%);
   color: #315866;
 }
 
 .shelf-count-control-pantry button {
-  border-color: #7a5c40;
+  border-color: rgb(122 92 64 / 45%);
   color: #6d5133;
 }
 
@@ -710,6 +712,7 @@ h3 {
 }
 
 .shelf-count-control span {
+  min-width: 36px;
   color: #405348;
   font-size: var(--fs-caption);
   font-weight: 800;
@@ -721,16 +724,18 @@ h3 {
   color: #6d5133;
 }
 
+/* 4列・左詰め。以前は7列相当で1つ48pxしかなく、棚に点々と並ぶだけだった。
+   6品目までは同じ棚に入り、4つを超えたら同じ棚の中で折り返す（棚は縦に伸びる）。 */
 .fridge-foods {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(46px, 1fr));
-  justify-content: center;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  justify-content: start;
   justify-items: center;
   align-items: end;
   max-width: 342px;
   min-height: 64px;
   margin-inline: auto;
-  gap: 0 1px;
+  gap: 2px 4px;
 }
 
 .fridge-food {
@@ -739,9 +744,9 @@ h3 {
   justify-items: center;
   align-content: end;
   width: 100%;
-  max-width: 56px;
+  max-width: 78px;
   min-width: 0;
-  min-height: 62px;
+  min-height: 78px;
   padding: 1px 0 0;
   border: 0;
   background: transparent;
@@ -849,7 +854,7 @@ h3 {
 
 .fridge-food .ingredient-illustration,
 .fridge-food .ingredient-initial {
-  width: min(52px, 100%);
+  width: min(72px, 100%);
   height: auto;
   aspect-ratio: 1;
 }
@@ -5628,6 +5633,12 @@ input[type="date"] {
    スマホのUIをそのまま中央へ置くと左右が空くだけになるため、700px以上では
    幅を情報量へ戻す。縦向きは下部ナビを残して2列、横向きは左ナビ＋3列にする。 */
 @media (min-width: 700px) {
+  /* タブレットは幅が余る。食材の格子を広げて棚の空きを減らす */
+  .fridge-foods {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    max-width: 560px;
+  }
+
   .app-shell {
     max-width: 900px;
     box-shadow: 0 0 34px rgb(34 39 34 / 12%);
@@ -5862,6 +5873,7 @@ input[type="date"] {
   .food-consume-station {
     width: min(100%, 800px);
   }
+
 
   .recipe-list {
     grid-template-columns: repeat(3, minmax(0, 1fr));
