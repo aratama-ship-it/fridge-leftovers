@@ -6155,14 +6155,17 @@ function renderExpiringList() {
     const alertKind = expiry?.kind || (freshness.kind === "over" ? "today" : "soon");
     const labels = [expiry?.label, freshness?.label].filter(Boolean).join("・");
     return `
-    <button class="management-expiring-item is-${alertKind}" type="button" data-fridge-edit="${escapeHtml(item.id)}">
-      ${renderIngredientIllustration(item.id, item.name)}
-      <span class="management-expiring-copy">
-        <strong>${escapeHtml(item.name)}</strong>
-        <small>${escapeHtml(item.location)}${expiry ? `・${escapeHtml(formatExpiryDate(item.expiryDate))}` : ""}</small>
-      </span>
-      <span class="management-expiring-state">${escapeHtml(labels)}</span>
-    </button>
+    <div class="management-expiring-item is-${alertKind}">
+      <button class="management-expiring-main" type="button" data-fridge-edit="${escapeHtml(item.id)}">
+        ${renderIngredientIllustration(item.id, item.name)}
+        <span class="management-expiring-copy">
+          <strong>${escapeHtml(item.name)}</strong>
+          <small>${escapeHtml(item.location)}${expiry ? `・${escapeHtml(formatExpiryDate(item.expiryDate))}` : ""}</small>
+        </span>
+        <span class="management-expiring-state">${escapeHtml(labels)}</span>
+      </button>
+      <button class="management-expiring-discard" type="button" data-expiry-discard="${escapeHtml(item.id)}" aria-label="${escapeHtml(item.name)}を捨てる">捨てる</button>
+    </div>
   `;
   }).join("");
 }
@@ -6275,14 +6278,17 @@ function renderExpiryAlerts() {
     const alertKind = expiry?.kind || (freshness.kind === "over" ? "today" : "soon");
     const labels = [expiry?.label, freshness?.label].filter(Boolean).join("・");
     return `
-    <button class="expiry-alert-item is-${alertKind}" type="button" data-expiry-edit="${escapeHtml(item.id)}">
-      ${renderIngredientIllustration(item.id, item.name)}
-      <span class="expiry-alert-copy">
-        <strong>${escapeHtml(item.name)}</strong>
-        ${expiry ? `<small>賞味期限 ${escapeHtml(formatExpiryDate(item.expiryDate))}</small>` : ""}
-      </span>
-      <span class="expiry-alert-state">${escapeHtml(labels)}</span>
-    </button>
+    <div class="expiry-alert-item is-${alertKind}">
+      <button class="expiry-alert-main" type="button" data-expiry-edit="${escapeHtml(item.id)}">
+        ${renderIngredientIllustration(item.id, item.name)}
+        <span class="expiry-alert-copy">
+          <strong>${escapeHtml(item.name)}</strong>
+          ${expiry ? `<small>賞味期限 ${escapeHtml(formatExpiryDate(item.expiryDate))}</small>` : ""}
+        </span>
+        <span class="expiry-alert-state">${escapeHtml(labels)}</span>
+      </button>
+      <button class="expiry-alert-discard" type="button" data-expiry-discard="${escapeHtml(item.id)}" aria-label="${escapeHtml(item.name)}を捨てる">捨てる</button>
+    </div>
   `;
   }).join("");
 }
@@ -10265,6 +10271,14 @@ elements.sampleNoticeKeep.addEventListener("click", () => {
 });
 
 elements.expiryAlertList.addEventListener("click", (event) => {
+  // 使いきれなかったと分かった瞬間に片付けられるよう、編集ダイアログを
+  // 開かずにここで捨てる。廃棄として履歴に残り、トーストの「戻す」で取り消せる
+  const discard = event.target.closest("[data-expiry-discard]");
+  if (discard) {
+    const target = state.inventory.find((candidate) => candidate.id === discard.dataset.expiryDiscard);
+    if (target) discardItem(target);
+    return;
+  }
   const button = event.target.closest("[data-expiry-edit]");
   if (!button) return;
   const item = state.inventory.find((candidate) => candidate.id === button.dataset.expiryEdit);
@@ -10447,6 +10461,12 @@ elements.inventoryList.addEventListener("click", (event) => {
 });
 
 elements.managementExpiringList.addEventListener("click", (event) => {
+  const discard = event.target.closest("[data-expiry-discard]");
+  if (discard) {
+    const target = state.inventory.find((candidate) => candidate.id === discard.dataset.expiryDiscard);
+    if (target) discardItem(target);
+    return;
+  }
   const button = event.target.closest("[data-fridge-edit]");
   if (!button) return;
   const item = state.inventory.find((candidate) => candidate.id === button.dataset.fridgeEdit);
